@@ -129,8 +129,8 @@ public class NotificationScheduler {
                 String thumbnail = json.get("thumbnail").getAsString();
                 String url = "https://youtube.com/watch?v=" + videoId;
                 sendLiveNotification(entity, videoId, url, title, thumbnail, "YOUTUBE");
-                return; // Stop here if we found a live stream
             }
+            return; // Stop here if we found a live stream (whether new or already notified)
         }
 
         // 2. Main RSS check (No scraper fallback to prevent old video false positives on 500 errors)

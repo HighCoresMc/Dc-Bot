@@ -130,6 +130,17 @@ public class NotificationListener extends ListenerAdapter {
 
         if (entity.getDisplayName() == null) entity.setDisplayName(entity.getChannelId());
         
+        // Prevent duplicates
+        boolean exists = notificationRepository.findAll().stream()
+                .anyMatch(e -> e.getGuildId().equals(entity.getGuildId()) 
+                        && e.getPlatform().equals(entity.getPlatform()) 
+                        && e.getChannelId().equalsIgnoreCase(entity.getChannelId()));
+        
+        if (exists) {
+            event.getHook().sendMessage("This channel is already being tracked!").setEphemeral(true).queue();
+            return;
+        }
+
         try {
             notificationRepository.save(entity);
             event.getHook().sendMessage("Successfully added **" + entity.getDisplayName() + "** from " + entity.getPlatform() + "!").setEphemeral(true).queue();
