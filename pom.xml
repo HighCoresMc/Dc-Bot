@@ -32,6 +32,10 @@
             <id>lavalink-snapshots</id>
             <url>https://maven.lavalink.dev/snapshots</url>
         </repository>
+        <repository>
+            <id>jitpack</id>
+            <url>https://jitpack.io</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -65,7 +69,7 @@
         
         <!-- Voice: JDAVE (DAVE Support) -->
         <dependency>
-            <groupId>dev.arbjerg</groupId>
+            <groupId>com.github.arbjerg</groupId>
             <artifactId>jdave-jda</artifactId>
             <version>1.1.0</version>
         </dependency>
