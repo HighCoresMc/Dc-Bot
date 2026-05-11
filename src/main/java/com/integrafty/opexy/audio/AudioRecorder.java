@@ -19,7 +19,8 @@ public class AudioRecorder implements AudioReceiveHandler {
 
     public AudioRecorder() throws IOException {
         this.tempFile = File.createTempFile("opexy_rec_", ".raw");
-        this.os = new BufferedOutputStream(new FileOutputStream(tempFile));
+        // Increased buffer to 64KB for better performance in long meetings
+        this.os = new BufferedOutputStream(new FileOutputStream(tempFile), 65536);
     }
 
     public void setRecording(boolean recording) {

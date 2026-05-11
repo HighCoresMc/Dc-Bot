@@ -63,21 +63,11 @@
             <version>6.4.1</version>
         </dependency>
         
-        <!-- Voice: Libdave (DAVE Support) -->
+        <!-- Voice: JDAVE (DAVE Support) -->
         <dependency>
-            <groupId>moe.kyokobot.libdave</groupId>
-            <artifactId>impl-jni</artifactId>
-            <version>0.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>moe.kyokobot.libdave</groupId>
-            <artifactId>adapter-jda</artifactId>
-            <version>0.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>moe.kyokobot.libdave</groupId>
-            <artifactId>natives-linux-x86-64</artifactId>
-            <version>0.1.0</version>
+            <groupId>dev.arbjerg</groupId>
+            <artifactId>jdave-jda</artifactId>
+            <version>1.1.0</version>
         </dependency>
 
         <!-- Lombok to reduce boilerplate -->
