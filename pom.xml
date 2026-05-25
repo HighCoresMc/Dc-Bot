@@ -6,8 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.0</version>
-        <relativePath/> <!-- lookup parent from repository -->
-    </parent>
+        <relativePath/> </parent>
     <groupId>com.integrafty</groupId>
     <artifactId>opexy</artifactId>
     <version>1.0.0</version>
@@ -20,7 +19,6 @@
     </properties>
 
     <repositories>
-        <!-- Section: Repositories -->
         <repository>
             <id>central</id>
             <name>Central Repository</name>
@@ -49,7 +47,6 @@
     </repositories>
 
     <dependencies>
-        <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -63,28 +60,24 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
-        <!-- Database: PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Discord API: JDA -->
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
             <version>6.4.1</version>
         </dependency>
 
-        <!-- Section: Audio Dependencies -->
         <dependency>
             <groupId>dev.arbjerg</groupId>
             <artifactId>lavaplayer</artifactId>
-            <version>2.2.6</version>
+            <version>2.2.7</version>
         </dependency>
         
-        <!-- Voice: JDAVE (DAVE Support) -->
         <dependency>
             <groupId>club.minnced</groupId>
             <artifactId>jdave-api</artifactId>
@@ -103,34 +96,29 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Lombok to reduce boilerplate -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- Dotenv for local environment variables -->
         <dependency>
             <groupId>io.github.cdimascio</groupId>
             <artifactId>java-dotenv</artifactId>
             <version>5.2.2</version>
         </dependency>
 
-        <!-- JSON Processing: org.json -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20231013</version>
         </dependency>
 
-        <!-- JSON Processing: GSON -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
 
-        <!-- Spring Boot Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
