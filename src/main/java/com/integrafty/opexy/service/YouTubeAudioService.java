@@ -26,6 +26,19 @@ public class YouTubeAudioService {
 
     public YouTubeAudioService() {
         this.playerManager = new DefaultAudioPlayerManager();
+        
+        String poToken = System.getProperty("PO_TOKEN");
+        if (poToken == null || poToken.isEmpty()) {
+            poToken = System.getenv("PO_TOKEN");
+        }
+        String visitorData = System.getProperty("VISITOR_DATA");
+        if (visitorData == null || visitorData.isEmpty()) {
+            visitorData = System.getenv("VISITOR_DATA");
+        }
+        if (poToken != null && !poToken.isEmpty() && visitorData != null && !visitorData.isEmpty()) {
+            dev.lavalink.youtube.YoutubeSource.setPoTokenAndVisitorData(poToken, visitorData);
+        }
+        
         dev.lavalink.youtube.YoutubeAudioSourceManager youtube = new dev.lavalink.youtube.YoutubeAudioSourceManager(
             true,
             new dev.lavalink.youtube.clients.Music(),
@@ -37,6 +50,17 @@ public class YouTubeAudioService {
             new dev.lavalink.youtube.clients.Tv(),
             new dev.lavalink.youtube.clients.WebEmbedded()
         );
+        
+        String refreshToken = System.getProperty("YOUTUBE_REFRESH_TOKEN");
+        if (refreshToken == null || refreshToken.isEmpty()) {
+            refreshToken = System.getenv("YOUTUBE_REFRESH_TOKEN");
+        }
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            youtube.useOauth2(refreshToken, true);
+        } else {
+            youtube.useOauth2(null, true);
+        }
+        
         this.playerManager.registerSourceManager(youtube);
         com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers.registerRemoteSources(playerManager, com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
         this.musicManagers = new ConcurrentHashMap<>();
