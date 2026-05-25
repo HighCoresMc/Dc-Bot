@@ -39,8 +39,39 @@ public class YouTubeAudioService {
             dev.lavalink.youtube.YoutubeSource.setPoTokenAndVisitorData(poToken, visitorData);
         }
         
+        dev.lavalink.youtube.YoutubeSourceOptions options = new dev.lavalink.youtube.YoutubeSourceOptions();
+        options.setAllowSearch(true);
+        options.setAllowDirectVideoIds(true);
+        options.setAllowDirectPlaylistIds(true);
+        
+        String cipherUrl = System.getProperty("YOUTUBE_CIPHER_URL");
+        if (cipherUrl == null || cipherUrl.isEmpty()) {
+            cipherUrl = System.getenv("YOUTUBE_CIPHER_URL");
+        }
+        if (cipherUrl == null || cipherUrl.isEmpty()) {
+            cipherUrl = "https://cipher.kikkia.dev/";
+        }
+        
+        if (!"none".equalsIgnoreCase(cipherUrl)) {
+            String cipherPassword = System.getProperty("YOUTUBE_CIPHER_PASSWORD");
+            if (cipherPassword == null || cipherPassword.isEmpty()) {
+                cipherPassword = System.getenv("YOUTUBE_CIPHER_PASSWORD");
+            }
+            if (cipherPassword == null) {
+                cipherPassword = "";
+            }
+            String cipherUserAgent = System.getProperty("YOUTUBE_CIPHER_USER_AGENT");
+            if (cipherUserAgent == null || cipherUserAgent.isEmpty()) {
+                cipherUserAgent = System.getenv("YOUTUBE_CIPHER_USER_AGENT");
+            }
+            if (cipherUserAgent == null || cipherUserAgent.isEmpty()) {
+                cipherUserAgent = "opexy-bot";
+            }
+            options.setRemoteCipher(cipherUrl, cipherPassword, cipherUserAgent);
+        }
+        
         dev.lavalink.youtube.YoutubeAudioSourceManager youtube = new dev.lavalink.youtube.YoutubeAudioSourceManager(
-            true,
+            options,
             new dev.lavalink.youtube.clients.Music(),
             new dev.lavalink.youtube.clients.Web(),
             new dev.lavalink.youtube.clients.Android(),
