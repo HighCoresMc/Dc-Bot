@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 
-// Section: YouTube Audio Service
 @Service
 public class YouTubeAudioService {
     private final AudioPlayerManager playerManager;
@@ -28,6 +27,7 @@ public class YouTubeAudioService {
 
     public YouTubeAudioService() {
         this.playerManager = new DefaultAudioPlayerManager();
+        this.playerManager.registerSourceManager(new dev.lavalink.youtube.YoutubeAudioSourceManager());
         AudioSourceManagers.registerRemoteSources(playerManager);
         this.musicManagers = new ConcurrentHashMap<>();
     }
@@ -89,7 +89,6 @@ public class YouTubeAudioService {
         }
     }
 
-    // Section: Guild Music Manager
     public static class GuildMusicManager {
         private final AudioPlayer player;
         private final AudioPlayerSendHandler sendHandler;
@@ -115,7 +114,6 @@ public class YouTubeAudioService {
         }
     }
 
-    // Section: Track Scheduler
     private static class TrackScheduler extends AudioEventAdapter {
         private final AudioPlayer player;
         private volatile boolean stopped = false;
