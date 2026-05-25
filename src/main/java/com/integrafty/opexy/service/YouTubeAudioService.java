@@ -58,7 +58,7 @@ public class YouTubeAudioService {
         if (refreshToken != null && !refreshToken.isEmpty()) {
             youtube.useOauth2(refreshToken, true);
         } else {
-            youtube.useOauth2(null, true);
+            youtube.useOauth2(null, false);
         }
         
         this.playerManager.registerSourceManager(youtube);
