@@ -29,6 +29,18 @@ import org.springframework.stereotype.Component;
 @lombok.RequiredArgsConstructor
 public class PlayCommand extends ListenerAdapter implements SlashCommand {
     private final YouTubeAudioService youtubeAudioService;
+    private final java.util.Map<Long, ActiveTrackInfo> activeTracks = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static class ActiveTrackInfo {
+        final String title;
+        final String uri;
+        final String requesterMention;
+        ActiveTrackInfo(String title, String uri, String requesterMention) {
+            this.title = title;
+            this.uri = uri;
+            this.requesterMention = requesterMention;
+        }
+    }
 
     @Override
     public String getName() {
@@ -44,7 +56,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
     @Override
     public void execute(SlashCommandInteractionEvent event) {
         if (!hasPlayRole(event.getMember())) {
-            event.reply("❌ لا تملك الصلاحية الكافية لاستخدام هذا الأمر.").setEphemeral(true).queue();
+            event.reply("⚠️ عذراً، لا تملك الصلاحيات اللازمة لتشغيل هذا الأمر.").setEphemeral(true).queue();
             return;
         }
 
@@ -53,7 +65,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         AudioChannel channel = event.getMember().getVoiceState().getChannel();
         if (channel == null) {
-            event.reply("❌ يجب أن تكون في روم صوتي ليتمكن البوت من الدخول والتشغيل.").setEphemeral(true).queue();
+            event.reply("🔊 يرجى الانضمام إلى قناة صوتية أولاً حتى يتمكن البوت من مشاركتك الاستماع.").setEphemeral(true).queue();
             return;
         }
 
@@ -62,14 +74,17 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         youtubeAudioService.loadTrack(link).thenAccept(track -> {
             youtubeAudioService.play(guild, channel, track);
+            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention()));
             
-            String body = "▶️ **تشغيل مقطوعة:** " + track.getInfo().title + "\n" +
-                          "🔗 **الرابط:** " + track.getInfo().uri + "\n" +
-                          "👤 **بواسطة:** " + event.getUser().getAsMention();
+            String body = "🎶 **المشغل الصوتي النشط**\n\n" +
+                          "📌 **العنوان:** " + track.getInfo().title + "\n" +
+                          "👤 **طلب بواسطة:** " + event.getUser().getAsMention() + "\n" +
+                          "🔗 **الرابط المباشر:** [اضغط هنا للمشاهدة](" + track.getInfo().uri + ")";
             
             ActionRow row = ActionRow.of(
-                Button.danger("play_stop", "إيقاف التشغيل"),
-                Button.primary("play_change", "تغيير المقطع")
+                Button.danger("play_stop", "إيقاف مؤقت ⏸️"),
+                Button.primary("play_change", "تغيير المقطع 🔄"),
+                Button.secondary("play_leave", "مغادرة الروم 🚪")
             );
             
             Container container = EmbedUtil.containerBranded("MUSIC", "مشغل اليوتيوب", body, EmbedUtil.BANNER_MAIN, row);
@@ -79,7 +94,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     .useComponentsV2(true)
                     .build()).queue();
         }).exceptionally(ex -> {
-            Container errorContainer = EmbedUtil.error("خطأ", "فشل تحميل المقطع من يوتيوب. تأكد من صحة الرابط.");
+            Container errorContainer = EmbedUtil.containerBranded("SYSTEM", "⚠️ تنبيه النظام", "عذراً، واجهنا صعوبة في تحميل المقطع من يوتيوب. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.", EmbedUtil.BANNER_MAIN);
             event.getHook().editOriginal(new MessageEditBuilder()
                     .setComponents(errorContainer)
                     .useComponentsV2(true)
@@ -92,25 +107,73 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         String id = event.getComponentId();
+        if (!id.startsWith("play_")) return;
+
+        if (!hasPlayRole(event.getMember())) {
+            event.reply("⚠️ عذراً، لا تملك الصلاحيات اللازمة للتحكم بالتشغيل.").setEphemeral(true).queue();
+            return;
+        }
+
+        Guild guild = event.getGuild();
+        if (guild == null) return;
+
         if (id.equals("play_stop")) {
-            if (!hasPlayRole(event.getMember())) {
-                event.reply("❌ لا تملك الصلاحية الكافية للتحكم بالتشغيل.").setEphemeral(true).queue();
-                return;
-            }
-            Guild guild = event.getGuild();
-            if (guild != null) {
-                youtubeAudioService.stop(guild);
-                Container stopContainer = EmbedUtil.containerBranded("MUSIC", "إيقاف التشغيل", "⏹️ تم إيقاف التشغيل ومغادرة الروم الصوتي.", EmbedUtil.BANNER_MAIN);
-                event.editMessage(new MessageEditBuilder()
-                        .setComponents(stopContainer)
-                        .useComponentsV2(true)
-                        .build()).queue();
-            }
+            youtubeAudioService.pause(guild);
+            ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+            String title = (info != null) ? info.title : "مقطع غير معروف";
+            String requester = (info != null) ? info.requesterMention : "غير معروف";
+            
+            String body = "⏸️ **حالة التشغيل: موقوف مؤقتاً**\n\n" +
+                          "📌 **العنوان:** " + title + "\n" +
+                          "👤 **طلب بواسطة:** " + requester + "\n\n" +
+                          "يمكنك استئناف الاستماع، تغيير المقطع الحالي، أو إخراج البوت من الروم الصوتي.";
+
+            ActionRow row = ActionRow.of(
+                Button.success("play_resume", "استئناف التشغيل ▶️"),
+                Button.primary("play_change", "تغيير المقطع 🔄"),
+                Button.danger("play_leave", "مغادرة الروم 🚪")
+            );
+
+            Container container = EmbedUtil.containerBranded("MUSIC", "تم إيقاف التشغيل مؤقتاً", body, EmbedUtil.BANNER_MAIN, row);
+            event.editMessage(new MessageEditBuilder()
+                    .setComponents(container)
+                    .useComponentsV2(true)
+                    .build()).queue();
+
+        } else if (id.equals("play_resume")) {
+            youtubeAudioService.resume(guild);
+            ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+            String title = (info != null) ? info.title : "مقطع غير معروف";
+            String uri = (info != null) ? info.uri : "#";
+            String requester = (info != null) ? info.requesterMention : "غير معروف";
+
+            String body = "🎶 **المشغل الصوتي النشط**\n\n" +
+                          "📌 **العنوان:** " + title + "\n" +
+                          "👤 **طلب بواسطة:** " + requester + "\n" +
+                          "🔗 **الرابط المباشر:** [اضغط هنا للمشاهدة](" + uri + ")";
+
+            ActionRow row = ActionRow.of(
+                Button.danger("play_stop", "إيقاف مؤقت ⏸️"),
+                Button.primary("play_change", "تغيير المقطع 🔄"),
+                Button.secondary("play_leave", "مغادرة الروم 🚪")
+            );
+
+            Container container = EmbedUtil.containerBranded("MUSIC", "مشغل اليوتيوب", body, EmbedUtil.BANNER_MAIN, row);
+            event.editMessage(new MessageEditBuilder()
+                    .setComponents(container)
+                    .useComponentsV2(true)
+                    .build()).queue();
+
+        } else if (id.equals("play_leave")) {
+            youtubeAudioService.stop(guild);
+            activeTracks.remove(guild.getIdLong());
+            Container stopContainer = EmbedUtil.containerBranded("MUSIC", "إنهاء الجلسة", "🚪 تم إنهاء الجلسة ومغادرة الروم الصوتي بنجاح. شكراً لاستماعكم!", EmbedUtil.BANNER_MAIN);
+            event.editMessage(new MessageEditBuilder()
+                    .setComponents(stopContainer)
+                    .useComponentsV2(true)
+                    .build()).queue();
+
         } else if (id.equals("play_change")) {
-            if (!hasPlayRole(event.getMember())) {
-                event.reply("❌ لا تملك الصلاحية الكافية للتحكم بالتشغيل.").setEphemeral(true).queue();
-                return;
-            }
             TextInput linkInput = TextInput.create("play_link", TextInputStyle.SHORT)
                     .setPlaceholder("https://www.youtube.com/watch?v=...")
                     .setRequired(true)
@@ -127,7 +190,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
         if (event.getModalId().equals("modal_play_change")) {
             if (!hasPlayRole(event.getMember())) {
-                event.reply("❌ لا تملك الصلاحية الكافية للتحكم بالتشغيل.").setEphemeral(true).queue();
+                event.reply("⚠️ عذراً، لا تملك الصلاحيات اللازمة للتحكم بالتشغيل.").setEphemeral(true).queue();
                 return;
             }
             Guild guild = event.getGuild();
@@ -143,7 +206,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             }
             
             if (channel == null) {
-                event.reply("❌ يجب أن تكون في روم صوتي ليتمكن البوت من الدخول والتشغيل.").setEphemeral(true).queue();
+                event.reply("🔊 يرجى الانضمام إلى قناة صوتية أولاً حتى يتمكن البوت من الدخول والتشغيل.").setEphemeral(true).queue();
                 return;
             }
 
@@ -152,14 +215,17 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             final AudioChannel finalChannel = channel;
             youtubeAudioService.loadTrack(newLink).thenAccept(track -> {
                 youtubeAudioService.play(guild, finalChannel, track);
+                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention()));
                 
-                String body = "▶️ **تشغيل مقطوعة:** " + track.getInfo().title + "\n" +
-                              "🔗 **الرابط:** " + track.getInfo().uri + "\n" +
-                              "👤 **بواسطة:** " + event.getUser().getAsMention();
+                String body = "🎶 **المشغل الصوتي النشط**\n\n" +
+                              "📌 **العنوان:** " + track.getInfo().title + "\n" +
+                              "👤 **طلب بواسطة:** " + event.getUser().getAsMention() + "\n" +
+                              "🔗 **الرابط المباشر:** [اضغط هنا للمشاهدة](" + track.getInfo().uri + ")";
                 
                 ActionRow row = ActionRow.of(
-                    Button.danger("play_stop", "إيقاف التشغيل"),
-                    Button.primary("play_change", "تغيير المقطع")
+                    Button.danger("play_stop", "إيقاف مؤقت ⏸️"),
+                    Button.primary("play_change", "تغيير المقطع 🔄"),
+                    Button.secondary("play_leave", "مغادرة الروم 🚪")
                 );
                 
                 Container container = EmbedUtil.containerBranded("MUSIC", "مشغل اليوتيوب", body, EmbedUtil.BANNER_MAIN, row);
@@ -169,7 +235,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                         .useComponentsV2(true)
                         .build()).queue();
             }).exceptionally(ex -> {
-                event.getHook().sendMessage("❌ فشل تحميل المقطع من يوتيوب. تأكد من صحة الرابط.").setEphemeral(true).queue();
+                event.getHook().sendMessage("⚠️ | عذراً، واجهنا صعوبة في تحميل المقطع من يوتيوب. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.").setEphemeral(true).queue();
                 return null;
             });
         }

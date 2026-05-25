@@ -141,6 +141,16 @@ public class YouTubeAudioService {
         musicManager.getPlayer().playTrack(track);
     }
 
+    public void pause(Guild guild) {
+        GuildMusicManager musicManager = getMusicManager(guild);
+        musicManager.getPlayer().setPaused(true);
+    }
+
+    public void resume(Guild guild) {
+        GuildMusicManager musicManager = getMusicManager(guild);
+        musicManager.getPlayer().setPaused(false);
+    }
+
     public void stop(Guild guild) {
         GuildMusicManager musicManager = musicManagers.remove(guild.getIdLong());
         if (musicManager != null) {
