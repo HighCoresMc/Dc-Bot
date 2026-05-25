@@ -1,16 +1,16 @@
 package com.integrafty.opexy.service;
 
 import com.integrafty.opexy.audio.AudioPlayerSendHandler;
-import dev.arbjerg.lavaplayer.player.AudioLoadResultHandler;
-import dev.arbjerg.lavaplayer.player.AudioPlayer;
-import dev.arbjerg.lavaplayer.player.AudioPlayerManager;
-import dev.arbjerg.lavaplayer.player.DefaultAudioPlayerManager;
-import dev.arbjerg.lavaplayer.player.event.AudioEventAdapter;
-import dev.arbjerg.lavaplayer.source.AudioSourceManagers;
-import dev.arbjerg.lavaplayer.tools.FriendlyException;
-import dev.arbjerg.lavaplayer.track.AudioPlaylist;
-import dev.arbjerg.lavaplayer.track.AudioTrack;
-import dev.arbjerg.lavaplayer.track.AudioTrackEndReason;
+import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
+import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
+import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.managers.AudioManager;
@@ -79,6 +79,7 @@ public class YouTubeAudioService {
     public void stop(Guild guild) {
         GuildMusicManager musicManager = musicManagers.remove(guild.getIdLong());
         if (musicManager != null) {
+            musicManager.getScheduler().stop();
             musicManager.getPlayer().stopTrack();
             musicManager.getPlayer().destroy();
         }
@@ -92,11 +93,13 @@ public class YouTubeAudioService {
     public static class GuildMusicManager {
         private final AudioPlayer player;
         private final AudioPlayerSendHandler sendHandler;
+        private final TrackScheduler scheduler;
 
         public GuildMusicManager(AudioPlayerManager manager) {
             this.player = manager.createPlayer();
             this.sendHandler = new AudioPlayerSendHandler(player);
-            this.player.addListener(new TrackScheduler(player));
+            this.scheduler = new TrackScheduler(player);
+            this.player.addListener(scheduler);
         }
 
         public AudioPlayer getPlayer() {
@@ -106,21 +109,54 @@ public class YouTubeAudioService {
         public AudioPlayerSendHandler getSendHandler() {
             return sendHandler;
         }
+
+        public TrackScheduler getScheduler() {
+            return scheduler;
+        }
     }
 
     // Section: Track Scheduler
     private static class TrackScheduler extends AudioEventAdapter {
         private final AudioPlayer player;
+        private volatile boolean stopped = false;
 
         public TrackScheduler(AudioPlayer player) {
             this.player = player;
         }
 
+        public void stop() {
+            this.stopped = true;
+        }
+
         @Override
         public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-            if (endReason.mayStartNext) {
-                player.playTrack(track.makeClone());
+            if (stopped || endReason == AudioTrackEndReason.REPLACED) {
+                return;
             }
+            player.playTrack(track.makeClone());
+        }
+
+        @Override
+        public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
+            if (stopped) {
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ignored) {}
+                if (!stopped) {
+                    player.playTrack(track.makeClone());
+                }
+            }).start();
+        }
+
+        @Override
+        public void onTrackStuck(AudioPlayer player, AudioTrack track, long thresholdMs) {
+            if (stopped) {
+                return;
+            }
+            player.playTrack(track.makeClone());
         }
     }
 }

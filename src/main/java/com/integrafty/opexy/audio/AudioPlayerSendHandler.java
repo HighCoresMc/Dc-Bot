@@ -1,7 +1,7 @@
 package com.integrafty.opexy.audio;
 
-import dev.arbjerg.lavaplayer.player.AudioPlayer;
-import dev.arbjerg.lavaplayer.track.playback.MutableAudioFrame;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
+import com.sedmelluq.discord.lavaplayer.track.playback.MutableAudioFrame;
 import net.dv8tion.jda.api.audio.AudioSendHandler;
 import java.nio.ByteBuffer;
 

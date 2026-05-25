@@ -16,9 +16,19 @@
 
     <properties>
         <java.version>17</java.version>
+        <lombok.version>1.18.46</lombok.version>
     </properties>
 
     <repositories>
+        <!-- Section: Repositories -->
+        <repository>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
         <repository>
             <id>dv8tion</id>
             <name>m2-dv8tion</name>
@@ -76,9 +86,21 @@
         
         <!-- Voice: JDAVE (DAVE Support) -->
         <dependency>
-            <groupId>dev.arbjerg</groupId>
-            <artifactId>jdave-jda</artifactId>
-            <version>1.1.0</version>
+            <groupId>club.minnced</groupId>
+            <artifactId>jdave-api</artifactId>
+            <version>0.1.8</version>
+        </dependency>
+        <dependency>
+            <groupId>club.minnced</groupId>
+            <artifactId>jdave-native-win-x86-64</artifactId>
+            <version>0.1.8</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>club.minnced</groupId>
+            <artifactId>jdave-native-linux-x86-64</artifactId>
+            <version>0.1.8</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Lombok to reduce boilerplate -->
