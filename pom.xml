@@ -15,7 +15,7 @@
     <description>HighCore Mc System replacing 8 bots into one</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>25</java.version>
         <lombok.version>1.18.46</lombok.version>
     </properties>
 

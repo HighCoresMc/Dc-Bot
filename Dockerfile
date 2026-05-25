@@ -1,5 +1,5 @@
 # Build stage
-FROM maven:3.8.5-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 # Cache dependencies
 COPY pom.xml .
@@ -9,7 +9,7 @@ COPY . .
 RUN mvn package -DskipTests -B
 
 # Run stage
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:25-jre
 # Install native dependencies for audio decryption (DAVE)
 RUN apt-get update && apt-get install -y \
     libopus0 \
