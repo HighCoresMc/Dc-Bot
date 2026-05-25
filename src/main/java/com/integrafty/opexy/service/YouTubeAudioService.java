@@ -26,7 +26,17 @@ public class YouTubeAudioService {
 
     public YouTubeAudioService() {
         this.playerManager = new DefaultAudioPlayerManager();
-        dev.lavalink.youtube.YoutubeAudioSourceManager youtube = new dev.lavalink.youtube.YoutubeAudioSourceManager(true);
+        dev.lavalink.youtube.YoutubeAudioSourceManager youtube = new dev.lavalink.youtube.YoutubeAudioSourceManager(
+            true,
+            new dev.lavalink.youtube.clients.Music(),
+            new dev.lavalink.youtube.clients.Web(),
+            new dev.lavalink.youtube.clients.Android(),
+            new dev.lavalink.youtube.clients.Ios(),
+            new dev.lavalink.youtube.clients.TvHtml5Simply(),
+            new dev.lavalink.youtube.clients.AndroidMusic(),
+            new dev.lavalink.youtube.clients.Tv(),
+            new dev.lavalink.youtube.clients.WebEmbedded()
+        );
         this.playerManager.registerSourceManager(youtube);
         com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers.registerRemoteSources(playerManager, com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
         this.musicManagers = new ConcurrentHashMap<>();
