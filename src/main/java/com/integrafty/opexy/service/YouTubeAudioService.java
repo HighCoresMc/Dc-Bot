@@ -164,6 +164,15 @@ public class YouTubeAudioService {
         }
     }
 
+    public void stopWithoutDisconnect(Guild guild) {
+        GuildMusicManager musicManager = musicManagers.remove(guild.getIdLong());
+        if (musicManager != null) {
+            musicManager.getScheduler().stop();
+            musicManager.getPlayer().stopTrack();
+            musicManager.getPlayer().destroy();
+        }
+    }
+
     public static class GuildMusicManager {
         private final AudioPlayer player;
         private final AudioPlayerSendHandler sendHandler;

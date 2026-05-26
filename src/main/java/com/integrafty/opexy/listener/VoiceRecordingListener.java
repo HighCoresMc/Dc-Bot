@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.jetbrains.annotations.NotNull;
+import com.integrafty.opexy.service.YouTubeAudioService;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -33,6 +34,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
     private static final String LOG_CHANNEL_ID = "1501263192943235092";
     
     private final net.dv8tion.jda.api.JDA jda;
+    private final YouTubeAudioService youtubeAudioService;
 
     @Override
     public String getName() {
@@ -48,6 +50,11 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         1508535566893977793L,
         1487147689098481774L
     );
+
+    public boolean isRecordingActive(long guildId) {
+        AudioRecorder recorder = recorders.get(guildId);
+        return recorder != null && recorder.isRecording();
+    }
 
     private final Map<Long, AudioRecorder> recorders = new ConcurrentHashMap<>();
     private final Map<Long, String> activeTextChannels = new ConcurrentHashMap<>();
@@ -320,6 +327,9 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
             long guildId = guild.getIdLong();
             sessionNames.put(guildId, name);
             partCounters.put(guildId, 1);
+
+            youtubeAudioService.stopWithoutDisconnect(guild);
+            com.integrafty.opexy.command.PlayCommand.activeTracks.remove(guildId);
 
             AudioRecorder recorder = recorders.get(guildId);
             

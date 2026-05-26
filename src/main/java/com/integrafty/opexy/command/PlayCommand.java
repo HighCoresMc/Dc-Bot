@@ -29,13 +29,14 @@ import org.springframework.stereotype.Component;
 @lombok.RequiredArgsConstructor
 public class PlayCommand extends ListenerAdapter implements SlashCommand {
     private final YouTubeAudioService youtubeAudioService;
-    private final java.util.Map<Long, ActiveTrackInfo> activeTracks = new java.util.concurrent.ConcurrentHashMap<>();
+    private final com.integrafty.opexy.listener.VoiceRecordingListener voiceRecordingListener;
+    public static final java.util.Map<Long, ActiveTrackInfo> activeTracks = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private static class ActiveTrackInfo {
-        final String title;
-        final String uri;
-        final String requesterMention;
-        ActiveTrackInfo(String title, String uri, String requesterMention) {
+    public static class ActiveTrackInfo {
+        public final String title;
+        public final String uri;
+        public final String requesterMention;
+        public ActiveTrackInfo(String title, String uri, String requesterMention) {
             this.title = title;
             this.uri = uri;
             this.requesterMention = requesterMention;
@@ -62,6 +63,11 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         Guild guild = event.getGuild();
         if (guild == null) return;
+
+        if (voiceRecordingListener.isRecordingActive(guild.getIdLong())) {
+            event.reply("⚠️ عذراً، لا يمكن تشغيل الموسيقى أثناء وجود تسجيل نشط. يرجى إيقاف التسجيل أولاً.").setEphemeral(true).queue();
+            return;
+        }
 
         AudioChannel channel = event.getMember().getVoiceState().getChannel();
         if (channel == null) {
@@ -141,6 +147,10 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     .build()).queue();
 
         } else if (id.equals("play_resume")) {
+            if (voiceRecordingListener.isRecordingActive(guild.getIdLong())) {
+                event.reply("⚠️ عذراً، لا يمكن استئناف تشغيل الموسيقى أثناء وجود تسجيل نشط. يرجى إيقاف التسجيل أولاً.").setEphemeral(true).queue();
+                return;
+            }
             youtubeAudioService.resume(guild);
             ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
             String title = (info != null) ? info.title : "مقطع غير معروف";
@@ -195,6 +205,11 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             }
             Guild guild = event.getGuild();
             if (guild == null) return;
+
+            if (voiceRecordingListener.isRecordingActive(guild.getIdLong())) {
+                event.reply("⚠️ عذراً، لا يمكن تغيير مقطع التشغيل أو تشغيل الموسيقى أثناء وجود تسجيل نشط. يرجى إيقاف التسجيل أولاً.").setEphemeral(true).queue();
+                return;
+            }
             
             String newLink = event.getValue("play_link").getAsString();
             AudioChannel channel = guild.getSelfMember().getVoiceState().getChannel();
