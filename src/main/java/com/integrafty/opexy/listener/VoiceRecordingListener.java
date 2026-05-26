@@ -451,6 +451,9 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
 
                     if (wavFile.exists() && wavFile.length() > 100) {
                         log.info("[UPLOAD] File saved. Sending Part {} of session '{}'", part, sessionName);
+                        final File sendFile = convertWavToM4a(wavFile);
+                        final boolean isM4a = sendFile.getName().endsWith(".m4a");
+
                         final TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
                         
                         String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -460,7 +463,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         eb.setImage(EmbedUtil.BANNER_MAIN);
                         eb.addField("Channel", "`" + (fallbackChannel != null ? fallbackChannel.getName() : "Unknown") + "`", true);
                         eb.addField("Time", "`" + timeStr + "`", true);
-                        eb.addField("Quality", "`48kHz / 16-bit Stereo`", false);
+                        eb.addField("Quality", isM4a ? "`64kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
                         eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
                         eb.setTimestamp(java.time.Instant.now());
 
@@ -476,7 +479,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
 
                         if (activeChan != null) {
                             activeChan.sendMessageEmbeds(eb.build())
-                                    .addFiles(FileUpload.fromData(wavFile))
+                                    .addFiles(FileUpload.fromData(sendFile))
                                     .queue(
                                         success -> log.info("[RECORDING] Successfully sent recording to active channel: {}", activeChan.getName()),
                                         failure -> log.error("[RECORDING] Failed to send recording to active channel: {}", failure.getMessage(), failure)
@@ -487,7 +490,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
 
                         if (logChannel != null) {
                             logChannel.sendMessageEmbeds(eb.build())
-                                    .addFiles(FileUpload.fromData(wavFile))
+                                    .addFiles(FileUpload.fromData(sendFile))
                                     .queue(
                                         success -> log.info("[RECORDING] Successfully sent recording to log channel: {}", logChannel.getName()),
                                         failure -> log.error("[RECORDING] Failed to send recording to log channel: {}", failure.getMessage(), failure)
@@ -495,7 +498,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         } else {
                             log.warn("[RECORDING] Log channel with ID {} not found", LOG_CHANNEL_ID);
                         }
-                        log.info("[RECORDING] Saved recording persistently to: {}", wavFile.getAbsolutePath());
+                        log.info("[RECORDING] Saved recording persistently to: {}", sendFile.getAbsolutePath());
                     }
                 } catch (IOException e) {
                     log.error("[RECORDING] Failed to save WAV file", e);
@@ -504,6 +507,39 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 }
             }).start();
         }
+    }
+
+    private File convertWavToM4a(File wavFile) {
+        String baseName = wavFile.getAbsolutePath();
+        String m4aPath = baseName.substring(0, baseName.lastIndexOf('.')) + ".m4a";
+        File m4aFile = new File(m4aPath);
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "ffmpeg", "-y",
+                "-i", wavFile.getAbsolutePath(),
+                "-c:a", "aac",
+                "-b:a", "64k",
+                m4aFile.getAbsolutePath()
+            );
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                }
+            }
+            int exitCode = process.waitFor();
+            if (exitCode == 0 && m4aFile.exists() && m4aFile.length() > 0) {
+                log.info("[CONVERSION] Successfully converted WAV to M4A: {} (Size: {} bytes)", m4aFile.getName(), m4aFile.length());
+                wavFile.delete();
+                return m4aFile;
+            } else {
+                log.error("[CONVERSION] ffmpeg failed with exit code: {}", exitCode);
+            }
+        } catch (Exception e) {
+            log.error("[CONVERSION] Failed to convert WAV to M4A using ffmpeg", e);
+        }
+        return wavFile;
     }
 
     private static class SilenceSendHandler implements net.dv8tion.jda.api.audio.AudioSendHandler {
