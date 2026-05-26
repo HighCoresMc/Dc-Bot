@@ -465,22 +465,34 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         eb.setTimestamp(java.time.Instant.now());
 
                         String activeChanId = activeTextChannels.get(guild.getIdLong());
-                        TextChannel activeChan = activeChanId != null ? guild.getTextChannelById(activeChanId) : null;
+                        net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel activeChan = null;
+                        if (activeChanId != null) {
+                            net.dv8tion.jda.api.entities.channel.middleman.GuildChannel gc = guild.getGuildChannelById(activeChanId);
+                            if (gc instanceof net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) {
+                                activeChan = (net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) gc;
+                            }
+                        }
+
+                        if (activeChan != null) {
+                            activeChan.sendMessageEmbeds(eb.build())
+                                    .addFiles(FileUpload.fromData(wavFile))
+                                    .queue(
+                                        success -> log.info("[RECORDING] Successfully sent recording to active channel: {}", activeChan.getName()),
+                                        failure -> log.error("[RECORDING] Failed to send recording to active channel: {}", failure.getMessage(), failure)
+                                    );
+                        } else {
+                            log.warn("[RECORDING] Active channel not found for ID {}", activeChanId);
+                        }
 
                         if (logChannel != null) {
                             logChannel.sendMessageEmbeds(eb.build())
                                     .addFiles(FileUpload.fromData(wavFile))
-                                    .queue(msg -> {
-                                        if (activeChan != null) {
-                                            activeChan.sendMessageEmbeds(eb.build())
-                                                    .addFiles(FileUpload.fromData(wavFile))
-                                                    .queue();
-                                        }
-                                    });
-                        } else if (activeChan != null) {
-                            activeChan.sendMessageEmbeds(eb.build())
-                                    .addFiles(FileUpload.fromData(wavFile))
-                                    .queue();
+                                    .queue(
+                                        success -> log.info("[RECORDING] Successfully sent recording to log channel: {}", logChannel.getName()),
+                                        failure -> log.error("[RECORDING] Failed to send recording to log channel: {}", failure.getMessage(), failure)
+                                    );
+                        } else {
+                            log.warn("[RECORDING] Log channel with ID {} not found", LOG_CHANNEL_ID);
                         }
                         log.info("[RECORDING] Saved recording persistently to: {}", wavFile.getAbsolutePath());
                     }
