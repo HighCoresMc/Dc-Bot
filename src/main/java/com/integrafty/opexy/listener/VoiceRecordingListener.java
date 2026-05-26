@@ -25,10 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Section: Voice Recording Listener
- * Human-generated listener for recording voice conversations in Opexy Bot (Ported from Highcore Bot)
- */
+
 @Component
 @lombok.RequiredArgsConstructor
 public class VoiceRecordingListener extends ListenerAdapter implements SlashCommand {
@@ -389,6 +386,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
             AudioRecorder recorder = new AudioRecorder();
             AudioManager audioManager = guild.getAudioManager();
             audioManager.setReceivingHandler(recorder);
+            audioManager.setSendingHandler(new SilenceSendHandler());
             audioManager.openAudioConnection(channel);
             recorders.put(guild.getIdLong(), recorder);
             log.info("[VOICE] Bot connected and ready to record in guild: {}", guild.getName());
@@ -402,7 +400,6 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         AudioManager audioManager = guild.getAudioManager();
         AudioRecorder recorder = recorders.remove(guildId);
 
-        // Cancel splitting task if it's a final stop
         java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guildId);
 
         if (recorder != null) {
@@ -419,6 +416,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
             if (humanCount <= 0) {
                 log.info("[VOICE] Channel is empty or only bots left. Closing connection for guild: {}", guild.getName());
                 audioManager.setReceivingHandler(null);
+                audioManager.setSendingHandler(null);
                 audioManager.closeAudioConnection();
                 if (task != null) task.cancel(false);
                 sessionNames.remove(guildId);
@@ -432,7 +430,11 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
 
             new Thread(() -> {
                 String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-                File wavFile = new File("opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".wav");
+                File recordingsDir = new File("recordings");
+                if (!recordingsDir.exists()) {
+                    recordingsDir.mkdirs();
+                }
+                File wavFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".wav");
                 try {
                     log.info("[UPLOAD] Saving WAV file: {}", wavFile.getName());
                     recorder.saveAsWav(wavFile);
@@ -441,44 +443,62 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         log.info("[UPLOAD] File saved. Sending Part {} of session '{}'", part, sessionName);
                         TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
                         
+                        String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                        net.dv8tion.jda.api.EmbedBuilder eb = new net.dv8tion.jda.api.EmbedBuilder();
+                        eb.setTitle("🎙️ " + sessionName + " : Part " + part);
+                        eb.setColor(EmbedUtil.INFO);
+                        eb.setImage(EmbedUtil.BANNER_MAIN);
+                        eb.addField("Channel", "`" + (fallbackChannel != null ? fallbackChannel.getName() : "Unknown") + "`", true);
+                        eb.addField("Time", "`" + timeStr + "`", true);
+                        eb.addField("Quality", "`48kHz / 16-bit Stereo`", false);
+                        eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
+                        eb.setTimestamp(java.time.Instant.now());
+
+                        String activeChanId = activeTextChannels.get(guild.getIdLong());
+                        TextChannel activeChan = activeChanId != null ? guild.getTextChannelById(activeChanId) : null;
+
                         if (logChannel != null) {
-                            String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                            net.dv8tion.jda.api.EmbedBuilder eb = new net.dv8tion.jda.api.EmbedBuilder();
-                            eb.setTitle("🎙️ " + sessionName + " : Part " + part);
-                            eb.setColor(EmbedUtil.INFO);
-                            eb.setImage(EmbedUtil.BANNER_MAIN);
-                            eb.addField("Channel", "`" + (fallbackChannel != null ? fallbackChannel.getName() : "Unknown") + "`", true);
-                            eb.addField("Time", "`" + timeStr + "`", true);
-                            eb.addField("Quality", "`48kHz / 16-bit Stereo`", false);
-                            eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
-                            eb.setTimestamp(java.time.Instant.now());
-
-                            String activeChanId = activeTextChannels.get(guild.getIdLong());
-                            TextChannel activeChan = activeChanId != null ? guild.getTextChannelById(activeChanId) : null;
-
                             logChannel.sendMessageEmbeds(eb.build())
                                     .addFiles(FileUpload.fromData(wavFile))
                                     .queue(msg -> {
                                         if (activeChan != null) {
                                             activeChan.sendMessageEmbeds(eb.build())
                                                     .addFiles(FileUpload.fromData(wavFile))
-                                                    .queue(m2 -> wavFile.delete(), t2 -> wavFile.delete());
-                                        } else {
-                                            wavFile.delete();
+                                                    .queue();
                                         }
-                                    }, t -> wavFile.delete());
-                        } else {
-                            wavFile.delete();
+                                    });
+                        } else if (activeChan != null) {
+                            activeChan.sendMessageEmbeds(eb.build())
+                                    .addFiles(FileUpload.fromData(wavFile))
+                                    .queue();
                         }
-                    } else {
-                        wavFile.delete();
+                        log.info("[RECORDING] Saved recording persistently to: {}", wavFile.getAbsolutePath());
                     }
                 } catch (IOException e) {
-                    if (wavFile.exists()) wavFile.delete();
+                    log.error("[RECORDING] Failed to save WAV file", e);
                 } finally {
                     recorder.cleanup();
                 }
             }).start();
+        }
+    }
+
+    private static class SilenceSendHandler implements net.dv8tion.jda.api.audio.AudioSendHandler {
+        private static final byte[] SILENCE_FRAME = new byte[] {(byte) 0xF8, (byte) 0xFF, (byte) 0xFE};
+
+        @Override
+        public boolean canProvide() {
+            return true;
+        }
+
+        @Override
+        public java.nio.ByteBuffer provide20MsAudio() {
+            return java.nio.ByteBuffer.wrap(SILENCE_FRAME);
+        }
+
+        @Override
+        public boolean isOpus() {
+            return true;
         }
     }
 }
