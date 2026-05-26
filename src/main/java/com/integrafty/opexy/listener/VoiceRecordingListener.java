@@ -451,7 +451,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
 
                     if (wavFile.exists() && wavFile.length() > 100) {
                         log.info("[UPLOAD] File saved. Sending Part {} of session '{}'", part, sessionName);
-                        TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
+                        final TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
                         
                         String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         net.dv8tion.jda.api.EmbedBuilder eb = new net.dv8tion.jda.api.EmbedBuilder();
@@ -465,13 +465,14 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         eb.setTimestamp(java.time.Instant.now());
 
                         String activeChanId = activeTextChannels.get(guild.getIdLong());
-                        net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel activeChan = null;
+                        net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel tempActiveChan = null;
                         if (activeChanId != null) {
                             net.dv8tion.jda.api.entities.channel.middleman.GuildChannel gc = guild.getGuildChannelById(activeChanId);
                             if (gc instanceof net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) {
-                                activeChan = (net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) gc;
+                                tempActiveChan = (net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) gc;
                             }
                         }
+                        final net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel activeChan = tempActiveChan;
 
                         if (activeChan != null) {
                             activeChan.sendMessageEmbeds(eb.build())
