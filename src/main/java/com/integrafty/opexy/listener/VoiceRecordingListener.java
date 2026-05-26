@@ -45,7 +45,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
     }
     
     private final List<Long> ALLOWED_VOICE_CHANNELS = List.of(
-        1487148050676973671L,
+        1508535566893977793L,
         1487147689098481774L
     );
 
