@@ -14,6 +14,8 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.managers.AudioManager;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,11 +23,14 @@ import java.util.concurrent.CompletableFuture;
 
 @Service
 public class YouTubeAudioService {
+    private static final Logger log = LoggerFactory.getLogger(YouTubeAudioService.class);
     private final AudioPlayerManager playerManager;
     private final Map<Long, GuildMusicManager> musicManagers;
 
     public YouTubeAudioService() {
         this.playerManager = new DefaultAudioPlayerManager();
+        
+        log.info("[YOUTUBE] Initializing YouTube Audio Service...");
         
         String poToken = System.getProperty("PO_TOKEN");
         if (poToken == null || poToken.isEmpty()) {
@@ -36,7 +41,10 @@ public class YouTubeAudioService {
             visitorData = System.getenv("VISITOR_DATA");
         }
         if (poToken != null && !poToken.isEmpty() && visitorData != null && !visitorData.isEmpty()) {
+            log.info("[YOUTUBE] PO_TOKEN and VISITOR_DATA detected. Applying to YoutubeSource.");
             dev.lavalink.youtube.YoutubeSource.setPoTokenAndVisitorData(poToken, visitorData);
+        } else {
+            log.warn("[YOUTUBE] PO_TOKEN or VISITOR_DATA is missing. Bot requests might get flagged.");
         }
         
         dev.lavalink.youtube.YoutubeSourceOptions options = new dev.lavalink.youtube.YoutubeSourceOptions();
@@ -53,6 +61,7 @@ public class YouTubeAudioService {
         }
         
         if (!"none".equalsIgnoreCase(cipherUrl)) {
+            log.info("[YOUTUBE] Using Remote Cipher URL: {}. (If you get decoding errors, set YOUTUBE_CIPHER_URL=none to use local engine)", cipherUrl);
             String cipherPassword = System.getProperty("YOUTUBE_CIPHER_PASSWORD");
             if (cipherPassword == null || cipherPassword.isEmpty()) {
                 cipherPassword = System.getenv("YOUTUBE_CIPHER_PASSWORD");
@@ -68,6 +77,8 @@ public class YouTubeAudioService {
                 cipherUserAgent = "opexy-bot";
             }
             options.setRemoteCipher(cipherUrl, cipherPassword, cipherUserAgent);
+        } else {
+            log.info("[YOUTUBE] Remote Cipher is disabled. Using built-in local decipher engine.");
         }
         
         dev.lavalink.youtube.YoutubeAudioSourceManager youtube = new dev.lavalink.youtube.YoutubeAudioSourceManager(
@@ -87,8 +98,10 @@ public class YouTubeAudioService {
             refreshToken = System.getenv("YOUTUBE_REFRESH_TOKEN");
         }
         if (refreshToken != null && !refreshToken.isEmpty()) {
+            log.info("[YOUTUBE] YOUTUBE_REFRESH_TOKEN found (Length: {}). Enabling OAuth2.", refreshToken.length());
             youtube.useOauth2(refreshToken, true);
         } else {
+            log.warn("[YOUTUBE] YOUTUBE_REFRESH_TOKEN is not set! OAuth2 is running in initialization mode. Check console/logs below for Google Device Code to sign in.");
             youtube.useOauth2(null, false);
         }
         
