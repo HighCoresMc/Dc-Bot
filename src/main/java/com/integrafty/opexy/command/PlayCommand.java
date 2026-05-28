@@ -76,6 +76,16 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         }
 
         String link = event.getOption("link").getAsString();
+
+        if (link.contains("youtube.com") || link.contains("youtu.be")) {
+            event.reply("⚠️ عذراً، خدمة يوتيوب معطلة مؤقتاً في البوت. يمكنك كتابة اسم المقطع وسنبحث عنه في ساوندكلاود (SoundCloud)، أو يمكنك وضع رابط ساوندكلاود مباشر.").setEphemeral(true).queue();
+            return;
+        }
+
+        if (!link.startsWith("http://") && !link.startsWith("https://")) {
+            link = "scsearch:" + link;
+        }
+
         event.deferReply().queue();
 
         youtubeAudioService.loadTrack(link).thenAccept(track -> {
@@ -93,7 +103,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 Button.secondary("play_leave", "مغادرة الروم 🚪")
             );
             
-            Container container = EmbedUtil.containerBranded("MUSIC", "مشغل اليوتيوب", body, EmbedUtil.BANNER_MAIN, row);
+            Container container = EmbedUtil.containerBranded("MUSIC", "المشغل الصوتي", body, EmbedUtil.BANNER_MAIN, row);
             
             event.getHook().editOriginal(new MessageEditBuilder()
                     .setComponents(container)
@@ -168,7 +178,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 Button.secondary("play_leave", "مغادرة الروم 🚪")
             );
 
-            Container container = EmbedUtil.containerBranded("MUSIC", "مشغل اليوتيوب", body, EmbedUtil.BANNER_MAIN, row);
+            Container container = EmbedUtil.containerBranded("MUSIC", "المشغل الصوتي", body, EmbedUtil.BANNER_MAIN, row);
             event.editMessage(new MessageEditBuilder()
                     .setComponents(container)
                     .useComponentsV2(true)
@@ -185,7 +195,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         } else if (id.equals("play_change")) {
             TextInput linkInput = TextInput.create("play_link", TextInputStyle.SHORT)
-                    .setPlaceholder("https://www.youtube.com/watch?v=...")
+                    .setPlaceholder("اسم المقطع للبحث أو رابط SoundCloud")
                     .setRequired(true)
                     .build();
 
@@ -212,6 +222,16 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             }
             
             String newLink = event.getValue("play_link").getAsString();
+
+            if (newLink.contains("youtube.com") || newLink.contains("youtu.be")) {
+                event.reply("⚠️ عذراً، خدمة يوتيوب معطلة مؤقتاً في البوت. يمكنك كتابة اسم المقطع وسنبحث عنه في ساوندكلاود (SoundCloud)، أو يمكنك وضع رابط ساوندكلاود مباشر.").setEphemeral(true).queue();
+                return;
+            }
+
+            if (!newLink.startsWith("http://") && !newLink.startsWith("https://")) {
+                newLink = "scsearch:" + newLink;
+            }
+
             AudioChannel channel = guild.getSelfMember().getVoiceState().getChannel();
             if (channel == null) {
                 Member member = event.getMember();
@@ -243,7 +263,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     Button.secondary("play_leave", "مغادرة الروم 🚪")
                 );
                 
-                Container container = EmbedUtil.containerBranded("MUSIC", "مشغل اليوتيوب", body, EmbedUtil.BANNER_MAIN, row);
+                Container container = EmbedUtil.containerBranded("MUSIC", "المشغل الصوتي", body, EmbedUtil.BANNER_MAIN, row);
                 
                 event.getHook().editOriginal(new MessageEditBuilder()
                         .setComponents(container)
