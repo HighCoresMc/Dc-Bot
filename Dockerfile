@@ -20,4 +20,4 @@ RUN apt-get update && apt-get install -y \
 COPY --from=build /app/target/opexy-1.0.0.jar /app/opexy-bot.jar
 WORKDIR /app
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "opexy-bot.jar"]
+ENTRYPOINT ["java", "-XX:+UseZGC", "-XX:+ZGenerational", "-jar", "opexy-bot.jar"]
