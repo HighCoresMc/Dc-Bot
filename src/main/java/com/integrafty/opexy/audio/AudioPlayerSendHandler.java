@@ -10,12 +10,18 @@ public class AudioPlayerSendHandler implements AudioSendHandler {
     private final AudioPlayer audioPlayer;
     private final ByteBuffer buffer;
     private final MutableAudioFrame frame;
+    private final ByteBuffer[] buffers;
+    private int bufferIndex = 0;
 
     public AudioPlayerSendHandler(AudioPlayer audioPlayer) {
         this.audioPlayer = audioPlayer;
         this.buffer = ByteBuffer.allocate(1024);
         this.frame = new MutableAudioFrame();
         this.frame.setBuffer(buffer);
+        this.buffers = new ByteBuffer[20];
+        for (int i = 0; i < 20; i++) {
+            this.buffers[i] = ByteBuffer.allocate(1024);
+        }
     }
 
     @Override
@@ -26,10 +32,15 @@ public class AudioPlayerSendHandler implements AudioSendHandler {
 
     @Override
     public ByteBuffer provide20MsAudio() {
-        byte[] data = new byte[frame.getDataLength()];
+        int len = frame.getDataLength();
+        ByteBuffer target = buffers[bufferIndex];
+        target.clear();
         buffer.position(0);
-        buffer.get(data);
-        return ByteBuffer.wrap(data);
+        buffer.limit(len);
+        target.put(buffer);
+        target.flip();
+        bufferIndex = (bufferIndex + 1) % buffers.length;
+        return target;
     }
 
     @Override
