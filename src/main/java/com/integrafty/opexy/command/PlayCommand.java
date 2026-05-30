@@ -23,11 +23,15 @@ import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // Section: SoundCloud Playback Command
 @Component
 @lombok.RequiredArgsConstructor
 public class PlayCommand extends ListenerAdapter implements SlashCommand {
+    private static final Logger log = LoggerFactory.getLogger(PlayCommand.class);
+    
     private final SoundCloudAudioService soundCloudAudioService;
     private final com.integrafty.opexy.listener.VoiceRecordingListener voiceRecordingListener;
     
@@ -44,15 +48,17 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         public final String title;
         public final String uri;
         public final String requesterMention;
-        public final net.dv8tion.jda.api.interactions.InteractionHook hook;
+        public final long channelId;
+        public final long messageId;
         public final java.util.concurrent.ScheduledFuture<?> updateTask;
         public final boolean fixed;
         
-        public ActiveTrackInfo(String title, String uri, String requesterMention, net.dv8tion.jda.api.interactions.InteractionHook hook, java.util.concurrent.ScheduledFuture<?> updateTask, boolean fixed) {
+        public ActiveTrackInfo(String title, String uri, String requesterMention, long channelId, long messageId, java.util.concurrent.ScheduledFuture<?> updateTask, boolean fixed) {
             this.title = title;
             this.uri = uri;
             this.requesterMention = requesterMention;
-            this.hook = hook;
+            this.channelId = channelId;
+            this.messageId = messageId;
             this.updateTask = updateTask;
             this.fixed = fixed;
         }
@@ -112,7 +118,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         soundCloudAudioService.loadTrack(link).thenAccept(track -> {
             soundCloudAudioService.play(guild, channel, track);
-            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null, fixed));
+            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), event.getChannel().getIdLong(), 0L, null, fixed));
             
             long totalMs = track.getDuration();
             Container container = buildPlaybackEmbed(track.getInfo().title, 0, totalMs, false);
@@ -120,8 +126,8 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             hook.editOriginal(new MessageEditBuilder()
                     .setComponents(container)
                     .useComponentsV2(true)
-                    .build()).queue(success -> {
-                        startEmbedUpdater(hook, guild.getIdLong());
+                    .build()).queue(message -> {
+                        startEmbedUpdater(event.getJDA(), guild.getIdLong(), message.getChannel().getIdLong(), message.getIdLong());
                     });
         }).exceptionally(ex -> {
             Container errorContainer = EmbedUtil.containerBranded("", "⚠️ تنبيه النظام", "عذراً، واجهنا صعوبة في تحميل المقطع. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.", EmbedUtil.BANNER_MAIN);
@@ -319,7 +325,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             
             soundCloudAudioService.loadTrack(newLink).thenAccept(track -> {
                 soundCloudAudioService.play(guild, finalChannel, track);
-                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null, currentFixed));
+                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), event.getChannel().getIdLong(), 0L, null, currentFixed));
                 
                 long totalMs = track.getDuration();
                 Container container = buildPlaybackEmbed(track.getInfo().title, 0, totalMs, false);
@@ -327,8 +333,8 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 hook.editOriginal(new MessageEditBuilder()
                         .setComponents(container)
                         .useComponentsV2(true)
-                        .build()).queue(success -> {
-                            startEmbedUpdater(hook, guild.getIdLong());
+                        .build()).queue(message -> {
+                            startEmbedUpdater(event.getJDA(), guild.getIdLong(), message.getChannel().getIdLong(), message.getIdLong());
                         });
             }).exceptionally(ex -> {
                 hook.sendMessage("⚠️ | عذراً، واجهنا صعوبة في تحميل المقطع. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.").setEphemeral(true).queue();
@@ -465,7 +471,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         return sb.toString();
     }
 
-    private void startEmbedUpdater(net.dv8tion.jda.api.interactions.InteractionHook hook, long guildId) {
+    private void startEmbedUpdater(net.dv8tion.jda.api.JDA jda, long guildId, long channelId, long messageId) {
         cancelActiveTrackUpdate(guildId);
         
         ActiveTrackInfo currentInfo = activeTracks.get(guildId);
@@ -503,23 +509,33 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 
                 Container container = buildPlaybackEmbed(info.title, currentMs, totalMs, false);
                 
-                hook.editOriginal(new MessageEditBuilder()
-                        .setComponents(container)
-                        .useComponentsV2(true)
-                        .build()).queue(null, ex -> {
-                            if (ex instanceof net.dv8tion.jda.api.exceptions.ErrorResponseException ere) {
-                                if (ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_MESSAGE ||
-                                    ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_CHANNEL) {
-                                    cancelActiveTrackUpdate(guildId);
-                                    activeTracks.remove(guildId);
+                net.dv8tion.jda.api.entities.channel.middleman.MessageChannel channel = jda.getChannelById(net.dv8tion.jda.api.entities.channel.middleman.MessageChannel.class, channelId);
+                if (channel != null) {
+                    channel.editMessageById(messageId, new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
+                            .setComponents(container)
+                            .useComponentsV2(true)
+                            .build()).queue(null, ex -> {
+                                if (ex instanceof net.dv8tion.jda.api.exceptions.ErrorResponseException ere) {
+                                    if (ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_MESSAGE ||
+                                        ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_CHANNEL) {
+                                        cancelActiveTrackUpdate(guildId);
+                                        activeTracks.remove(guildId);
+                                    } else {
+                                        log.warn("[PLAY] Failed to edit playback message {} in channel {}: {}", messageId, channelId, ere.getMessage());
+                                    }
+                                } else {
+                                    log.warn("[PLAY] Exception in editing playback message {} in channel {}: {}", messageId, channelId, ex.getMessage());
                                 }
-                            }
-                        });
+                            });
+                } else {
+                    log.warn("[PLAY] Could not find channel {} to edit playback message {}", channelId, messageId);
+                }
             } catch (Exception e) {
+                log.error("[PLAY] Exception in scheduled embed updater for guild {}", guildId, e);
             }
-        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
+        }, 3, 3, java.util.concurrent.TimeUnit.SECONDS);
         
-        activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, hook, task, currentInfo.fixed));
+        activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, channelId, messageId, task, currentInfo.fixed));
     }
 
     private void cancelActiveTrackUpdate(long guildId) {
