@@ -365,6 +365,9 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
     private void startEmbedUpdater(net.dv8tion.jda.api.interactions.InteractionHook hook, long guildId) {
         cancelActiveTrackUpdate(guildId);
         
+        ActiveTrackInfo currentInfo = activeTracks.get(guildId);
+        if (currentInfo == null) return;
+        
         java.util.concurrent.ScheduledFuture<?> task = embedUpdaterExecutor.scheduleAtFixedRate(() -> {
             try {
                 ActiveTrackInfo info = activeTracks.get(guildId);
@@ -376,6 +379,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guildId);
                 if (musicManager == null) {
                     cancelActiveTrackUpdate(guildId);
+                    activeTracks.remove(guildId);
                     return;
                 }
                 
@@ -383,6 +387,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 com.sedmelluq.discord.lavaplayer.track.AudioTrack track = player.getPlayingTrack();
                 if (track == null) {
                     cancelActiveTrackUpdate(guildId);
+                    activeTracks.remove(guildId);
                     return;
                 }
                 
@@ -400,20 +405,17 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                         .useComponentsV2(true)
                         .build()).queue(null, ex -> {
                             cancelActiveTrackUpdate(guildId);
+                            activeTracks.remove(guildId);
                         });
             } catch (Exception e) {
-                // Ignore background errors
             }
-        }, 3, 3, java.util.concurrent.TimeUnit.SECONDS);
+        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
         
-        ActiveTrackInfo currentInfo = activeTracks.get(guildId);
-        if (currentInfo != null) {
-            activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, hook, task));
-        }
+        activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, hook, task));
     }
 
     private void cancelActiveTrackUpdate(long guildId) {
-        ActiveTrackInfo oldInfo = activeTracks.remove(guildId);
+        ActiveTrackInfo oldInfo = activeTracks.get(guildId);
         if (oldInfo != null && oldInfo.updateTask != null) {
             oldInfo.updateTask.cancel(true);
         }
