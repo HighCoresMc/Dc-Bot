@@ -52,6 +52,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         public final long messageId;
         public final java.util.concurrent.ScheduledFuture<?> updateTask;
         public final boolean fixed;
+        public final java.util.concurrent.atomic.AtomicBoolean isUpdating = new java.util.concurrent.atomic.AtomicBoolean(false);
         
         public ActiveTrackInfo(String title, String uri, String requesterMention, long channelId, long messageId, java.util.concurrent.ScheduledFuture<?> updateTask, boolean fixed) {
             this.title = title;
@@ -482,8 +483,8 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         
         java.util.concurrent.atomic.AtomicReference<java.util.concurrent.ScheduledFuture<?>> taskRef = new java.util.concurrent.atomic.AtomicReference<>();
         java.util.concurrent.ScheduledFuture<?> task = embedUpdaterExecutor.scheduleAtFixedRate(() -> {
+            ActiveTrackInfo info = activeTracks.get(guildId);
             try {
-                ActiveTrackInfo info = activeTracks.get(guildId);
                 java.util.concurrent.ScheduledFuture<?> self = taskRef.get();
                 if (self != null) {
                     if (info == null || info.updateTask != self) {
@@ -492,10 +493,15 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     }
                 }
                 
+                if (!info.isUpdating.compareAndSet(false, true)) {
+                    return;
+                }
+                
                 SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guildId);
                 if (musicManager == null) {
                     cancelActiveTrackUpdate(guildId);
                     activeTracks.remove(guildId);
+                    info.isUpdating.set(false);
                     return;
                 }
                 
@@ -504,10 +510,12 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 if (track == null) {
                     cancelActiveTrackUpdate(guildId);
                     activeTracks.remove(guildId);
+                    info.isUpdating.set(false);
                     return;
                 }
                 
                 if (player.isPaused()) {
+                    info.isUpdating.set(false);
                     return;
                 }
                 
@@ -521,24 +529,32 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     channel.editMessageById(messageId, new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
                             .setComponents(container)
                             .useComponentsV2(true)
-                            .build()).queue(null, ex -> {
-                                if (ex instanceof net.dv8tion.jda.api.exceptions.ErrorResponseException ere) {
-                                    if (ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_MESSAGE ||
-                                        ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_CHANNEL) {
-                                        cancelActiveTrackUpdate(guildId);
-                                        activeTracks.remove(guildId);
+                            .build()).queue(
+                                success -> info.isUpdating.set(false),
+                                ex -> {
+                                    info.isUpdating.set(false);
+                                    if (ex instanceof net.dv8tion.jda.api.exceptions.ErrorResponseException ere) {
+                                        if (ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_MESSAGE ||
+                                            ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_CHANNEL) {
+                                            cancelActiveTrackUpdate(guildId);
+                                            activeTracks.remove(guildId);
+                                        } else {
+                                            log.warn("[PLAY] Failed to edit playback message {} in channel {}: {}", messageId, channelId, ere.getMessage());
+                                        }
                                     } else {
-                                        log.warn("[PLAY] Failed to edit playback message {} in channel {}: {}", messageId, channelId, ere.getMessage());
+                                        log.warn("[PLAY] Exception in editing playback message {} in channel {}: {}", messageId, channelId, ex.getMessage());
                                     }
-                                } else {
-                                    log.warn("[PLAY] Exception in editing playback message {} in channel {}: {}", messageId, channelId, ex.getMessage());
                                 }
-                            });
+                            );
                 } else {
                     log.warn("[PLAY] Could not find channel {} to edit playback message {}", channelId, messageId);
+                    info.isUpdating.set(false);
                 }
             } catch (Exception e) {
                 log.error("[PLAY] Exception in scheduled embed updater for guild {}", guildId, e);
+                if (info != null) {
+                    info.isUpdating.set(false);
+                }
             }
         }, 3, 3, java.util.concurrent.TimeUnit.SECONDS);
         
