@@ -21,6 +21,8 @@ logging:
     org.hibernate: WARN
     com.integrafty.opexy: INFO
     net.dv8tion.jda: INFO
+    net.dv8tion.jda.internal.audio: ERROR
+    club.minnced.discord.jdave: ERROR
 
 # Discord Bot Configuration
 discord:

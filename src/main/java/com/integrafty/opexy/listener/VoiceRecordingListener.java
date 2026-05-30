@@ -305,6 +305,29 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                     .build()).queue();
             return;
         }
+
+        if (id.equals("rec_new_confirm")) {
+            Guild guild = event.getGuild();
+            long guildId = guild.getIdLong();
+            
+            java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guildId);
+            if (task != null) task.cancel(true);
+
+            stopAndSendRecording(guild, guild.getAudioManager().getConnectedChannel());
+            sessionNames.remove(guildId);
+            partCounters.remove(guildId);
+
+            net.dv8tion.jda.api.components.textinput.TextInput nameInput = net.dv8tion.jda.api.components.textinput.TextInput.create("rec_name", net.dv8tion.jda.api.components.textinput.TextInputStyle.SHORT)
+                    .setPlaceholder("e.g., Development Meeting")
+                    .setRequired(true)
+                    .build();
+
+            net.dv8tion.jda.api.modals.Modal modal = net.dv8tion.jda.api.modals.Modal.create("modal_rec_start", "Start New Recording")
+                    .addComponents(net.dv8tion.jda.api.components.label.Label.of("Meeting Name", nameInput))
+                    .build();
+            event.replyModal(modal).queue();
+            return;
+        }
     }
 
     @Override
@@ -364,21 +387,84 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
 
     private void splitAndRestart(Guild guild) {
         long guildId = guild.getIdLong();
-        net.dv8tion.jda.api.managers.AudioManager audioManager = guild.getAudioManager();
-        net.dv8tion.jda.api.entities.channel.middleman.AudioChannel channel = audioManager.getConnectedChannel();
-        
-        if (channel == null) return;
+        AudioRecorder recorder = recorders.get(guildId);
+        if (recorder == null) return;
 
-        // Save current part
-        stopAndSendRecording(guild, channel);
-        
-        // Increment part and restart immediately
-        partCounters.put(guildId, partCounters.getOrDefault(guildId, 1) + 1);
-        connectAndStartRecording(guild, channel);
-        
-        // Mark as recording immediately
-        AudioRecorder next = recorders.get(guildId);
-        if (next != null) next.setRecording(true);
+        try {
+            AudioRecorder.SplitResult splitResult = recorder.split();
+            final int part = partCounters.getOrDefault(guildId, 1);
+            partCounters.put(guildId, part + 1);
+            
+            final String sessionName = sessionNames.getOrDefault(guildId, "Meeting");
+            
+            new Thread(() -> {
+                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                File recordingsDir = new File("recordings");
+                if (!recordingsDir.exists()) {
+                    recordingsDir.mkdirs();
+                }
+                File wavFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".wav");
+                try {
+                    log.info("[UPLOAD] Saving split WAV file: {}", wavFile.getName());
+                    AudioRecorder.saveAsWav(splitResult.tempFile, splitResult.totalBytes, wavFile);
+
+                    if (wavFile.exists() && wavFile.length() > 100) {
+                        log.info("[UPLOAD] Split file saved. Sending Part {} of session '{}'", part, sessionName);
+                        final File sendFile = convertWavToM4a(wavFile);
+                        final boolean isM4a = sendFile.getName().endsWith(".m4a");
+
+                        final TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
+                        
+                        String timeStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                        net.dv8tion.jda.api.EmbedBuilder eb = new net.dv8tion.jda.api.EmbedBuilder();
+                        eb.setTitle("🎙️ " + sessionName + " : Part " + part);
+                        eb.setColor(EmbedUtil.INFO);
+                        eb.setImage(EmbedUtil.BANNER_MAIN);
+                        
+                        AudioChannel lastChannel = guild.getAudioManager().getConnectedChannel();
+                        eb.addField("Channel", "`" + (lastChannel != null ? lastChannel.getName() : "Unknown") + "`", true);
+                        eb.addField("Time", "`" + timeStr + "`", true);
+                        eb.addField("Quality", isM4a ? "`64kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
+                        eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
+                        eb.setTimestamp(java.time.Instant.now());
+
+                        String activeChanId = activeTextChannels.get(guild.getIdLong());
+                        net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel tempActiveChan = null;
+                        if (activeChanId != null) {
+                            net.dv8tion.jda.api.entities.channel.middleman.GuildChannel gc = guild.getGuildChannelById(activeChanId);
+                            if (gc instanceof net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) {
+                                tempActiveChan = (net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel) gc;
+                            }
+                        }
+                        final net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel activeChan = tempActiveChan;
+
+                        if (activeChan != null) {
+                            activeChan.sendMessageEmbeds(eb.build())
+                                    .addFiles(FileUpload.fromData(sendFile))
+                                    .queue(
+                                        success -> log.info("[RECORDING] Successfully sent split recording to active channel: {}", activeChan.getName()),
+                                        failure -> log.error("[RECORDING] Failed to send split recording to active channel: {}", failure.getMessage(), failure)
+                                    );
+                        }
+
+                        if (logChannel != null) {
+                            logChannel.sendMessageEmbeds(eb.build())
+                                    .addFiles(FileUpload.fromData(sendFile))
+                                    .queue(
+                                        success -> log.info("[RECORDING] Successfully sent split recording to log channel: {}", logChannel.getName()),
+                                        failure -> log.error("[RECORDING] Failed to send split recording to log channel: {}", failure.getMessage(), failure)
+                                    );
+                        }
+                    }
+                } catch (IOException e) {
+                    log.error("[RECORDING] Failed to save split WAV file", e);
+                } finally {
+                    AudioRecorder.cleanup(splitResult.tempFile);
+                }
+            }).start();
+        } catch (IOException e) {
+            log.error("[RECORDING] Failed to split recording", e);
+        }
     }
 
     private void connectAndStartRecording(Guild guild, AudioChannel channel) {
@@ -399,10 +485,6 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         long guildId = guild.getIdLong();
         AudioManager audioManager = guild.getAudioManager();
         AudioRecorder recorder = recorders.remove(guildId);
-
-        if (recorder != null) {
-            recorder.stop();
-        }
 
         // Always clear JDA audio handlers when stopping a recording to release the channel and stop SilenceSendHandler
         audioManager.setReceivingHandler(null);
@@ -426,6 +508,11 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         if (recorder != null) {
             final String sessionName = sessionNames.getOrDefault(guildId, "Meeting");
             final int part = partCounters.getOrDefault(guildId, 1);
+            
+            final File tempFile = recorder.getTempFile();
+            final long totalBytes = recorder.getTotalBytes();
+            
+            recorder.stop();
 
             new Thread(() -> {
                 String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
@@ -436,7 +523,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 File wavFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".wav");
                 try {
                     log.info("[UPLOAD] Saving WAV file: {}", wavFile.getName());
-                    recorder.saveAsWav(wavFile);
+                    AudioRecorder.saveAsWav(tempFile, totalBytes, wavFile);
 
                     if (wavFile.exists() && wavFile.length() > 100) {
                         log.info("[UPLOAD] File saved. Sending Part {} of session '{}'", part, sessionName);
@@ -492,7 +579,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 } catch (IOException e) {
                     log.error("[RECORDING] Failed to save WAV file", e);
                 } finally {
-                    recorder.cleanup();
+                    AudioRecorder.cleanup(tempFile);
                 }
             }).start();
         }

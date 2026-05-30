@@ -48,6 +48,37 @@ public class AudioRecorder implements AudioReceiveHandler {
         }
     }
 
+    public synchronized File getTempFile() {
+        return tempFile;
+    }
+
+    public synchronized long getTotalBytes() {
+        return totalBytes;
+    }
+
+    public static class SplitResult {
+        public final File tempFile;
+        public final long totalBytes;
+        public SplitResult(File tempFile, long totalBytes) {
+            this.tempFile = tempFile;
+            this.totalBytes = totalBytes;
+        }
+    }
+
+    public synchronized SplitResult split() throws IOException {
+        os.flush();
+        os.close();
+        
+        File oldTemp = this.tempFile;
+        long oldBytes = this.totalBytes;
+        
+        this.tempFile = File.createTempFile("opexy_rec_", ".raw");
+        this.os = new BufferedOutputStream(new FileOutputStream(this.tempFile), 65536);
+        this.totalBytes = 0;
+        
+        return new SplitResult(oldTemp, oldBytes);
+    }
+
     public void stop() {
         recording = false;
         try {
@@ -58,6 +89,10 @@ public class AudioRecorder implements AudioReceiveHandler {
     }
 
     public void saveAsWav(File wavFile) throws IOException {
+        saveAsWav(this.tempFile, this.totalBytes, wavFile);
+    }
+
+    public static void saveAsWav(File tempFile, long totalBytes, File wavFile) throws IOException {
         try (FileOutputStream out = new FileOutputStream(wavFile);
              FileInputStream in = new FileInputStream(tempFile)) {
             
@@ -80,7 +115,7 @@ public class AudioRecorder implements AudioReceiveHandler {
         }
     }
 
-    private void writeWavHeader(FileOutputStream out, long rawLength) throws IOException {
+    private static void writeWavHeader(FileOutputStream out, long rawLength) throws IOException {
         ByteBuffer header = ByteBuffer.allocate(44);
         header.order(ByteOrder.LITTLE_ENDIAN);
         
@@ -102,8 +137,12 @@ public class AudioRecorder implements AudioReceiveHandler {
     }
 
     public void cleanup() {
-        if (tempFile.exists()) {
-            tempFile.delete();
+        cleanup(this.tempFile);
+    }
+
+    public static void cleanup(File file) {
+        if (file != null && file.exists()) {
+            file.delete();
         }
     }
 }
