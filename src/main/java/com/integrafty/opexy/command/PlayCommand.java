@@ -480,12 +480,16 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         ActiveTrackInfo currentInfo = activeTracks.get(guildId);
         if (currentInfo == null) return;
         
+        java.util.concurrent.atomic.AtomicReference<java.util.concurrent.ScheduledFuture<?>> taskRef = new java.util.concurrent.atomic.AtomicReference<>();
         java.util.concurrent.ScheduledFuture<?> task = embedUpdaterExecutor.scheduleAtFixedRate(() -> {
             try {
                 ActiveTrackInfo info = activeTracks.get(guildId);
-                if (info == null) {
-                    cancelActiveTrackUpdate(guildId);
-                    return;
+                java.util.concurrent.ScheduledFuture<?> self = taskRef.get();
+                if (self != null) {
+                    if (info == null || info.updateTask != self) {
+                        self.cancel(false);
+                        return;
+                    }
                 }
                 
                 SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guildId);
@@ -538,6 +542,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             }
         }, 3, 3, java.util.concurrent.TimeUnit.SECONDS);
         
+        taskRef.set(task);
         activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, channelId, messageId, task, currentInfo.fixed));
     }
 

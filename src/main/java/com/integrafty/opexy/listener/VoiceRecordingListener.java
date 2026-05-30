@@ -138,6 +138,13 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                     log.info("[VOICE] Last human left channel {}. Stopping and sending recording.", leftChannel.getName());
                     java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guild.getIdLong());
                     if (task != null) task.cancel(true);
+                    
+                    if (trackInfo != null) {
+                        com.integrafty.opexy.command.PlayCommand.cancelActiveTrackUpdate(guild.getIdLong());
+                        com.integrafty.opexy.command.PlayCommand.activeTracks.remove(guild.getIdLong());
+                        soundCloudAudioService.stop(guild);
+                    }
+                    
                     stopAndSendRecording(guild, connectedChannel);
                 }
             }
@@ -215,6 +222,13 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         // Detect if the bot itself is disconnected unexpectedly
         if (event.getMember().equals(guild.getSelfMember())) {
             if (leftChannel != null && joinedChannel == null) {
+                com.integrafty.opexy.command.PlayCommand.ActiveTrackInfo trackInfo = com.integrafty.opexy.command.PlayCommand.activeTracks.get(guild.getIdLong());
+                if (trackInfo != null) {
+                    com.integrafty.opexy.command.PlayCommand.cancelActiveTrackUpdate(guild.getIdLong());
+                    com.integrafty.opexy.command.PlayCommand.activeTracks.remove(guild.getIdLong());
+                    soundCloudAudioService.stop(guild);
+                }
+                
                 if (recorders.containsKey(guild.getIdLong())) {
                     java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guild.getIdLong());
                     if (task != null) task.cancel(true);
