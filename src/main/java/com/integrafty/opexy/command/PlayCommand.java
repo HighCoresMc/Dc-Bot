@@ -33,6 +33,12 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
     
     public static final java.util.Map<Long, ActiveTrackInfo> activeTracks = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ScheduledExecutorService embedUpdaterExecutor = java.util.concurrent.Executors.newScheduledThreadPool(4);
+    private static final java.util.Map<Long, ClickTracker> clickTrackers = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static class ClickTracker {
+        public int count = 0;
+        public long lastClickTime = 0;
+    }
 
     public static class ActiveTrackInfo {
         public final String title;
@@ -189,6 +195,31 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             }
 
         } else if (id.equals("play_forward")) {
+            long guildId = guild.getIdLong();
+            long now = System.currentTimeMillis();
+            ClickTracker tracker = clickTrackers.computeIfAbsent(guildId, g -> new ClickTracker());
+            
+            if (now - tracker.lastClickTime < 2000) {
+                tracker.count++;
+            } else {
+                tracker.count = 1;
+            }
+            tracker.lastClickTime = now;
+
+            if (tracker.count >= 3) {
+                tracker.count = 0;
+                TextInput timeInput = TextInput.create("play_seek_time", TextInputStyle.SHORT)
+                        .setPlaceholder("مثال: 02:30 أو 15:00")
+                        .setRequired(true)
+                        .build();
+
+                Modal modal = Modal.create("modal_play_seek", "تقديم إلى وقت محدد")
+                        .addComponents(Label.of("أدخل الوقت المستهدف (دقيقة:ثانية أو ثواني)", timeInput))
+                        .build();
+                event.replyModal(modal).queue();
+                return;
+            }
+
             SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
             if (musicManager != null) {
                 com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
@@ -199,7 +230,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                         long newPos = Math.min(track.getDuration(), currentPos + 10000);
                         track.setPosition(newPos);
                         
-                        ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+                        ActiveTrackInfo info = activeTracks.get(guildId);
                         long totalMs = track.getDuration();
                         Container container = buildPlaybackEmbed(info != null ? info.title : track.getInfo().title, newPos, totalMs, player.isPaused());
                         event.editMessage(new MessageEditBuilder()
@@ -299,7 +330,65 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 hook.sendMessage("⚠️ | عذراً، واجهنا صعوبة في تحميل المقطع. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.").setEphemeral(true).queue();
                 return null;
             });
+        } else if (event.getModalId().equals("modal_play_seek")) {
+            if (!hasPlayRole(event.getMember())) {
+                event.reply("⚠️ عذراً، لا تملك الصلاحيات اللازمة للتحكم بالتشغيل.").setEphemeral(true).queue();
+                return;
+            }
+            Guild guild = event.getGuild();
+            if (guild == null) return;
+
+            String timeVal = event.getValue("play_seek_time").getAsString();
+            try {
+                long targetMs = parseSeekTime(timeVal);
+                SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
+                if (musicManager != null) {
+                    com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
+                    com.sedmelluq.discord.lavaplayer.track.AudioTrack track = player.getPlayingTrack();
+                    if (track != null) {
+                        if (track.isSeekable()) {
+                            long finalPos = Math.max(0, Math.min(track.getDuration(), targetMs));
+                            track.setPosition(finalPos);
+                            
+                            ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+                            Container container = buildPlaybackEmbed(info != null ? info.title : track.getInfo().title, finalPos, track.getDuration(), player.isPaused());
+                            
+                            event.deferEdit().queue();
+                            event.getHook().editOriginal(new MessageEditBuilder()
+                                    .setComponents(container)
+                                    .useComponentsV2(true)
+                                    .build()).queue();
+                        } else {
+                            event.reply("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
+                        }
+                    } else {
+                        event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                    }
+                }
+            } catch (Exception e) {
+                event.reply("⚠️ صيغة الوقت غير صالحة. يرجى الاستخدام بصيغة (دقيقة:ثانية) مثل: 02:30").setEphemeral(true).queue();
+            }
         }
+    }
+
+    private static long parseSeekTime(String input) {
+        String clean = input.trim();
+        if (clean.matches("\\d+")) {
+            return Long.parseLong(clean) * 1000;
+        }
+        
+        String[] parts = clean.split(":");
+        if (parts.length == 2) {
+            long minutes = Long.parseLong(parts[0]);
+            long seconds = Long.parseLong(parts[1]);
+            return (minutes * 60 + seconds) * 1000;
+        } else if (parts.length == 3) {
+            long hours = Long.parseLong(parts[0]);
+            long minutes = Long.parseLong(parts[1]);
+            long seconds = Long.parseLong(parts[2]);
+            return (hours * 3600 + minutes * 60 + seconds) * 1000;
+        }
+        throw new IllegalArgumentException("Invalid format");
     }
 
     // Section: Permissions Helper
