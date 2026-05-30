@@ -40,13 +40,15 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         public final String requesterMention;
         public final net.dv8tion.jda.api.interactions.InteractionHook hook;
         public final java.util.concurrent.ScheduledFuture<?> updateTask;
+        public final boolean fixed;
         
-        public ActiveTrackInfo(String title, String uri, String requesterMention, net.dv8tion.jda.api.interactions.InteractionHook hook, java.util.concurrent.ScheduledFuture<?> updateTask) {
+        public ActiveTrackInfo(String title, String uri, String requesterMention, net.dv8tion.jda.api.interactions.InteractionHook hook, java.util.concurrent.ScheduledFuture<?> updateTask, boolean fixed) {
             this.title = title;
             this.uri = uri;
             this.requesterMention = requesterMention;
             this.hook = hook;
             this.updateTask = updateTask;
+            this.fixed = fixed;
         }
     }
 
@@ -58,7 +60,8 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
     @Override
     public SlashCommandData getCommandData() {
         return Commands.slash("play", "تشغيل المقاطع الصوتية من SoundCloud في الروم الصوتي")
-                .addOption(OptionType.STRING, "link", "اسم المقطع أو رابط SoundCloud", true);
+                .addOption(OptionType.STRING, "link", "اسم المقطع أو رابط SoundCloud", true)
+                .addOption(OptionType.BOOLEAN, "fixed", "تثبيت البوت في الروم الصوتي حتى لو خرج الجميع", false);
     }
 
     @Override
@@ -83,6 +86,11 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         }
 
         String link = event.getOption("link").getAsString();
+        boolean fixedOpt = false;
+        if (event.getOption("fixed") != null) {
+            fixedOpt = event.getOption("fixed").getAsBoolean();
+        }
+        final boolean fixed = fixedOpt;
 
         if (link.contains("youtube.com") || link.contains("youtu.be")) {
             event.reply("⚠️ عذراً، هذا الرابط غير مدعوم. يرجى استخدام روابط SoundCloud أو البحث باسم المقطع.").setEphemeral(true).queue();
@@ -98,7 +106,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         soundCloudAudioService.loadTrack(link).thenAccept(track -> {
             soundCloudAudioService.play(guild, channel, track);
-            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null));
+            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null, fixed));
             
             long totalMs = track.getDuration();
             Container container = buildPlaybackEmbed(track.getInfo().title, 0, totalMs, false);
@@ -271,10 +279,12 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             
             final AudioChannel finalChannel = channel;
             final net.dv8tion.jda.api.interactions.InteractionHook hook = event.getHook();
+            ActiveTrackInfo oldInfo = activeTracks.get(guild.getIdLong());
+            final boolean currentFixed = oldInfo != null && oldInfo.fixed;
             
             soundCloudAudioService.loadTrack(newLink).thenAccept(track -> {
                 soundCloudAudioService.play(guild, finalChannel, track);
-                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null));
+                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null, currentFixed));
                 
                 long totalMs = track.getDuration();
                 Container container = buildPlaybackEmbed(track.getInfo().title, 0, totalMs, false);
@@ -411,7 +421,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             }
         }, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
         
-        activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, hook, task));
+        activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, hook, task, currentInfo.fixed));
     }
 
     private void cancelActiveTrackUpdate(long guildId) {

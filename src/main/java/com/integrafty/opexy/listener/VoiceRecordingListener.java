@@ -130,6 +130,11 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         .count();
                 
                 if (humanCount <= 0) {
+                    com.integrafty.opexy.command.PlayCommand.ActiveTrackInfo trackInfo = com.integrafty.opexy.command.PlayCommand.activeTracks.get(guild.getIdLong());
+                    if (trackInfo != null && trackInfo.fixed) {
+                        log.info("[VOICE] Last human left channel, but fixed mode is active. Staying in room.");
+                        return;
+                    }
                     log.info("[VOICE] Last human left channel {}. Stopping and sending recording.", leftChannel.getName());
                     java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guild.getIdLong());
                     if (task != null) task.cancel(true);
