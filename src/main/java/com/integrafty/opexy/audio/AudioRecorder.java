@@ -7,19 +7,15 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-/**
- * Section: Audio Recording
- * Human-generated recorder for Opexy Bot (Ported from Highcore Bot)
- */
+// Section: Audio Recording
 public class AudioRecorder implements AudioReceiveHandler {
-    private final File tempFile;
-    private final BufferedOutputStream os;
+    private File tempFile;
+    private BufferedOutputStream os;
     private boolean recording = false;
     private long totalBytes = 0;
 
     public AudioRecorder() throws IOException {
         this.tempFile = File.createTempFile("opexy_rec_", ".raw");
-        // Increased buffer to 64KB for better performance in long meetings
         this.os = new BufferedOutputStream(new FileOutputStream(tempFile), 65536);
     }
 
@@ -33,7 +29,7 @@ public class AudioRecorder implements AudioReceiveHandler {
 
     @Override
     public boolean canReceiveCombined() {
-        return true; // We always receive, but handle CombinedAudio based on 'recording' flag
+        return true;
     }
 
     @Override
@@ -44,7 +40,6 @@ public class AudioRecorder implements AudioReceiveHandler {
             os.write(data);
             totalBytes += data.length;
         } catch (IOException e) {
-            // Error handled silently per section policy
         }
     }
 
@@ -84,7 +79,6 @@ public class AudioRecorder implements AudioReceiveHandler {
         try {
             os.close();
         } catch (IOException e) {
-            // Error handled silently
         }
     }
 
@@ -101,7 +95,6 @@ public class AudioRecorder implements AudioReceiveHandler {
             byte[] buffer = new byte[4096];
             int len;
             while ((len = in.read(buffer)) > 0) {
-                // Swap bytes from Big Endian (JDA) to Little Endian (WAV)
                 for (int i = 0; i < len; i += 2) {
                     if (i + 1 < len) {
                         byte b1 = buffer[i];
@@ -124,8 +117,8 @@ public class AudioRecorder implements AudioReceiveHandler {
         header.put("WAVE".getBytes());
         header.put("fmt ".getBytes());
         header.putInt(16);
-        header.putShort((short) 1); // PCM
-        header.putShort((short) 2); // Stereo
+        header.putShort((short) 1);
+        header.putShort((short) 2);
         header.putInt(48000);
         header.putInt(48000 * 2 * 2);
         header.putShort((short) 4);

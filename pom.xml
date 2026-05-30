@@ -77,11 +77,7 @@
             <artifactId>lavaplayer</artifactId>
             <version>2.2.6</version>
         </dependency>
-        <dependency>
-            <groupId>dev.lavalink.youtube</groupId>
-            <artifactId>youtube-plugin</artifactId>
-            <version>9d4dbeeb51f16d53078486d69d27654d4acfa7fb</version>
-        </dependency>
+
         
         <dependency>
             <groupId>club.minnced</groupId>
