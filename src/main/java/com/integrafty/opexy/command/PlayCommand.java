@@ -148,6 +148,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         if (guild == null) return;
 
         if (id.equals("play_toggle")) {
+            event.deferEdit().queue();
             SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
             if (musicManager != null) {
                 com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
@@ -159,16 +160,17 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     long currentMs = player.getPlayingTrack().getPosition();
                     long totalMs = player.getPlayingTrack().getDuration();
                     Container container = buildPlaybackEmbed(info.title, currentMs, totalMs, nowPaused);
-                    event.editMessage(new MessageEditBuilder()
+                    event.getHook().editOriginal(new MessageEditBuilder()
                             .setComponents(container)
                             .useComponentsV2(true)
                             .build()).queue();
                 } else {
-                    event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                    event.getHook().sendMessage("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
                 }
             }
 
         } else if (id.equals("play_rewind")) {
+            event.deferEdit().queue();
             SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
             if (musicManager != null) {
                 com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
@@ -182,15 +184,15 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                         ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
                         long totalMs = track.getDuration();
                         Container container = buildPlaybackEmbed(info != null ? info.title : track.getInfo().title, newPos, totalMs, player.isPaused());
-                        event.editMessage(new MessageEditBuilder()
+                        event.getHook().editOriginal(new MessageEditBuilder()
                                 .setComponents(container)
                                 .useComponentsV2(true)
                                 .build()).queue();
                     } else {
-                        event.reply("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
+                        event.getHook().sendMessage("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
                     }
                 } else {
-                    event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                    event.getHook().sendMessage("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
                 }
             }
 
@@ -220,6 +222,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                 return;
             }
 
+            event.deferEdit().queue();
             SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
             if (musicManager != null) {
                 com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
@@ -233,23 +236,24 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                         ActiveTrackInfo info = activeTracks.get(guildId);
                         long totalMs = track.getDuration();
                         Container container = buildPlaybackEmbed(info != null ? info.title : track.getInfo().title, newPos, totalMs, player.isPaused());
-                        event.editMessage(new MessageEditBuilder()
+                        event.getHook().editOriginal(new MessageEditBuilder()
                                 .setComponents(container)
                                 .useComponentsV2(true)
                                 .build()).queue();
                     } else {
-                        event.reply("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
+                        event.getHook().sendMessage("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
                     }
                 } else {
-                    event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                    event.getHook().sendMessage("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
                 }
             }
 
         } else if (id.equals("play_leave")) {
+            event.deferEdit().queue();
             cancelActiveTrackUpdate(guild.getIdLong());
             soundCloudAudioService.stop(guild);
             Container stopContainer = EmbedUtil.containerBranded("", "إنهاء الجلسة", "🚪 تم إنهاء الجلسة ومغادرة الروم الصوتي بنجاح. شكراً لاستماعكم!", EmbedUtil.BANNER_MAIN);
-            event.editMessage(new MessageEditBuilder()
+            event.getHook().editOriginal(new MessageEditBuilder()
                     .setComponents(stopContainer)
                     .useComponentsV2(true)
                     .build()).queue();
@@ -503,8 +507,13 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                         .setComponents(container)
                         .useComponentsV2(true)
                         .build()).queue(null, ex -> {
-                            cancelActiveTrackUpdate(guildId);
-                            activeTracks.remove(guildId);
+                            if (ex instanceof net.dv8tion.jda.api.exceptions.ErrorResponseException ere) {
+                                if (ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_MESSAGE ||
+                                    ere.getErrorResponse() == net.dv8tion.jda.api.requests.ErrorResponse.UNKNOWN_CHANNEL) {
+                                    cancelActiveTrackUpdate(guildId);
+                                    activeTracks.remove(guildId);
+                                }
+                            }
                         });
             } catch (Exception e) {
             }
