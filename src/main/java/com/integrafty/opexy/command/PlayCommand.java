@@ -1,7 +1,7 @@
 package com.integrafty.opexy.command;
 
 import com.integrafty.opexy.command.base.SlashCommand;
-import com.integrafty.opexy.service.YouTubeAudioService;
+import com.integrafty.opexy.service.SoundCloudAudioService;
 import com.integrafty.opexy.utils.EmbedUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -24,22 +24,29 @@ import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 
-// Section: YouTube Playback Command
+// Section: SoundCloud Playback Command
 @Component
 @lombok.RequiredArgsConstructor
 public class PlayCommand extends ListenerAdapter implements SlashCommand {
-    private final YouTubeAudioService youtubeAudioService;
+    private final SoundCloudAudioService soundCloudAudioService;
     private final com.integrafty.opexy.listener.VoiceRecordingListener voiceRecordingListener;
+    
     public static final java.util.Map<Long, ActiveTrackInfo> activeTracks = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ScheduledExecutorService embedUpdaterExecutor = java.util.concurrent.Executors.newScheduledThreadPool(4);
 
     public static class ActiveTrackInfo {
         public final String title;
         public final String uri;
         public final String requesterMention;
-        public ActiveTrackInfo(String title, String uri, String requesterMention) {
+        public final net.dv8tion.jda.api.interactions.InteractionHook hook;
+        public final java.util.concurrent.ScheduledFuture<?> updateTask;
+        
+        public ActiveTrackInfo(String title, String uri, String requesterMention, net.dv8tion.jda.api.interactions.InteractionHook hook, java.util.concurrent.ScheduledFuture<?> updateTask) {
             this.title = title;
             this.uri = uri;
             this.requesterMention = requesterMention;
+            this.hook = hook;
+            this.updateTask = updateTask;
         }
     }
 
@@ -50,8 +57,8 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
     @Override
     public SlashCommandData getCommandData() {
-        return Commands.slash("play", "تشغيل مقطع يوتيوب كصوت في الروم الصوتي")
-                .addOption(OptionType.STRING, "link", "رابط مقطع اليوتيوب", true);
+        return Commands.slash("play", "تشغيل المقاطع الصوتية من SoundCloud في الروم الصوتي")
+                .addOption(OptionType.STRING, "link", "اسم المقطع أو رابط SoundCloud", true);
     }
 
     @Override
@@ -78,7 +85,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         String link = event.getOption("link").getAsString();
 
         if (link.contains("youtube.com") || link.contains("youtu.be")) {
-            event.reply("⚠️ عذراً، خدمة يوتيوب معطلة مؤقتاً في البوت. يمكنك كتابة اسم المقطع وسنبحث عنه في ساوندكلاود (SoundCloud)، أو يمكنك وضع رابط ساوندكلاود مباشر.").setEphemeral(true).queue();
+            event.reply("⚠️ عذراً، هذا الرابط غير مدعوم. يرجى استخدام روابط SoundCloud أو البحث باسم المقطع.").setEphemeral(true).queue();
             return;
         }
 
@@ -87,31 +94,24 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         }
 
         event.deferReply().queue();
+        final net.dv8tion.jda.api.interactions.InteractionHook hook = event.getHook();
 
-        youtubeAudioService.loadTrack(link).thenAccept(track -> {
-            youtubeAudioService.play(guild, channel, track);
-            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention()));
+        soundCloudAudioService.loadTrack(link).thenAccept(track -> {
+            soundCloudAudioService.play(guild, channel, track);
+            activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null));
             
-            String body = "🎶 **المشغل الصوتي النشط**\n\n" +
-                          "📌 **العنوان:** " + track.getInfo().title + "\n" +
-                          "👤 **طلب بواسطة:** " + event.getUser().getAsMention() + "\n" +
-                          "🔗 **الرابط المباشر:** [اضغط هنا للمشاهدة](" + track.getInfo().uri + ")";
+            long totalMs = track.getDuration();
+            Container container = buildPlaybackEmbed(track.getInfo().title, 0, totalMs, false);
             
-            ActionRow row = ActionRow.of(
-                Button.danger("play_stop", "إيقاف مؤقت ⏸️"),
-                Button.primary("play_change", "تغيير المقطع 🔄"),
-                Button.secondary("play_leave", "مغادرة الروم 🚪")
-            );
-            
-            Container container = EmbedUtil.containerBranded("MUSIC", "المشغل الصوتي", body, EmbedUtil.BANNER_MAIN, row);
-            
-            event.getHook().editOriginal(new MessageEditBuilder()
+            hook.editOriginal(new MessageEditBuilder()
                     .setComponents(container)
                     .useComponentsV2(true)
-                    .build()).queue();
+                    .build()).queue(success -> {
+                        startEmbedUpdater(hook, guild.getIdLong());
+                    });
         }).exceptionally(ex -> {
-            Container errorContainer = EmbedUtil.containerBranded("SYSTEM", "⚠️ تنبيه النظام", "عذراً، واجهنا صعوبة في تحميل المقطع من يوتيوب. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.", EmbedUtil.BANNER_MAIN);
-            event.getHook().editOriginal(new MessageEditBuilder()
+            Container errorContainer = EmbedUtil.containerBranded("", "⚠️ تنبيه النظام", "عذراً، واجهنا صعوبة في تحميل المقطع. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.", EmbedUtil.BANNER_MAIN);
+            hook.editOriginal(new MessageEditBuilder()
                     .setComponents(errorContainer)
                     .useComponentsV2(true)
                     .build()).queue();
@@ -133,61 +133,83 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         Guild guild = event.getGuild();
         if (guild == null) return;
 
-        if (id.equals("play_stop")) {
-            youtubeAudioService.pause(guild);
-            ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
-            String title = (info != null) ? info.title : "مقطع غير معروف";
-            String requester = (info != null) ? info.requesterMention : "غير معروف";
-            
-            String body = "⏸️ **حالة التشغيل: موقوف مؤقتاً**\n\n" +
-                          "📌 **العنوان:** " + title + "\n" +
-                          "👤 **طلب بواسطة:** " + requester + "\n\n" +
-                          "يمكنك استئناف الاستماع، تغيير المقطع الحالي، أو إخراج البوت من الروم الصوتي.";
-
-            ActionRow row = ActionRow.of(
-                Button.success("play_resume", "استئناف التشغيل ▶️"),
-                Button.primary("play_change", "تغيير المقطع 🔄"),
-                Button.danger("play_leave", "مغادرة الروم 🚪")
-            );
-
-            Container container = EmbedUtil.containerBranded("MUSIC", "تم إيقاف التشغيل مؤقتاً", body, EmbedUtil.BANNER_MAIN, row);
-            event.editMessage(new MessageEditBuilder()
-                    .setComponents(container)
-                    .useComponentsV2(true)
-                    .build()).queue();
-
-        } else if (id.equals("play_resume")) {
-            if (voiceRecordingListener.isRecordingActive(guild.getIdLong())) {
-                event.reply("⚠️ عذراً، لا يمكن استئناف تشغيل الموسيقى أثناء وجود تسجيل نشط. يرجى إيقاف التسجيل أولاً.").setEphemeral(true).queue();
-                return;
+        if (id.equals("play_toggle")) {
+            SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
+            if (musicManager != null) {
+                com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
+                boolean nowPaused = !player.isPaused();
+                player.setPaused(nowPaused);
+                
+                ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+                if (info != null && player.getPlayingTrack() != null) {
+                    long currentMs = player.getPlayingTrack().getPosition();
+                    long totalMs = player.getPlayingTrack().getDuration();
+                    Container container = buildPlaybackEmbed(info.title, currentMs, totalMs, nowPaused);
+                    event.editMessage(new MessageEditBuilder()
+                            .setComponents(container)
+                            .useComponentsV2(true)
+                            .build()).queue();
+                } else {
+                    event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                }
             }
-            youtubeAudioService.resume(guild);
-            ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
-            String title = (info != null) ? info.title : "مقطع غير معروف";
-            String uri = (info != null) ? info.uri : "#";
-            String requester = (info != null) ? info.requesterMention : "غير معروف";
 
-            String body = "🎶 **المشغل الصوتي النشط**\n\n" +
-                          "📌 **العنوان:** " + title + "\n" +
-                          "👤 **طلب بواسطة:** " + requester + "\n" +
-                          "🔗 **الرابط المباشر:** [اضغط هنا للمشاهدة](" + uri + ")";
+        } else if (id.equals("play_rewind")) {
+            SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
+            if (musicManager != null) {
+                com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
+                com.sedmelluq.discord.lavaplayer.track.AudioTrack track = player.getPlayingTrack();
+                if (track != null) {
+                    if (track.isSeekable()) {
+                        long currentPos = track.getPosition();
+                        long newPos = Math.max(0, currentPos - 10000);
+                        track.setPosition(newPos);
+                        
+                        ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+                        long totalMs = track.getDuration();
+                        Container container = buildPlaybackEmbed(info != null ? info.title : track.getInfo().title, newPos, totalMs, player.isPaused());
+                        event.editMessage(new MessageEditBuilder()
+                                .setComponents(container)
+                                .useComponentsV2(true)
+                                .build()).queue();
+                    } else {
+                        event.reply("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
+                    }
+                } else {
+                    event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                }
+            }
 
-            ActionRow row = ActionRow.of(
-                Button.danger("play_stop", "إيقاف مؤقت ⏸️"),
-                Button.primary("play_change", "تغيير المقطع 🔄"),
-                Button.secondary("play_leave", "مغادرة الروم 🚪")
-            );
-
-            Container container = EmbedUtil.containerBranded("MUSIC", "المشغل الصوتي", body, EmbedUtil.BANNER_MAIN, row);
-            event.editMessage(new MessageEditBuilder()
-                    .setComponents(container)
-                    .useComponentsV2(true)
-                    .build()).queue();
+        } else if (id.equals("play_forward")) {
+            SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guild);
+            if (musicManager != null) {
+                com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
+                com.sedmelluq.discord.lavaplayer.track.AudioTrack track = player.getPlayingTrack();
+                if (track != null) {
+                    if (track.isSeekable()) {
+                        long currentPos = track.getPosition();
+                        long newPos = Math.min(track.getDuration(), currentPos + 10000);
+                        track.setPosition(newPos);
+                        
+                        ActiveTrackInfo info = activeTracks.get(guild.getIdLong());
+                        long totalMs = track.getDuration();
+                        Container container = buildPlaybackEmbed(info != null ? info.title : track.getInfo().title, newPos, totalMs, player.isPaused());
+                        event.editMessage(new MessageEditBuilder()
+                                .setComponents(container)
+                                .useComponentsV2(true)
+                                .build()).queue();
+                    } else {
+                        event.reply("⚠️ هذا المقطع لا يدعم التقديم والتأخير.").setEphemeral(true).queue();
+                    }
+                } else {
+                    event.reply("⚠️ لا يوجد مقطع قيد التشغيل حالياً.").setEphemeral(true).queue();
+                }
+            }
 
         } else if (id.equals("play_leave")) {
-            youtubeAudioService.stop(guild);
-            activeTracks.remove(guild.getIdLong());
-            Container stopContainer = EmbedUtil.containerBranded("MUSIC", "إنهاء الجلسة", "🚪 تم إنهاء الجلسة ومغادرة الروم الصوتي بنجاح. شكراً لاستماعكم!", EmbedUtil.BANNER_MAIN);
+            cancelActiveTrackUpdate(guild.getIdLong());
+            soundCloudAudioService.stop(guild);
+            Container stopContainer = EmbedUtil.containerBranded("", "إنهاء الجلسة", "🚪 تم إنهاء الجلسة ومغادرة الروم الصوتي بنجاح. شكراً لاستماعكم!", EmbedUtil.BANNER_MAIN);
             event.editMessage(new MessageEditBuilder()
                     .setComponents(stopContainer)
                     .useComponentsV2(true)
@@ -200,7 +222,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
                     .build();
 
             Modal modal = Modal.create("modal_play_change", "تغيير مقطع التشغيل")
-                    .addComponents(Label.of("رابط يوتيوب الجديد", linkInput))
+                    .addComponents(Label.of("رابط SoundCloud الجديد أو اسم المقطع", linkInput))
                     .build();
             event.replyModal(modal).queue();
         }
@@ -224,7 +246,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             String newLink = event.getValue("play_link").getAsString();
 
             if (newLink.contains("youtube.com") || newLink.contains("youtu.be")) {
-                event.reply("⚠️ عذراً، خدمة يوتيوب معطلة مؤقتاً في البوت. يمكنك كتابة اسم المقطع وسنبحث عنه في ساوندكلاود (SoundCloud)، أو يمكنك وضع رابط ساوندكلاود مباشر.").setEphemeral(true).queue();
+                event.reply("⚠️ عذراً، هذا الرابط غير مدعوم. يرجى استخدام روابط SoundCloud أو البحث باسم المقطع.").setEphemeral(true).queue();
                 return;
             }
 
@@ -248,29 +270,23 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             event.deferEdit().queue();
             
             final AudioChannel finalChannel = channel;
-            youtubeAudioService.loadTrack(newLink).thenAccept(track -> {
-                youtubeAudioService.play(guild, finalChannel, track);
-                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention()));
+            final net.dv8tion.jda.api.interactions.InteractionHook hook = event.getHook();
+            
+            soundCloudAudioService.loadTrack(newLink).thenAccept(track -> {
+                soundCloudAudioService.play(guild, finalChannel, track);
+                activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), hook, null));
                 
-                String body = "🎶 **المشغل الصوتي النشط**\n\n" +
-                              "📌 **العنوان:** " + track.getInfo().title + "\n" +
-                              "👤 **طلب بواسطة:** " + event.getUser().getAsMention() + "\n" +
-                              "🔗 **الرابط المباشر:** [اضغط هنا للمشاهدة](" + track.getInfo().uri + ")";
+                long totalMs = track.getDuration();
+                Container container = buildPlaybackEmbed(track.getInfo().title, 0, totalMs, false);
                 
-                ActionRow row = ActionRow.of(
-                    Button.danger("play_stop", "إيقاف مؤقت ⏸️"),
-                    Button.primary("play_change", "تغيير المقطع 🔄"),
-                    Button.secondary("play_leave", "مغادرة الروم 🚪")
-                );
-                
-                Container container = EmbedUtil.containerBranded("MUSIC", "المشغل الصوتي", body, EmbedUtil.BANNER_MAIN, row);
-                
-                event.getHook().editOriginal(new MessageEditBuilder()
+                hook.editOriginal(new MessageEditBuilder()
                         .setComponents(container)
                         .useComponentsV2(true)
-                        .build()).queue();
+                        .build()).queue(success -> {
+                            startEmbedUpdater(hook, guild.getIdLong());
+                        });
             }).exceptionally(ex -> {
-                event.getHook().sendMessage("⚠️ | عذراً، واجهنا صعوبة في تحميل المقطع من يوتيوب. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.").setEphemeral(true).queue();
+                hook.sendMessage("⚠️ | عذراً، واجهنا صعوبة في تحميل المقطع. يرجى التحقق من صحة الرابط أو المحاولة لاحقاً.").setEphemeral(true).queue();
                 return null;
             });
         }
@@ -281,4 +297,126 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         if (member == null) return false;
         return member.getRoles().stream().anyMatch(role -> role.getId().equals("1487152572207861870"));
     }
+
+    // Section: UI Helpers
+    private Container buildPlaybackEmbed(String title, long currentMs, long totalMs, boolean isPaused) {
+        String body = "\n" +
+                      "“" + title + "”\n\n" +
+                      formatTime(currentMs) + "  " + getProgressBar(currentMs, totalMs) + "  " + formatTime(totalMs) + "\n";
+        
+        String toggleLabel = isPaused ? "▶" : "❚❚";
+        
+        ActionRow row = ActionRow.of(
+            Button.secondary("play_rewind", "◁"),
+            Button.secondary("play_toggle", toggleLabel),
+            Button.secondary("play_forward", "▷"),
+            Button.primary("play_change", "🔄"),
+            Button.danger("play_leave", "🚪")
+        );
+        
+        return EmbedUtil.containerBranded("", "𓆩 𝗡𝗼𝘄 𝗣𝗹𝗮𝘆𝗶𝗻𝗴 𓆪", body, EmbedUtil.BANNER_MAIN, row);
+    }
+
+    private static String formatTime(long ms) {
+        if (ms == Long.MAX_VALUE || ms < 0) {
+            return "00:00";
+        }
+        long totalSecs = ms / 1000;
+        long hours = totalSecs / 3600;
+        long minutes = (totalSecs % 3600) / 60;
+        long seconds = totalSecs % 60;
+        if (hours > 0) {
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        } else {
+            return String.format("%02d:%02d", minutes, seconds);
+        }
+    }
+
+    private static String getProgressBar(long currentMs, long totalMs) {
+        int totalBars = 15;
+        if (totalMs <= 0) {
+            return "━━━━━━━●──────";
+        }
+        float percentage = (float) currentMs / totalMs;
+        int filledBars = Math.round(percentage * totalBars);
+        if (filledBars < 0) filledBars = 0;
+        if (filledBars > totalBars) filledBars = totalBars;
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < totalBars; i++) {
+            if (i == filledBars) {
+                sb.append("●");
+            } else if (i < filledBars) {
+                sb.append("━");
+            } else {
+                sb.append("─");
+            }
+        }
+        if (!sb.toString().contains("●")) {
+            if (filledBars >= totalBars) {
+                sb.setCharAt(totalBars - 1, '●');
+            } else {
+                sb.setCharAt(0, '●');
+            }
+        }
+        return sb.toString();
+    }
+
+    private void startEmbedUpdater(net.dv8tion.jda.api.interactions.InteractionHook hook, long guildId) {
+        cancelActiveTrackUpdate(guildId);
+        
+        java.util.concurrent.ScheduledFuture<?> task = embedUpdaterExecutor.scheduleAtFixedRate(() -> {
+            try {
+                ActiveTrackInfo info = activeTracks.get(guildId);
+                if (info == null) {
+                    cancelActiveTrackUpdate(guildId);
+                    return;
+                }
+                
+                SoundCloudAudioService.GuildMusicManager musicManager = soundCloudAudioService.getMusicManager(guildId);
+                if (musicManager == null) {
+                    cancelActiveTrackUpdate(guildId);
+                    return;
+                }
+                
+                com.sedmelluq.discord.lavaplayer.player.AudioPlayer player = musicManager.getPlayer();
+                com.sedmelluq.discord.lavaplayer.track.AudioTrack track = player.getPlayingTrack();
+                if (track == null) {
+                    cancelActiveTrackUpdate(guildId);
+                    return;
+                }
+                
+                if (player.isPaused()) {
+                    return;
+                }
+                
+                long currentMs = track.getPosition();
+                long totalMs = track.getDuration();
+                
+                Container container = buildPlaybackEmbed(info.title, currentMs, totalMs, false);
+                
+                hook.editOriginal(new MessageEditBuilder()
+                        .setComponents(container)
+                        .useComponentsV2(true)
+                        .build()).queue(null, ex -> {
+                            cancelActiveTrackUpdate(guildId);
+                        });
+            } catch (Exception e) {
+                // Ignore background errors
+            }
+        }, 3, 3, java.util.concurrent.TimeUnit.SECONDS);
+        
+        ActiveTrackInfo currentInfo = activeTracks.get(guildId);
+        if (currentInfo != null) {
+            activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, hook, task));
+        }
+    }
+
+    private void cancelActiveTrackUpdate(long guildId) {
+        ActiveTrackInfo oldInfo = activeTracks.remove(guildId);
+        if (oldInfo != null && oldInfo.updateTask != null) {
+            oldInfo.updateTask.cancel(true);
+        }
+    }
 }
+

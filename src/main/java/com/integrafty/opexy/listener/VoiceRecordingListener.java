@@ -13,7 +13,7 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.jetbrains.annotations.NotNull;
-import com.integrafty.opexy.service.YouTubeAudioService;
+import com.integrafty.opexy.service.SoundCloudAudioService;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -34,7 +34,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
     private static final String LOG_CHANNEL_ID = "1501263192943235092";
     
     private final net.dv8tion.jda.api.JDA jda;
-    private final YouTubeAudioService youtubeAudioService;
+    private final SoundCloudAudioService soundCloudAudioService;
 
     @Override
     public String getName() {
@@ -131,6 +131,8 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 
                 if (humanCount <= 0) {
                     log.info("[VOICE] Last human left channel {}. Stopping and sending recording.", leftChannel.getName());
+                    java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guild.getIdLong());
+                    if (task != null) task.cancel(true);
                     stopAndSendRecording(guild, connectedChannel);
                 }
             }
@@ -209,6 +211,8 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         if (event.getMember().equals(guild.getSelfMember())) {
             if (leftChannel != null && joinedChannel == null) {
                 if (recorders.containsKey(guild.getIdLong())) {
+                    java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guild.getIdLong());
+                    if (task != null) task.cancel(true);
                     stopAndSendRecording(guild, leftChannel);
                 }
             }
@@ -280,39 +284,25 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         if (id.equals("rec_stop_confirm")) {
             Guild guild = event.getGuild();
             long guildId = guild.getIdLong();
-            AudioRecorder recorder = recorders.get(guildId);
-            if (recorder != null) {
-                // Cancel split task
-                java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guildId);
-                if (task != null) task.cancel(false);
+            
+            java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guildId);
+            if (task != null) task.cancel(true);
 
-                stopAndSendRecording(guild, guild.getAudioManager().getConnectedChannel());
-                
-                String name = sessionNames.remove(guildId);
-                partCounters.remove(guildId);
+            stopAndSendRecording(guild, guild.getAudioManager().getConnectedChannel());
+            
+            String name = sessionNames.remove(guildId);
+            partCounters.remove(guildId);
 
-                net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded(
-                    "PROTOCOL",
-                    "Recording Finished",
-                    "⏹️ Session **" + (name != null ? name : "Recording") + "** has been **STOPPED & SAVED**.",
-                    EmbedUtil.BANNER_MAIN
-                );
-                event.editMessage(new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
-                        .setComponents(container)
-                        .useComponentsV2(true)
-                        .build()).queue();
-            } else {
-                net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded(
-                    "ERROR",
-                    "Recording Error",
-                    "❌ Bot is not currently recording in a voice channel.",
-                    EmbedUtil.BANNER_MAIN
-                );
-                event.editMessage(new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
-                        .setComponents(container)
-                        .useComponentsV2(true)
-                        .build()).queue();
-            }
+            net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded(
+                "PROTOCOL",
+                "Recording Finished",
+                "⏹️ Session **" + (name != null ? name : "Recording") + "** has been **STOPPED & SAVED**.",
+                EmbedUtil.BANNER_MAIN
+            );
+            event.editMessage(new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
+                    .setComponents(container)
+                    .useComponentsV2(true)
+                    .build()).queue();
             return;
         }
     }
@@ -328,7 +318,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
             sessionNames.put(guildId, name);
             partCounters.put(guildId, 1);
 
-            youtubeAudioService.stopWithoutDisconnect(guild);
+            soundCloudAudioService.stopWithoutDisconnect(guild);
             com.integrafty.opexy.command.PlayCommand.activeTracks.remove(guildId);
 
             AudioRecorder recorder = recorders.get(guildId);
@@ -410,11 +400,13 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         AudioManager audioManager = guild.getAudioManager();
         AudioRecorder recorder = recorders.remove(guildId);
 
-        java.util.concurrent.ScheduledFuture<?> task = splitTasks.remove(guildId);
-
         if (recorder != null) {
             recorder.stop();
         }
+
+        // Always clear JDA audio handlers when stopping a recording to release the channel and stop SilenceSendHandler
+        audioManager.setReceivingHandler(null);
+        audioManager.setSendingHandler(null);
 
         AudioChannel lastChannel = audioManager.getConnectedChannel();
         if (lastChannel == null) lastChannel = fallbackChannel;
@@ -425,10 +417,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                     .count();
             if (humanCount <= 0) {
                 log.info("[VOICE] Channel is empty or only bots left. Closing connection for guild: {}", guild.getName());
-                audioManager.setReceivingHandler(null);
-                audioManager.setSendingHandler(null);
                 audioManager.closeAudioConnection();
-                if (task != null) task.cancel(false);
                 sessionNames.remove(guildId);
                 partCounters.remove(guildId);
             }
