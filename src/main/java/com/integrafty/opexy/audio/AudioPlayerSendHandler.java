@@ -26,9 +26,10 @@ public class AudioPlayerSendHandler implements AudioSendHandler {
 
     @Override
     public ByteBuffer provide20MsAudio() {
+        byte[] data = new byte[frame.getDataLength()];
         buffer.position(0);
-        buffer.limit(frame.getDataLength());
-        return buffer;
+        buffer.get(data);
+        return ByteBuffer.wrap(data);
     }
 
     @Override
@@ -36,3 +37,4 @@ public class AudioPlayerSendHandler implements AudioSendHandler {
         return true;
     }
 }
+
