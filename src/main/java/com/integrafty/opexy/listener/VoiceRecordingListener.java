@@ -347,6 +347,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
             partCounters.put(guildId, 1);
 
             soundCloudAudioService.stopWithoutDisconnect(guild);
+            com.integrafty.opexy.command.PlayCommand.cancelActiveTrackUpdate(guildId);
             com.integrafty.opexy.command.PlayCommand.activeTracks.remove(guildId);
 
             AudioRecorder recorder = recorders.get(guildId);

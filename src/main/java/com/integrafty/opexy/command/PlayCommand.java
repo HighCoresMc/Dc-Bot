@@ -118,6 +118,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
 
         soundCloudAudioService.loadTrack(link).thenAccept(track -> {
             soundCloudAudioService.play(guild, channel, track);
+            cancelActiveTrackUpdate(guild.getIdLong());
             activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), event.getChannel().getIdLong(), 0L, null, fixed));
             
             long totalMs = track.getDuration();
@@ -257,6 +258,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         } else if (id.equals("play_leave")) {
             event.deferEdit().queue();
             cancelActiveTrackUpdate(guild.getIdLong());
+            activeTracks.remove(guild.getIdLong());
             soundCloudAudioService.stop(guild);
             Container stopContainer = EmbedUtil.containerBranded("", "إنهاء الجلسة", "🚪 تم إنهاء الجلسة ومغادرة الروم الصوتي بنجاح. شكراً لاستماعكم!", EmbedUtil.BANNER_MAIN);
             event.getHook().editOriginal(new MessageEditBuilder()
@@ -325,6 +327,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
             
             soundCloudAudioService.loadTrack(newLink).thenAccept(track -> {
                 soundCloudAudioService.play(guild, finalChannel, track);
+                cancelActiveTrackUpdate(guild.getIdLong());
                 activeTracks.put(guild.getIdLong(), new ActiveTrackInfo(track.getInfo().title, track.getInfo().uri, event.getUser().getAsMention(), event.getChannel().getIdLong(), 0L, null, currentFixed));
                 
                 long totalMs = track.getDuration();
@@ -538,7 +541,7 @@ public class PlayCommand extends ListenerAdapter implements SlashCommand {
         activeTracks.put(guildId, new ActiveTrackInfo(currentInfo.title, currentInfo.uri, currentInfo.requesterMention, channelId, messageId, task, currentInfo.fixed));
     }
 
-    private void cancelActiveTrackUpdate(long guildId) {
+    public static void cancelActiveTrackUpdate(long guildId) {
         ActiveTrackInfo oldInfo = activeTracks.get(guildId);
         if (oldInfo != null && oldInfo.updateTask != null) {
             oldInfo.updateTask.cancel(true);
