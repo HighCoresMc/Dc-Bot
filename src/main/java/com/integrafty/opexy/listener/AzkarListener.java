@@ -117,7 +117,7 @@ public class AzkarListener extends ListenerAdapter {
     private void sendRandomZikr(MessageReceivedEvent event) {
         String randomZikr = azkarService.getRandomHourlyZikr();
         List<ContainerChildComponent> layout = new ArrayList<>();
-        layout.add(TextDisplay.of("## " + randomZikr));
+        layout.add(TextDisplay.of("### " + randomZikr));
         Container container = Container.of(layout);
         event.getChannel().sendMessageComponents(container).useComponentsV2(true).queue();
     }
@@ -151,12 +151,12 @@ public class AzkarListener extends ListenerAdapter {
     private Container buildPageContainer(String type, int index, int total, ZikrItem item) {
         List<ContainerChildComponent> layout = new ArrayList<>();
         String title = type.equals("morning") ? "🌅 أذكار الصباح" : "🌇 أذكار المساء";
-        
-        String text = "### " + title + " (" + (index + 1) + " / " + total + ")\n\n" + item.getText();
+        layout.add(TextDisplay.of("### " + title + " (" + (index + 1) + " / " + total + ")\n\n" + item.getText()));
+
         if (item.getBenefit() != null && !item.getBenefit().isEmpty()) {
-            text += "\n\n---\n\n" + item.getBenefit();
+            layout.add(Separator.createDivider(Spacing.SMALL));
+            layout.add(TextDisplay.of(item.getBenefit()));
         }
-        layout.add(TextDisplay.of(text));
 
         List<Button> buttons = new ArrayList<>();
         buttons.add(Button.secondary("azkar_nav_" + type + "_prev_" + index, "السابق").withDisabled(index == 0));
@@ -219,11 +219,11 @@ public class AzkarListener extends ListenerAdapter {
 
     private void replyZikrEmbed(MessageReceivedEvent event, String zikr, String benefit) {
         List<ContainerChildComponent> layout = new ArrayList<>();
-        String text = "## " + zikr;
+        layout.add(TextDisplay.of("### " + zikr));
         if (benefit != null && !benefit.isEmpty()) {
-            text += "\n\n---\n\n" + benefit;
+            layout.add(Separator.createDivider(Spacing.SMALL));
+            layout.add(TextDisplay.of(benefit));
         }
-        layout.add(TextDisplay.of(text));
         Container container = Container.of(layout);
         MessageCreateBuilder builder = new MessageCreateBuilder();
         builder.setComponents(container);
