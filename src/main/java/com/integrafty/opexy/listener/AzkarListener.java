@@ -57,8 +57,20 @@ public class AzkarListener extends ListenerAdapter {
                 case "!ح" -> replyZikrEmbed(event, "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ الْعَلِيِّ الْعَظِيمِ", "كَنْزٌ مِنْ كُنُوزِ الْجَنَّةِ.");
                 case "!ت" -> replyZikrEmbed(event, "لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", "كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ، وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ.");
                 case "!ع" -> replyZikrEmbed(event, "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ", "مَنْ صَلَّى عَلَيَّ صَلَاةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا.");
-                case "!الصباح" -> replyMorningPanel(event);
-                case "!المساء" -> replyEveningPanel(event);
+                case "!الصباح" -> {
+                    if (hasNoPermission(event.getMember())) {
+                        replyAccessDenied(event);
+                    } else {
+                        replyMorningPanel(event);
+                    }
+                }
+                case "!المساء" -> {
+                    if (hasNoPermission(event.getMember())) {
+                        replyAccessDenied(event);
+                    } else {
+                        replyEveningPanel(event);
+                    }
+                }
             }
         }
 
@@ -257,6 +269,18 @@ public class AzkarListener extends ListenerAdapter {
         Container container = Container.of(layout);
         MessageCreateBuilder builder = new MessageCreateBuilder();
         builder.setComponents(container);
+        builder.useComponentsV2(true);
+        event.getMessage().reply(builder.build()).useComponentsV2(true).queue();
+    }
+
+    private boolean hasNoPermission(net.dv8tion.jda.api.entities.Member member) {
+        if (member == null) return true;
+        return member.getRoles().stream().noneMatch(role -> role.getId().equals("1487195816220430406"));
+    }
+
+    private void replyAccessDenied(MessageReceivedEvent event) {
+        MessageCreateBuilder builder = new MessageCreateBuilder();
+        builder.setComponents(com.integrafty.opexy.utils.EmbedUtil.accessDenied());
         builder.useComponentsV2(true);
         event.getMessage().reply(builder.build()).useComponentsV2(true).queue();
     }
