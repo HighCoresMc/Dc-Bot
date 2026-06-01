@@ -64,7 +64,7 @@ public class AzkarScheduler {
             }
 
             List<ContainerChildComponent> layout = new ArrayList<>();
-            layout.add(TextDisplay.of("### 🌅 أذكار الصباح\n\n**﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ﴾**\n\nحان الآن موعد أذكار الصباح. اضغط على الزر أدناه لبدء قراءة الأذكار تفاعلياً وكسب الأجر الجزيـل."));
+            layout.add(TextDisplay.of("### 🌅 أذكار الصباح\n\n﴿**وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ**﴾\n\nحان الآن موعد أذكار الصباح. اضغط على الزر أدناه لبدء قراءة الأذكار تفاعلياً وكسب الأجر الجزيـل."));
             layout.add(Separator.createDivider(Spacing.SMALL));
             layout.add(ActionRow.of(Button.success("azkar_start_morning", "قراءة أذكار الصباح")));
             Container container = Container.of(layout);
@@ -87,7 +87,7 @@ public class AzkarScheduler {
             }
 
             List<ContainerChildComponent> layout = new ArrayList<>();
-            layout.add(TextDisplay.of("### 🌇 أذكار المساء\n\n**﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ غُرُوبِ الشَّمْسِ﴾**\n\nحان الآن موعد أذكار المساء. اضغط على الزر أدناه لبدء قراءة الأذكار تفاعلياً وكسب الأجر الجزيـل."));
+            layout.add(TextDisplay.of("### 🌇 أذكار المساء\n\n﴿**وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ غُرُوبِ الشَّمْسِ**﴾\n\nحان الآن موعد أذكار المساء. اضغط على الزر أدناه لبدء قراءة الأذكار تفاعلياً وكسب الأجر الجزيـل."));
             layout.add(Separator.createDivider(Spacing.SMALL));
             layout.add(ActionRow.of(Button.success("azkar_start_evening", "قراءة أذكار المساء")));
             Container container = Container.of(layout);
