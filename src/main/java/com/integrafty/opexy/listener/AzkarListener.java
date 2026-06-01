@@ -57,6 +57,8 @@ public class AzkarListener extends ListenerAdapter {
                 case "!ح" -> replyZikrEmbed(event, "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ الْعَلِيِّ الْعَظِيمِ", "كَنْزٌ مِنْ كُنُوزِ الْجَنَّةِ.");
                 case "!ت" -> replyZikrEmbed(event, "لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", "كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ، وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ.");
                 case "!ع" -> replyZikrEmbed(event, "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ", "مَنْ صَلَّى عَلَيَّ صَلَاةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا.");
+                case "!الصباح" -> replyMorningPanel(event);
+                case "!المساء" -> replyEveningPanel(event);
             }
         }
 
@@ -224,6 +226,30 @@ public class AzkarListener extends ListenerAdapter {
             layout.add(Separator.createDivider(Spacing.SMALL));
             layout.add(TextDisplay.of(benefit));
         }
+        Container container = Container.of(layout);
+        MessageCreateBuilder builder = new MessageCreateBuilder();
+        builder.setComponents(container);
+        builder.useComponentsV2(true);
+        event.getMessage().reply(builder.build()).useComponentsV2(true).queue();
+    }
+
+    private void replyMorningPanel(MessageReceivedEvent event) {
+        List<ContainerChildComponent> layout = new ArrayList<>();
+        layout.add(TextDisplay.of("### 🌅 أذكار الصباح\n\n**﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ﴾**\n\nاضغط على الزر أدناه لبدء قراءة أذكار الصباح تفاعلياً وكسب الأجر الجزيـل."));
+        layout.add(Separator.createDivider(Spacing.SMALL));
+        layout.add(ActionRow.of(Button.success("azkar_start_morning", "قراءة أذكار الصباح")));
+        Container container = Container.of(layout);
+        MessageCreateBuilder builder = new MessageCreateBuilder();
+        builder.setComponents(container);
+        builder.useComponentsV2(true);
+        event.getMessage().reply(builder.build()).useComponentsV2(true).queue();
+    }
+
+    private void replyEveningPanel(MessageReceivedEvent event) {
+        List<ContainerChildComponent> layout = new ArrayList<>();
+        layout.add(TextDisplay.of("### 🌇 أذكار المساء\n\n**﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ غُرُوبِ الشَّمْسِ﴾**\n\nاضغط على الزر أدناه لبدء قراءة أذكار المساء تفاعلياً وكسب الأجر الجزيـل."));
+        layout.add(Separator.createDivider(Spacing.SMALL));
+        layout.add(ActionRow.of(Button.success("azkar_start_evening", "قراءة أذكار المساء")));
         Container container = Container.of(layout);
         MessageCreateBuilder builder = new MessageCreateBuilder();
         builder.setComponents(container);
