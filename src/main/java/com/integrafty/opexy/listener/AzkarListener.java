@@ -153,17 +153,16 @@ public class AzkarListener extends ListenerAdapter {
         ZikrItem item = list.get(index);
         Container container = buildPageContainer(type, index, list.size(), item);
 
-        boolean isStart = event.getComponentId().startsWith("azkar_start_");
-        if (isStart) {
-            event.reply(new MessageCreateBuilder().setComponents(container).useComponentsV2(true).build())
-                    .setEphemeral(true)
-                    .useComponentsV2(true)
-                    .queue();
-        } else {
+        if (event.getInteraction().isAcknowledged()) {
             MessageEditBuilder editBuilder = new MessageEditBuilder();
             editBuilder.setComponents(container);
             editBuilder.useComponentsV2(true);
             event.editMessage(editBuilder.build()).useComponentsV2(true).queue();
+        } else {
+            event.reply(new MessageCreateBuilder().setComponents(container).useComponentsV2(true).build())
+                    .setEphemeral(true)
+                    .useComponentsV2(true)
+                    .queue();
         }
     }
 
@@ -223,17 +222,16 @@ public class AzkarListener extends ListenerAdapter {
         layout.add(row);
         Container container = Container.of(layout);
 
-        boolean isInit = event.getComponentId().startsWith("azkar_init_rep_");
-        if (isInit) {
-            event.reply(new MessageCreateBuilder().setComponents(container).useComponentsV2(true).build())
-                    .setEphemeral(true)
-                    .useComponentsV2(true)
-                    .queue();
-        } else {
+        if (event.getInteraction().isAcknowledged()) {
             MessageEditBuilder editBuilder = new MessageEditBuilder();
             editBuilder.setComponents(container);
             editBuilder.useComponentsV2(true);
             event.editMessage(editBuilder.build()).useComponentsV2(true).queue();
+        } else {
+            event.reply(new MessageCreateBuilder().setComponents(container).useComponentsV2(true).build())
+                    .setEphemeral(true)
+                    .useComponentsV2(true)
+                    .queue();
         }
     }
 
@@ -253,7 +251,7 @@ public class AzkarListener extends ListenerAdapter {
 
     private void replyMorningPanel(MessageReceivedEvent event) {
         List<ContainerChildComponent> layout = new ArrayList<>();
-        layout.add(TextDisplay.of("### 🌅 أذكار الصباح\n\n\"**وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ**\"\n\nاضغط على الزر أدناه لبدء قراءة أذكار الصباح تفاعلياً وكسب الأجر الجزيـل."));
+        layout.add(TextDisplay.of("### 🌅 أذكار الصباح\n\n﴿**وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ**﴾\n\nاضغط على الزر أدناه لبدء قراءة أذكار الصباح تفاعلياً وكسب الأجر الجزيـل."));
         layout.add(Separator.createDivider(Spacing.SMALL));
         layout.add(ActionRow.of(Button.success("azkar_start_morning", "قراءة أذكار الصباح")));
         Container container = Container.of(layout);
@@ -265,7 +263,7 @@ public class AzkarListener extends ListenerAdapter {
 
     private void replyEveningPanel(MessageReceivedEvent event) {
         List<ContainerChildComponent> layout = new ArrayList<>();
-        layout.add(TextDisplay.of("### 🌇 أذكار المساء\n\n\"**وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ غُرُوبِ الشَّمْسِ**\"\n\nاضغط على الزر أدناه لبدء قراءة أذكار المساء تفاعلياً وكسب الأجر الجزيـل."));
+        layout.add(TextDisplay.of("### 🌇 أذكار المساء\n\n\"**وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ وَقَبْلَ الْغُرُوبِ**\"\n\nاضغط على الزر أدناه لبدء قراءة أذكار المساء تفاعلياً وكسب الأجر الجزيـل."));
         layout.add(Separator.createDivider(Spacing.SMALL));
         layout.add(ActionRow.of(Button.success("azkar_start_evening", "قراءة أذكار المساء")));
         Container container = Container.of(layout);
