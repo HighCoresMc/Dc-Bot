@@ -48,7 +48,7 @@ public class TicketListener extends ListenerAdapter {
     private static final java.util.List<String> PRIVILEGED_ROLES = java.util.Arrays.asList(
         "1190305586710073427", // owner-id
         "1350531070222794804", // owner-id-2
-        "1337490826326048922", // op-staff
+        "1487152572207861870", // op-staff
         "1489671552730402909", // secret-team
         "1487152572207861870", // opex-founder
         "1487152882074521771", // opex-manager

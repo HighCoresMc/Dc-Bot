@@ -38,7 +38,7 @@ public class ModerationCommands implements MultiSlashCommand {
     private static final String ROLE_WARN_1 = "1487196789399490711";
     private static final String ROLE_WARN_2 = "1487196790892794067";
     private static final String ROLE_WARN_3 = "1487196791144190143";
-    private static final String ROLE_ABOVE_LAW = "1337490826326048922";
+    private static final String ROLE_ABOVE_LAW = "1487152572207861870";
 
     @Override
     public List<SlashCommandData> getCommandDataList() {

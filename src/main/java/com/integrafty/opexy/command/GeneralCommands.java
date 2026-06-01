@@ -107,7 +107,7 @@ public class GeneralCommands implements MultiSlashCommand {
 
     private void handleKill(SlashCommandInteractionEvent event) {
         boolean hasAccess = event.getMember() != null && event.getMember().getRoles().stream()
-                .anyMatch(role -> role.getId().equals("1337490826326048922"));
+                .anyMatch(role -> role.getId().equals("1487152572207861870"));
 
         if (!hasAccess) {
             replyEphemeral(event, EmbedUtil.error("ACCESS DENIED", "هذا الأمر مخصص لرتبة الإدارة العليا فقط."));
@@ -136,7 +136,7 @@ public class GeneralCommands implements MultiSlashCommand {
 
     private void handleGive(SlashCommandInteractionEvent event) {
         boolean hasAccess = event.getMember() != null && event.getMember().getRoles().stream()
-                .anyMatch(role -> role.getId().equals("1337490826326048922"));
+                .anyMatch(role -> role.getId().equals("1487152572207861870"));
 
         if (!hasAccess) {
             replyEphemeral(event, EmbedUtil.error("ACCESS DENIED", "هذا الأمر مخصص لرتبة الإدارة العليا فقط."));
@@ -154,7 +154,7 @@ public class GeneralCommands implements MultiSlashCommand {
 
     private void handleTake(SlashCommandInteractionEvent event) {
         boolean hasAccess = event.getMember() != null && event.getMember().getRoles().stream()
-                .anyMatch(role -> role.getId().equals("1337490826326048922"));
+                .anyMatch(role -> role.getId().equals("1487152572207861870"));
 
         if (!hasAccess) {
             replyEphemeral(event, EmbedUtil.error("ACCESS DENIED", "هذا الأمر مخصص لرتبة الإدارة العليا فقط."));
