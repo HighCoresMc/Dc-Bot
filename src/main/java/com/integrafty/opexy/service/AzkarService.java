@@ -25,6 +25,7 @@ public class AzkarService {
     private List<ZikrItem> morningAzkar = new ArrayList<>();
     private List<ZikrItem> eveningAzkar = new ArrayList<>();
     private List<String> hourlyAzkar = new ArrayList<>();
+    private List<ZikrItem> hourlyAzkarItems = new ArrayList<>();
 
     @PostConstruct
     public void init() {
@@ -38,8 +39,17 @@ public class AzkarService {
                 this.morningAzkar = data.getMorning() != null ? data.getMorning() : new ArrayList<>();
                 this.eveningAzkar = data.getEvening() != null ? data.getEvening() : new ArrayList<>();
                 this.hourlyAzkar = data.getHourly() != null ? data.getHourly() : new ArrayList<>();
-                log.info("Successfully loaded Azkar: {} morning, {} evening, {} hourly",
-                        morningAzkar.size(), eveningAzkar.size(), hourlyAzkar.size());
+                
+                this.hourlyAzkarItems = new ArrayList<>();
+                for (String text : this.hourlyAzkar) {
+                    ZikrItem item = new ZikrItem();
+                    item.setText(text);
+                    item.setBenefit(getBenefitForText(text));
+                    item.setCount(1);
+                    this.hourlyAzkarItems.add(item);
+                }
+                log.info("Successfully loaded Azkar: {} morning, {} evening, {} hourly items",
+                        morningAzkar.size(), eveningAzkar.size(), hourlyAzkarItems.size());
             }
         } catch (Exception e) {
             log.error("Failed to parse azkar.json", e);
@@ -54,11 +64,48 @@ public class AzkarService {
         return Collections.unmodifiableList(eveningAzkar);
     }
 
-    public String getRandomHourlyZikr() {
-        if (hourlyAzkar.isEmpty()) {
-            return "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ.";
+    public ZikrItem getRandomHourlyZikrItem() {
+        if (hourlyAzkarItems.isEmpty()) {
+            ZikrItem fallback = new ZikrItem();
+            fallback.setText("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ الْعَظِيمِ.");
+            fallback.setBenefit("كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ.");
+            fallback.setCount(1);
+            return fallback;
         }
-        return hourlyAzkar.get(random.nextInt(hourlyAzkar.size()));
+        return hourlyAzkarItems.get(random.nextInt(hourlyAzkarItems.size()));
+    }
+
+    private String getBenefitForText(String text) {
+        if (text == null) return "";
+        String clean = text.replace(".", "").trim();
+        if (clean.contains("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ") && clean.contains("سُبْحَانَ اللَّهِ الْعَظِيمِ")) {
+            return "كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ.";
+        }
+        if (clean.equals("سُبْحَانَ اللَّهِ وَبِحَمْدِهِ") || clean.equals("سُبْحَانَ اللهِ وَبِحَمْدِهِ")) {
+            return "حُطَّتْ خَطَايَاهُ وَإِنْ كَانَتْ مِثْلَ زَبَدِ الْبَحْرِ.";
+        }
+        if (clean.equals("سُبْحَانَ اللَّهِ الْعَظِيمِ") || clean.equals("سُبْحَانَ اللهِ الْعَظِيمِ")) {
+            return "كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ.";
+        }
+        if (clean.contains("لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ") || clean.contains("لا حَوْلَ وَلا قُوَّةَ إِلاَّ بِاللَّهِ") || clean.contains("لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ")) {
+            return "كَنْزٌ مِنْ كُنُوزِ الْجَنَّةِ.";
+        }
+        if (clean.contains("أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ") || clean.contains("أَسْتَغْفِرُ اللهَ الْعَظِيمَ") || clean.contains("أسْتَغْفِرُ اللهَ العَظِيمَ")) {
+            return "مَنْ لَزِمَ الِاسْتِغْفَارَ جَعَلَ اللَّهُ لَهُ مِنْ كُلِّ ضِيقٍ مَخْرَجًا، وَمِنْ كُلِّ هَمٍّ فَرَجًا.";
+        }
+        if (clean.contains("لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ") || clean.contains("لَا إلَه إلّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ") || clean.contains("لا إلهَ إلاّ اللّهُ وَحدَهُ لا شَريكَ لهُ")) {
+            return "كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ، وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ.";
+        }
+        if (clean.contains("اللَّهُمَّ صَلِّ وَسَلِّمْ") || clean.contains("اللَّهُمَّ صَلِّ وَسَلِّمْ") || clean.contains("اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ")) {
+            return "مَنْ صَلَّى عَلَيَّ صَلَاةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا.";
+        }
+        if (clean.contains("سُبْحَانَ اللَّهِ") && clean.contains("الْحَمْدُ لِلَّهِ") && clean.contains("لَا إِلَهَ إِلَّا اللَّهُ")) {
+            return "أَحَبُّ الْكَلَامِ إِلَى اللَّهِ.";
+        }
+        if (clean.contains("لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ") || clean.contains("لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إنِّي كُنْتُ مِنَ الظَّالِمِينَ")) {
+            return "لَمْ يَدْعُ بِهَا رَجُلٌ مُسْلِمٌ فِي شَيْءٍ قَطُّ إِلَّا اسْتَجَابَ اللَّهُ لَهُ.";
+        }
+        return "أكْثِرُوا مِنْ ذِكْرِ اللَّهِ تَعَالَى لِتَنَالُوا الأَجْرَ وَالثَّوَابَ الْعَظِيمَ.";
     }
 
     @Getter

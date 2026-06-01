@@ -117,9 +117,13 @@ public class AzkarListener extends ListenerAdapter {
 
     // Helpers
     private void sendRandomZikr(MessageReceivedEvent event) {
-        String randomZikr = azkarService.getRandomHourlyZikr();
+        ZikrItem item = azkarService.getRandomHourlyZikrItem();
         List<ContainerChildComponent> layout = new ArrayList<>();
-        layout.add(TextDisplay.of("### " + randomZikr));
+        layout.add(TextDisplay.of("### " + item.getText()));
+        if (item.getBenefit() != null && !item.getBenefit().isEmpty()) {
+            layout.add(Separator.createDivider(Spacing.SMALL));
+            layout.add(TextDisplay.of(item.getBenefit()));
+        }
         Container container = Container.of(layout);
         event.getChannel().sendMessageComponents(container).useComponentsV2(true).queue();
     }
