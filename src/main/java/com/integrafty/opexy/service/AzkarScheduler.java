@@ -27,9 +27,9 @@ public class AzkarScheduler {
 
     private static final String AZKAR_CHANNEL_ID = "1511014781081882805";
 
-    // Hourly Task
-    @Scheduled(cron = "0 0 * * * *")
-    public void sendHourlyZikr() {
+    // Periodic Task
+    @Scheduled(cron = "0 */30 * * * *")
+    public void sendPeriodicZikr() {
         try {
             TextChannel channel = jda.getTextChannelById(AZKAR_CHANNEL_ID);
             if (channel == null) {
@@ -43,9 +43,9 @@ public class AzkarScheduler {
             Container container = Container.of(layout);
 
             channel.sendMessageComponents(container).useComponentsV2(true).queue();
-            log.info("Successfully sent hourly zikr.");
+            log.info("Successfully sent periodic zikr.");
         } catch (Exception e) {
-            log.error("Failed to send hourly zikr", e);
+            log.error("Failed to send periodic zikr", e);
         }
     }
 
