@@ -52,11 +52,11 @@ public class AzkarListener extends ListenerAdapter {
         String content = event.getMessage().getContentRaw().trim();
         if (content.startsWith("!")) {
             switch (content) {
-                case "!ص" -> event.getMessage().reply("سُبْحَانَ اللهِ وَبِحَمْدِهِ، سُبْحَانَ اللهِ الْعَظِيمِ").queue();
-                case "!س" -> event.getMessage().reply("أَسْتَغْفِرُ اللهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ").queue();
-                case "!ح" -> event.getMessage().reply("لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ الْعَلِيِّ الْعَظِيمِ").queue();
-                case "!ت" -> event.getMessage().reply("لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ").queue();
-                case "!ع" -> event.getMessage().reply("اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ").queue();
+                case "!ص" -> replyZikrEmbed(event, "📿 فضل التسبيح", "سُبْحَانَ اللهِ وَبِحَمْدِهِ، سُبْحَانَ اللهِ الْعَظِيمِ", "كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ.");
+                case "!س" -> replyZikrEmbed(event, "📿 فضل الاستغفار", "أَسْتَغْفِرُ اللهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ", "مَنْ لَزِمَ الِاسْتِغْفَارَ جَعَلَ اللَّهُ لَهُ مِنْ كُلِّ ضِيقٍ مَخْرَجًا، وَمِنْ كُلِّ هَمٍّ فَرَجًا، وَرَزَقَهُ مِنْ حَيْثُ لَا يَحْتَسِبُ.");
+                case "!ح" -> replyZikrEmbed(event, "📿 فضل الحوقلة", "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ الْعَلِيِّ الْعَظِيمِ", "كَنْزٌ مِنْ كُنُوزِ الْجَنَّةِ.");
+                case "!ت" -> replyZikrEmbed(event, "📿 فضل التوحيد", "لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", "كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ، وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ.");
+                case "!ع" -> replyZikrEmbed(event, "📿 الصلاة على النبي", "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ", "مَنْ صَلَّى عَلَيَّ صَلَاةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا.");
             }
         }
 
@@ -125,7 +125,10 @@ public class AzkarListener extends ListenerAdapter {
     private void showPage(ButtonInteractionEvent event, String type, int index) {
         List<ZikrItem> list = type.equals("morning") ? azkarService.getMorningAzkar() : azkarService.getEveningAzkar();
         if (list.isEmpty() || index < 0 || index >= list.size()) {
-            event.reply("⚠️ حدث خطأ أثناء تحميل الذكر.").setEphemeral(true).queue();
+            event.reply(new MessageCreateBuilder().setComponents(com.integrafty.opexy.utils.EmbedUtil.error("خطأ", "حدث خطأ أثناء تحميل الذكر.")).useComponentsV2(true).build())
+                    .setEphemeral(true)
+                    .useComponentsV2(true)
+                    .queue();
             return;
         }
 
@@ -212,5 +215,19 @@ public class AzkarListener extends ListenerAdapter {
                     .useComponentsV2(true)
                     .queue();
         }
+    }
+
+    private void replyZikrEmbed(MessageReceivedEvent event, String title, String zikr, String benefit) {
+        List<ContainerChildComponent> layout = new ArrayList<>();
+        layout.add(TextDisplay.of("### " + title + "\n\n" + zikr));
+        if (benefit != null && !benefit.isEmpty()) {
+            layout.add(Separator.createDivider(Spacing.SMALL));
+            layout.add(TextDisplay.of(benefit));
+        }
+        Container container = Container.of(layout);
+        MessageCreateBuilder builder = new MessageCreateBuilder();
+        builder.setComponents(container);
+        builder.useComponentsV2(true);
+        event.getMessage().reply(builder.build()).useComponentsV2(true).queue();
     }
 }
