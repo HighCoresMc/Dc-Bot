@@ -91,21 +91,21 @@ public class AzkarListener extends ListenerAdapter {
 
         // Navigation Panel
         if (id.equals("azkar_start_morning")) {
-            showPage(event, "morning", 0);
+            showPage(event, "morning", 0, true);
         } else if (id.equals("azkar_start_evening")) {
-            showPage(event, "evening", 0);
+            showPage(event, "evening", 0, true);
         } else if (id.startsWith("azkar_nav_morning_next_")) {
             int idx = Integer.parseInt(id.substring("azkar_nav_morning_next_".length()));
-            showPage(event, "morning", idx + 1);
+            showPage(event, "morning", idx + 1, false);
         } else if (id.startsWith("azkar_nav_morning_prev_")) {
             int idx = Integer.parseInt(id.substring("azkar_nav_morning_prev_".length()));
-            showPage(event, "morning", idx - 1);
+            showPage(event, "morning", idx - 1, false);
         } else if (id.startsWith("azkar_nav_evening_next_")) {
             int idx = Integer.parseInt(id.substring("azkar_nav_evening_next_".length()));
-            showPage(event, "evening", idx + 1);
+            showPage(event, "evening", idx + 1, false);
         } else if (id.startsWith("azkar_nav_evening_prev_")) {
             int idx = Integer.parseInt(id.substring("azkar_nav_evening_prev_".length()));
-            showPage(event, "evening", idx - 1);
+            showPage(event, "evening", idx - 1, false);
         } else if (id.equals("azkar_close")) {
             closeSession(event);
         }
@@ -113,17 +113,17 @@ public class AzkarListener extends ListenerAdapter {
         // Repetition Counter
         if (id.startsWith("azkar_init_rep_")) {
             int target = Integer.parseInt(id.substring("azkar_init_rep_".length()));
-            showRepetitionCounter(event, 0, target);
+            showRepetitionCounter(event, 0, target, true);
         } else if (id.startsWith("azkar_rep_add_")) {
             String[] parts = id.split("_");
             int current = Integer.parseInt(parts[3]);
             int target = Integer.parseInt(parts[4]);
-            showRepetitionCounter(event, current + 1, target);
+            showRepetitionCounter(event, current + 1, target, false);
         } else if (id.startsWith("azkar_rep_sub_")) {
             String[] parts = id.split("_");
             int current = Integer.parseInt(parts[3]);
             int target = Integer.parseInt(parts[4]);
-            showRepetitionCounter(event, current - 1, target);
+            showRepetitionCounter(event, current - 1, target, false);
         }
     }
 
@@ -140,7 +140,7 @@ public class AzkarListener extends ListenerAdapter {
         event.getChannel().sendMessageComponents(container).useComponentsV2(true).queue();
     }
 
-    private void showPage(ButtonInteractionEvent event, String type, int index) {
+    private void showPage(ButtonInteractionEvent event, String type, int index, boolean isInitial) {
         List<ZikrItem> list = type.equals("morning") ? azkarService.getMorningAzkar() : azkarService.getEveningAzkar();
         if (list.isEmpty() || index < 0 || index >= list.size()) {
             event.reply(new MessageCreateBuilder().setComponents(com.integrafty.opexy.utils.EmbedUtil.error("خطأ", "حدث خطأ أثناء تحميل الذكر.")).useComponentsV2(true).build())
@@ -153,7 +153,7 @@ public class AzkarListener extends ListenerAdapter {
         ZikrItem item = list.get(index);
         Container container = buildPageContainer(type, index, list.size(), item);
 
-        if (event.getInteraction().isAcknowledged()) {
+        if (!isInitial) {
             MessageEditBuilder editBuilder = new MessageEditBuilder();
             editBuilder.setComponents(container);
             editBuilder.useComponentsV2(true);
@@ -203,7 +203,7 @@ public class AzkarListener extends ListenerAdapter {
         event.editMessage(editBuilder.build()).useComponentsV2(true).queue();
     }
 
-    private void showRepetitionCounter(ButtonInteractionEvent event, int current, int target) {
+    private void showRepetitionCounter(ButtonInteractionEvent event, int current, int target, boolean isInitial) {
         int finalCurrent = Math.max(0, Math.min(target, current));
         List<ContainerChildComponent> layout = new ArrayList<>();
 
@@ -222,7 +222,7 @@ public class AzkarListener extends ListenerAdapter {
         layout.add(row);
         Container container = Container.of(layout);
 
-        if (event.getInteraction().isAcknowledged()) {
+        if (!isInitial) {
             MessageEditBuilder editBuilder = new MessageEditBuilder();
             editBuilder.setComponents(container);
             editBuilder.useComponentsV2(true);

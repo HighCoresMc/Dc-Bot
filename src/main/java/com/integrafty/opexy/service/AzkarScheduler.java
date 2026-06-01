@@ -54,7 +54,7 @@ public class AzkarScheduler {
     }
 
     // Morning Task
-    @Scheduled(cron = "0 0 6 * * *")
+    @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Riyadh")
     public void sendMorningPanel() {
         try {
             TextChannel channel = jda.getTextChannelById(AZKAR_CHANNEL_ID);
@@ -77,7 +77,7 @@ public class AzkarScheduler {
     }
 
     // Evening Task
-    @Scheduled(cron = "0 0 17 * * *")
+    @Scheduled(cron = "0 0 17 * * *", zone = "Asia/Riyadh")
     public void sendEveningPanel() {
         try {
             TextChannel channel = jda.getTextChannelById(AZKAR_CHANNEL_ID);
