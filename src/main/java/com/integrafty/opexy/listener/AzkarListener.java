@@ -52,11 +52,11 @@ public class AzkarListener extends ListenerAdapter {
         String content = event.getMessage().getContentRaw().trim();
         if (content.startsWith("!")) {
             switch (content) {
-                case "!ص" -> replyZikrEmbed(event, "📿 فضل التسبيح", "سُبْحَانَ اللهِ وَبِحَمْدِهِ، سُبْحَانَ اللهِ الْعَظِيمِ", "كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ.");
-                case "!س" -> replyZikrEmbed(event, "📿 فضل الاستغفار", "أَسْتَغْفِرُ اللهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ", "مَنْ لَزِمَ الِاسْتِغْفَارَ جَعَلَ اللَّهُ لَهُ مِنْ كُلِّ ضِيقٍ مَخْرَجًا، وَمِنْ كُلِّ هَمٍّ فَرَجًا، وَرَزَقَهُ مِنْ حَيْثُ لَا يَحْتَسِبُ.");
-                case "!ح" -> replyZikrEmbed(event, "📿 فضل الحوقلة", "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ الْعَلِيِّ الْعَظِيمِ", "كَنْزٌ مِنْ كُنُوزِ الْجَنَّةِ.");
-                case "!ت" -> replyZikrEmbed(event, "📿 فضل التوحيد", "لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", "كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ، وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ.");
-                case "!ع" -> replyZikrEmbed(event, "📿 الصلاة على النبي", "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ", "مَنْ صَلَّى عَلَيَّ صَلَاةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا.");
+                case "!ص" -> replyZikrEmbed(event, "سُبْحَانَ اللهِ وَبِحَمْدِهِ، سُبْحَانَ اللهِ الْعَظِيمِ", "كَلِمَتَانِ خَفِيفَتَانِ عَلَى اللِّسَانِ، ثَقِيلَتَانِ فِي الْمِيزَانِ، حَبِيبَتَانِ إِلَى الرَّحْمَنِ.");
+                case "!س" -> replyZikrEmbed(event, "أَسْتَغْفِرُ اللهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ", "مَنْ لَزِمَ الِاسْتِغْفَارَ جَعَلَ اللَّهُ لَهُ مِنْ كُلِّ ضِيقٍ مَخْرَجًا، وَمِنْ كُلِّ هَمٍّ فَرَجًا، وَرَزَقَهُ مِنْ حَيْثُ لَا يَحْتَسِبُ.");
+                case "!ح" -> replyZikrEmbed(event, "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ الْعَلِيِّ الْعَظِيمِ", "كَنْزٌ مِنْ كُنُوزِ الْجَنَّةِ.");
+                case "!ت" -> replyZikrEmbed(event, "لَا إِلَهَ إِلَّا اللهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ", "كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ، وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ.");
+                case "!ع" -> replyZikrEmbed(event, "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى نَبِيِّنَا مُحَمَّدٍ", "مَنْ صَلَّى عَلَيَّ صَلَاةً صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا.");
             }
         }
 
@@ -117,7 +117,7 @@ public class AzkarListener extends ListenerAdapter {
     private void sendRandomZikr(MessageReceivedEvent event) {
         String randomZikr = azkarService.getRandomHourlyZikr();
         List<ContainerChildComponent> layout = new ArrayList<>();
-        layout.add(TextDisplay.of("## 📿 ذِكْـرٌ وَتَـسْـبِـيحٌ\n\n" + randomZikr));
+        layout.add(TextDisplay.of("## " + randomZikr));
         Container container = Container.of(layout);
         event.getChannel().sendMessageComponents(container).useComponentsV2(true).queue();
     }
@@ -151,12 +151,12 @@ public class AzkarListener extends ListenerAdapter {
     private Container buildPageContainer(String type, int index, int total, ZikrItem item) {
         List<ContainerChildComponent> layout = new ArrayList<>();
         String title = type.equals("morning") ? "🌅 أذكار الصباح" : "🌇 أذكار المساء";
-        layout.add(TextDisplay.of("### " + title + " (" + (index + 1) + " / " + total + ")\n\n" + item.getText()));
-
+        
+        String text = "### " + title + " (" + (index + 1) + " / " + total + ")\n\n" + item.getText();
         if (item.getBenefit() != null && !item.getBenefit().isEmpty()) {
-            layout.add(Separator.createDivider(Spacing.SMALL));
-            layout.add(TextDisplay.of(item.getBenefit()));
+            text += "\n\n---\n\n" + item.getBenefit();
         }
+        layout.add(TextDisplay.of(text));
 
         List<Button> buttons = new ArrayList<>();
         buttons.add(Button.secondary("azkar_nav_" + type + "_prev_" + index, "السابق").withDisabled(index == 0));
@@ -217,13 +217,13 @@ public class AzkarListener extends ListenerAdapter {
         }
     }
 
-    private void replyZikrEmbed(MessageReceivedEvent event, String title, String zikr, String benefit) {
+    private void replyZikrEmbed(MessageReceivedEvent event, String zikr, String benefit) {
         List<ContainerChildComponent> layout = new ArrayList<>();
-        layout.add(TextDisplay.of("### " + title + "\n\n" + zikr));
+        String text = "## " + zikr;
         if (benefit != null && !benefit.isEmpty()) {
-            layout.add(Separator.createDivider(Spacing.SMALL));
-            layout.add(TextDisplay.of(benefit));
+            text += "\n\n---\n\n" + benefit;
         }
+        layout.add(TextDisplay.of(text));
         Container container = Container.of(layout);
         MessageCreateBuilder builder = new MessageCreateBuilder();
         builder.setComponents(container);

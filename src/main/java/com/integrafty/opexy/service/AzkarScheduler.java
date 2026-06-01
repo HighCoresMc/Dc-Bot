@@ -39,7 +39,7 @@ public class AzkarScheduler {
 
             String zikr = azkarService.getRandomHourlyZikr();
             List<ContainerChildComponent> layout = new ArrayList<>();
-            layout.add(TextDisplay.of("## 📿 ذِكْـرٌ وَتَـسْـبِـيحٌ\n\n" + zikr));
+            layout.add(TextDisplay.of("## " + zikr));
             Container container = Container.of(layout);
 
             channel.sendMessageComponents(container).useComponentsV2(true).queue();
