@@ -24,7 +24,6 @@ public class AzkarService {
 
     private List<ZikrItem> morningAzkar = new ArrayList<>();
     private List<ZikrItem> eveningAzkar = new ArrayList<>();
-    private List<String> hourlyAzkar = new ArrayList<>();
     private List<ZikrItem> hourlyAzkarItems = new ArrayList<>();
 
     @PostConstruct
@@ -38,15 +37,15 @@ public class AzkarService {
             if (data != null) {
                 this.morningAzkar = data.getMorning() != null ? data.getMorning() : new ArrayList<>();
                 this.eveningAzkar = data.getEvening() != null ? data.getEvening() : new ArrayList<>();
-                this.hourlyAzkar = data.getHourly() != null ? data.getHourly() : new ArrayList<>();
+                this.hourlyAzkarItems = data.getHourly() != null ? data.getHourly() : new ArrayList<>();
                 
-                this.hourlyAzkarItems = new ArrayList<>();
-                for (String text : this.hourlyAzkar) {
-                    ZikrItem item = new ZikrItem();
-                    item.setText(text);
-                    item.setBenefit(getBenefitForText(text));
-                    item.setCount(1);
-                    this.hourlyAzkarItems.add(item);
+                for (ZikrItem item : this.hourlyAzkarItems) {
+                    if (item.getBenefit() == null || item.getBenefit().isEmpty()) {
+                        item.setBenefit(getBenefitForText(item.getText()));
+                    }
+                    if (item.getCount() <= 0) {
+                        item.setCount(1);
+                    }
                 }
                 log.info("Successfully loaded Azkar: {} morning, {} evening, {} hourly items",
                         morningAzkar.size(), eveningAzkar.size(), hourlyAzkarItems.size());
@@ -127,6 +126,6 @@ public class AzkarService {
     public static class AzkarData {
         private List<ZikrItem> morning;
         private List<ZikrItem> evening;
-        private List<String> hourly;
+        private List<ZikrItem> hourly;
     }
 }
