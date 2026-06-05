@@ -4,71 +4,72 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.Timestamp;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 
 @Service
 @Slf4j
 public class WhitelistSyncService {
 
-    @Value("${supabase.url:jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require}")
-    private String dbUrl;
+    @Value("${SUPABASE_URL:NOT_SET}")
+    private String supabaseUrl;
 
-    @Value("${supabase.user:postgres.ungifmcwoxnpeduzxxbr}")
-    private String dbUser;
+    @Value("${SUPABASE_KEY:NOT_SET}")
+    private String supabaseKey;
 
-    @Value("${SUPABASE_PASSWORD:[YOUR-PASSWORD]}")
-    private String dbPassword;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public void syncToSupabase(String discord, String mc, String version, String type) {
-        if (dbPassword.equals("[YOUR-PASSWORD]")) {
-            log.warn("Supabase password not set. Skipping sync.");
+        if (supabaseUrl.equals("NOT_SET") || supabaseKey.equals("NOT_SET")) {
+            log.warn("Supabase credentials not set. Skipping sync.");
             return;
         }
 
         // Map type values (Original vs Crack)
         String mappedType = type.toLowerCase();
-        
-        java.util.List<String> originalKeywords = java.util.Arrays.asList(
-            "perm", "premium", "org", "original", "microsoft", "paid", "اصلية", "أصلية", 
+
+        List<String> originalKeywords = Arrays.asList(
+            "perm", "premium", "org", "original", "microsoft", "paid", "اصلية", "أصلية",
             "مايكرو سوفت", "مايكروسوفت", "بريميوم", "بيرم", "مدفوعة", "بفلوس", "حساب مايكروسوفت", "حساب بريميوم"
         );
-        
-        java.util.List<String> crackKeywords = java.util.Arrays.asList(
-            "crack", "cracked", "tlauncher", "offline", "تي لانشر", "مكركة", "كراك", 
-            "كرك", "مو اصلية", "مجانية", "مهكرة", "sklauncher", "titan", "gdlauncher", 
+
+        List<String> crackKeywords = Arrays.asList(
+            "crack", "cracked", "tlauncher", "offline", "تي لانشر", "مكركة", "كراك",
+            "كرك", "مو اصلية", "مجانية", "مهكرة", "sklauncher", "titan", "gdlauncher",
             "multimc", "prism", "atlauncher", "shiginima", "hmcl", "polymc",
-            "اس كي لانشر", "تايتن لانشر", "جي دي لانشر", "ملتي إم سي", "بريزم لانشر", 
+            "اس كي لانشر", "تايتن لانشر", "جي دي لانشر", "ملتي إم سي", "بريزم لانشر",
             "اي تي لانشر", "شيغينما لانشر", "اتش ام سي ال", "بولي ام سي"
         );
 
         boolean isOriginal = originalKeywords.stream().anyMatch(mappedType::contains);
-        boolean isCrack = crackKeywords.stream().anyMatch(mappedType::contains);
+        boolean isCrack    = crackKeywords.stream().anyMatch(mappedType::contains);
 
         if (isOriginal) {
             mappedType = "original ~ أصــلــية";
         } else if (isCrack) {
             mappedType = "krack ~ كــراك";
         } else {
-            mappedType = type; // Fallback to original input
+            mappedType = type;
         }
 
         // Map version values (Java vs Bedrock)
         String mappedVersion = version.toLowerCase();
-        
-        java.util.List<String> javaKeywords = java.util.Arrays.asList(
+
+        List<String> javaKeywords = Arrays.asList(
             "java", "pc", "laptop", "حاسبة", "بيسي", "كمبيوتر", "لابتوب", "جافا", "تي لانشر"
         );
-        
-        java.util.List<String> bedrockKeywords = java.util.Arrays.asList(
-            "ps4", "ps5", "playstation", "xbox", "phone", "bedrock", "iphone", 
+
+        List<String> bedrockKeywords = Arrays.asList(
+            "ps4", "ps5", "playstation", "xbox", "phone", "bedrock", "iphone",
             "جوال", "هاتف", "تلفون", "بلايستايشن", "اكس بوكس", "بيد روك", "بيدروك"
         );
 
-        boolean isJava = javaKeywords.stream().anyMatch(mappedVersion::contains);
+        boolean isJava    = javaKeywords.stream().anyMatch(mappedVersion::contains);
         boolean isBedrock = bedrockKeywords.stream().anyMatch(mappedVersion::contains);
 
         if (isJava) {
@@ -76,31 +77,52 @@ public class WhitelistSyncService {
         } else if (isBedrock) {
             mappedVersion = "Bedrock ~ بـيدروك";
         } else {
-            mappedVersion = version; // Fallback
+            mappedVersion = version;
         }
 
-        String sql = "INSERT INTO whitelist (discord, mc, version, type, team, tag, admin, created_at, modified_at) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-                     "ON CONFLICT (mc) DO NOTHING";
+        String now = Instant.now().toString();
 
-        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPassword);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        // Build JSON body
+        String json = String.format(
+            "{\"discord\":\"%s\",\"mc\":\"%s\",\"version\":\"%s\",\"type\":\"%s\"," +
+            "\"team\":\"EMPTY\",\"tag\":\"مقبول\",\"admin\":\"HighCoreMc Bot\"," +
+            "\"created_at\":\"%s\",\"modified_at\":\"%s\"}",
+            escapeJson(discord),
+            escapeJson(mc),
+            escapeJson(mappedVersion),
+            escapeJson(mappedType),
+            now,
+            now
+        );
 
-            pstmt.setString(1, discord);
-            pstmt.setString(2, mc);
-            pstmt.setString(3, mappedVersion);
-            pstmt.setString(4, mappedType);
-            pstmt.setString(5, "EMPTY");
-            pstmt.setString(6, "مقبول");
-            pstmt.setString(7, "HighCoreMc Bot"); // admin column
-            pstmt.setTimestamp(8, Timestamp.from(Instant.now()));
-            pstmt.setTimestamp(9, Timestamp.from(Instant.now()));
+        String endpoint = supabaseUrl + "/rest/v1/whitelist";
 
-            pstmt.executeUpdate();
-            log.info("Successfully synced whitelist entry to Supabase for user: {}", mc);
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .header("Content-Type", "application/json")
+                .header("apikey", supabaseKey)
+                .header("Authorization", "Bearer " + supabaseKey)
+                // ignore-duplicates = ON CONFLICT DO NOTHING
+                .header("Prefer", "resolution=ignore-duplicates")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 201 || response.statusCode() == 200) {
+                log.info("Successfully synced whitelist entry to Supabase for user: {}", mc);
+            } else {
+                log.error("Supabase returned error {} : {}", response.statusCode(), response.body());
+            }
 
         } catch (Exception e) {
             log.error("Failed to sync to Supabase: {}", e.getMessage());
         }
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
