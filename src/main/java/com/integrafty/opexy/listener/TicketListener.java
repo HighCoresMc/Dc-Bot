@@ -129,9 +129,21 @@ public class TicketListener extends ListenerAdapter {
         }
     }
 
+    private static final String WHITELIST_ROLE_ID = "1499355941752012900";
+
     private void handleTicketModal(ButtonInteractionEvent event, String buttonId) {
         String categoryId = buttonId.replace("ticket_", "");
-        
+
+        // Whitelist
+        if (categoryId.equals("whitelist")) {
+            boolean alreadyWhitelisted = event.getMember().getRoles().stream()
+                .anyMatch(r -> r.getId().equals(WHITELIST_ROLE_ID));
+            if (alreadyWhitelisted) {
+                event.reply("❌ أنـت مـسـجـل بـالـفـعـل فـي قـائـمـة الـوايـت لـيـسـت.").setEphemeral(true).queue();
+                return;
+            }
+        }
+
         Modal modal = switch (categoryId) {
             case "support" -> Modal.create("modal_ticket_support", "الـدعم الـفـنـي")
                 .addComponents(
@@ -152,9 +164,8 @@ public class TicketListener extends ListenerAdapter {
                 ).build();
             case "whitelist" -> Modal.create("modal_ticket_whitelist", "الـوايـت لـيـسـت")
                 .addComponents(
-                    Label.of("Discord User & ID", TextInput.create("discord_info", TextInputStyle.SHORT).setPlaceholder("Example: User#0000 - 123456789...").build()),
                     Label.of("MC Username", TextInput.create("mc_name", TextInputStyle.SHORT).setPlaceholder("اكتب اسمك في اللعبة").build()),
-                    Label.of("Version (Bedrok/Java)", TextInput.create("version", TextInputStyle.SHORT).setPlaceholder("Example: Java 1.20.1").build()),
+                    Label.of("Version", TextInput.create("version", TextInputStyle.SHORT).setPlaceholder("Java/Bedrock").build()),
                     Label.of("Type (كراك/اصليه)", TextInput.create("account_type", TextInputStyle.SHORT).setPlaceholder("Example: اصلية").build())
                 ).build();
             default -> null;
@@ -282,7 +293,7 @@ public class TicketListener extends ListenerAdapter {
                 } else if (finalCategoryId.equals("whitelist") || finalCategoryId.equals("modal_ticket_whitelist")) {
                     sector = "WHITELIST CENTER";
                     subject = "Whitelist Request • " + event.getValue("mc_name").getAsString();
-                    details = "Discord: " + event.getValue("discord_info").getAsString() + 
+                    details = "Discord: " + member.getUser().getName() + " (`" + member.getId() + "`)" +
                               "\nVersion: " + event.getValue("version").getAsString() + 
                               "\nAccount: " + event.getValue("account_type").getAsString();
                 }
@@ -342,8 +353,9 @@ public class TicketListener extends ListenerAdapter {
                         EmbedUtil.createOldLogEmbed("ticket-create", logDetails, member, null, null, EmbedUtil.SUCCESS));
 
                 if (isWhitelist) {
+                    String discordInfo = member.getUser().getName() + " (" + member.getId() + ")";
                     whitelistSyncService.syncToSupabase(
-                        event.getValue("discord_info").getAsString(),
+                        discordInfo,
                         event.getValue("mc_name").getAsString(),
                         event.getValue("version").getAsString(),
                         event.getValue("account_type").getAsString()
