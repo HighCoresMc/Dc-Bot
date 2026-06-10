@@ -587,12 +587,14 @@ public class ModerationCommands implements MultiSlashCommand {
 
         net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer permChannel = (net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer) channel;
         
+        final net.dv8tion.jda.api.entities.channel.middleman.AudioChannel finalChannel = channel;
+
         permChannel.upsertPermissionOverride(event.getGuild().getPublicRole())
                 .setAllowed(open ? EnumSet.of(Permission.VOICE_CONNECT) : null)
                 .setDenied(open ? null : EnumSet.of(Permission.VOICE_CONNECT))
                 .queue(v -> {
                     reply(event, EmbedUtil.success("Stage Connection", "Stage is now: " + (open ? "OPEN" : "CLOSED")));
-                    logModAction(event, "stage-toggle", "Connection Toggle: " + (open ? "OPENED" : "CLOSED") + " in " + channel.getAsMention(), null, open ? EmbedUtil.SUCCESS : EmbedUtil.DANGER);
+                    logModAction(event, "stage-toggle", "Connection Toggle: " + (open ? "OPENED" : "CLOSED") + " in " + finalChannel.getAsMention(), null, open ? EmbedUtil.SUCCESS : EmbedUtil.DANGER);
                 });
     }
 
