@@ -149,6 +149,12 @@ public class ModerationCommands implements MultiSlashCommand {
         list.add(Commands.slash("show", "إظـــهـــار الـــقـــنـــاة الـــحـــالـــيـــة لـــلـــجـــمـــيـــع")
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_CHANNEL)));
 
+        list.add(Commands.slash("opstage", "فـــتـــح الـــســـتـــيـــج (ســـمـــاح بـــالـــدخـــول)")
+                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_CHANNEL)));
+
+        list.add(Commands.slash("clstage", "إغـــلاق الـــســـتـــيـــج (مـــنـــع الـــدخـــول)")
+                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_CHANNEL)));
+
         list.add(Commands.slash("slowmode", "تـــفـــعـــيـــل وضـــع الـــتـــبـــاطـــؤ فـــي الـــقـــنـــاة")
                 .addOption(OptionType.INTEGER, "seconds", "عـــدد الـــثـــوانـــي", true)
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_CHANNEL)));
@@ -192,6 +198,8 @@ public class ModerationCommands implements MultiSlashCommand {
             case "unlock" -> handleLock(event, true);
             case "hide" -> handleVisibility(event, false);
             case "show" -> handleVisibility(event, true);
+            case "opstage" -> handleStageConnection(event, true);
+            case "clstage" -> handleStageConnection(event, false);
             case "slowmode" -> handleSlowmode(event);
             case "add-emoji" -> handleAddEmoji(event);
         }
@@ -559,6 +567,32 @@ public class ModerationCommands implements MultiSlashCommand {
                 .queue(v -> {
                     reply(event, EmbedUtil.success("Visibility", "Status: " + (show ? "Visible" : "Hidden")));
                     logModAction(event, "visibility-toggle", "Optical Toggle: " + (show ? "VISIBLE" : "HIDDEN"), null, show ? EmbedUtil.SUCCESS : EmbedUtil.WARNING);
+                });
+    }
+
+    private void handleStageConnection(SlashCommandInteractionEvent event, boolean open) {
+        if (!hasPerm(event, Permission.MANAGE_CHANNEL)) return;
+        
+        net.dv8tion.jda.api.entities.channel.middleman.AudioChannel channel = null;
+        if (event.getChannel().getType().isAudio()) {
+            channel = (net.dv8tion.jda.api.entities.channel.middleman.AudioChannel) event.getChannel();
+        } else if (event.getMember().getVoiceState() != null && event.getMember().getVoiceState().inAudioChannel()) {
+            channel = event.getMember().getVoiceState().getChannel();
+        }
+
+        if (channel == null) {
+            replyEphemeral(event, EmbedUtil.error("NOT IN VOICE", "يجب أن تكون في روم صوتي/ستيج أو تستخدم الأمر داخله."));
+            return;
+        }
+
+        net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer permChannel = (net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer) channel;
+        
+        permChannel.upsertPermissionOverride(event.getGuild().getPublicRole())
+                .setAllowed(open ? EnumSet.of(Permission.VOICE_CONNECT) : null)
+                .setDenied(open ? null : EnumSet.of(Permission.VOICE_CONNECT))
+                .queue(v -> {
+                    reply(event, EmbedUtil.success("Stage Connection", "Stage is now: " + (open ? "OPEN" : "CLOSED")));
+                    logModAction(event, "stage-toggle", "Connection Toggle: " + (open ? "OPENED" : "CLOSED") + " in " + channel.getAsMention(), null, open ? EmbedUtil.SUCCESS : EmbedUtil.DANGER);
                 });
     }
 

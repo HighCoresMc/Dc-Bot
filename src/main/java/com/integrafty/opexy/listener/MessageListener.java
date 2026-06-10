@@ -60,7 +60,7 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD, 
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS, 
                     EmbedUtil.createOldLogEmbed("word-filter", logBody, event.getMember(), event.getAuthor(), event.getMember(), EmbedUtil.DANGER));
             return;
         }

@@ -88,6 +88,7 @@ public class ScavengerHuntCommand implements MultiSlashCommand {
         event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
                 .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("EVENT", "فعالية الصيد — Scavenger Hunt", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                 .useComponentsV2(true).build())
+                .setEphemeral(true)
                 .useComponentsV2(true).queue();
 
         // Notify the supervisor (Ephemeral)

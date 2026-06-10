@@ -226,12 +226,6 @@ public class JawlahManager extends ListenerAdapter {
         addQ("guess_guess_food", new JawlahQuestion("خمن الأكلة: عجينة وعليها صلصة طماطم وجبن؟", "بيتزا", null));
         addQ("guess_guess_player", new JawlahQuestion("خمن اللاعب: هداف ليفربول الحالي؟", "صلاح", null));
 
-        for (int i = 0; i < 20; i++) {
-            addQ("general_general_info", new JawlahQuestion("سؤال عام رقم " + (i + 10), "اجابة", null));
-            addQ("football_who_player", new JawlahQuestion("لاعب كرة قدم رقم " + (i + 15), "اجابة", null));
-            addQ("world_capitals", new JawlahQuestion("عاصمة دولة رقم " + (i + 15), "اجابة", null));
-            addQ("islamic_quran", new JawlahQuestion("سؤال قرآني رقم " + (i + 10), "اجابة", null));
-        }
     }
 
     private void addQ(String key, JawlahQuestion q) {
@@ -385,11 +379,12 @@ public class JawlahManager extends ListenerAdapter {
 
             // Fix repeating questions: pick one that wasn't shown yet
             String qKey = game.selectedCategory + "_" + game.selectedSubCategory;
-            List<JawlahQuestion> qs = questionBank.getOrDefault(qKey, questionBank.get("general_general_info"));
+            List<JawlahQuestion> qs = questionBank.getOrDefault(qKey, new ArrayList<>());
             List<JawlahQuestion> available = qs.stream().filter(que -> !game.displayedQuestionTexts.contains(que.text))
                     .toList();
             if (available.isEmpty()) {
-                event.reply("⚠️ لا يوجد أسئلة متبقية في هذه الفئة!").setEphemeral(true).queue();
+                event.reply("⚠️ لا يوجد أسئلة متبقية في هذه الفئة! الرجاء اختيار فئة أو قيمة أخرى.").setEphemeral(true).queue();
+                game.getUsedQuestions().remove(key); // Revert the value usage
                 return;
             }
             JawlahQuestion q = available.get(new Random().nextInt(available.size()));
