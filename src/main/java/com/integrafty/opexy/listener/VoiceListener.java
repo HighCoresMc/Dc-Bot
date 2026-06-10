@@ -56,7 +56,7 @@ public class VoiceListener extends ListenerAdapter {
         Member member = event.getMember();
         
         // 1. Handle Leaving Room (Delete if empty)
-        if (event.getChannelLeft() != null) {
+        if (event.getChannelLeft() != null && event.getChannelLeft().getType() == net.dv8tion.jda.api.entities.channel.ChannelType.VOICE) {
             VoiceChannel leftChannel = event.getChannelLeft().asVoiceChannel();
             String leftId = leftChannel.getId();
             String parentId = leftChannel.getParentCategoryId();
@@ -85,7 +85,7 @@ public class VoiceListener extends ListenerAdapter {
         }
 
         // 2. Handle Joining "Join to Create"
-        if (event.getChannelJoined() != null) {
+        if (event.getChannelJoined() != null && event.getChannelJoined().getType() == net.dv8tion.jda.api.entities.channel.ChannelType.VOICE) {
             String joinedId = event.getChannelJoined().getId();
             if (joinedId.equals(JOIN_TO_CREATE_ID)) {
                 log.info("✨ Triggering Room Creation for {}", member.getEffectiveName());
