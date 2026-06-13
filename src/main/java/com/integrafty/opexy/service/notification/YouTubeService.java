@@ -217,4 +217,23 @@ public class YouTubeService {
         if (matcher.find()) return matcher.group(1);
         return "";
     }
+
+    public boolean isVideoLiveStream(String videoId) {
+        try {
+            String url = "https://www.youtube.com/watch?v=" + videoId;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            headers.set("Accept-Language", "en-US,en;q=0.9");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String html = response.getBody();
+
+            if (html != null) {
+                return html.contains("\"isLive\":true") || html.contains("isLiveBroadcast") || html.contains("\"isUpcoming\":true");
+            }
+        } catch (Exception e) {
+            log.debug("YouTube Live Check for Video {}: Failed - {}", videoId, e.getMessage());
+        }
+        return false;
+    }
 }

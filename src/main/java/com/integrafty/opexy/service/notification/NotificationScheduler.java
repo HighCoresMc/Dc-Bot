@@ -147,14 +147,24 @@ public class NotificationScheduler {
                 String title = json.get("title").getAsString();
                 String thumbnail = json.get("thumbnail").getAsString();
                 String url = "https://youtube.com/watch?v=" + videoId;
-                sendVideoNotification(entity, videoId, url, title, thumbnail);
+                
+                // التأكد إذا كان المقطع من RSS هو في الأساس بث مباشر (لتجنب الخلط)
+                if (youtubeService.isVideoLiveStream(videoId)) {
+                    log.info("Detected live stream from RSS for {}: {}", entity.getDisplayName(), videoId);
+                    sendLiveNotification(entity, videoId, url, title, thumbnail, "YOUTUBE");
+                } else {
+                    sendVideoNotification(entity, videoId, url, title, thumbnail);
+                }
             }
         });
     }
 
     private void sendLiveNotification(NotificationEntity entity, String contentId, String url, String title, String thumbnail, String platform) {
         TextChannel channel = jda.getTextChannelById(LIVE_CHANNEL_ID);
-        if (channel == null) return;
+        if (channel == null) {
+            log.warn("🚨 Cannot send live notification for {}: Channel ID {} not found or bot lacks permissions!", entity.getDisplayName(), LIVE_CHANNEL_ID);
+            return;
+        }
 
         entity.setLastContentId(contentId);
         notificationRepository.save(entity);
@@ -173,7 +183,10 @@ public class NotificationScheduler {
 
     private void sendVideoNotification(NotificationEntity entity, String contentId, String url, String title, String thumbnail) {
         TextChannel channel = jda.getTextChannelById(VIDEO_CHANNEL_ID);
-        if (channel == null) return;
+        if (channel == null) {
+            log.warn("🚨 Cannot send video notification for {}: Channel ID {} not found or bot lacks permissions!", entity.getDisplayName(), VIDEO_CHANNEL_ID);
+            return;
+        }
 
         entity.setLastContentId(contentId);
         notificationRepository.save(entity);
