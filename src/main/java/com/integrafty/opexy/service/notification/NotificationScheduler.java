@@ -34,7 +34,7 @@ public class NotificationScheduler {
     private static final String LIVE_ROLE_MENTION = "<@&1487196786488770610>";
     private static final String VIDEO_ROLE_MENTION = "<@&1500269236583399454>";
 
-    @Scheduled(fixedRate = 60000) // 1 Minute
+    @Scheduled(fixedRate = 60000)
     @org.springframework.transaction.annotation.Transactional
     public void checkNotifications() {
         log.info("Starting notification check cycle...");
@@ -64,7 +64,6 @@ public class NotificationScheduler {
         kickService.getStreamStatus(entity.getChannelId()).ifPresent(livestream -> {
             String streamId = livestream.get("id").getAsString();
             if (entity.getLastContentId() == null) {
-                // First run - set baseline
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
                 return;
@@ -113,7 +112,6 @@ public class NotificationScheduler {
             }
         }
 
-        // 1. Check for Live Stream first
         Optional<JsonObject> liveStream = youtubeService.getLiveStream(entity.getChannelId());
         if (liveStream.isPresent()) {
             JsonObject json = liveStream.get();
@@ -130,14 +128,12 @@ public class NotificationScheduler {
                 String url = "https://youtube.com/watch?v=" + videoId;
                 sendLiveNotification(entity, videoId, url, title, thumbnail, "YOUTUBE");
             }
-            return; // Stop here if we found a live stream (whether new or already notified)
+            return;
         }
 
-        // 2. Main RSS check (No scraper fallback to prevent old video false positives on 500 errors)
         youtubeService.getLatestVideo(entity.getChannelId()).ifPresent(json -> {
             String videoId = json.get("videoId").getAsString();
             if (entity.getLastContentId() == null) {
-                // Baseline - don't notify for old videos
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
                 log.info("Baseline set for YouTube {}: {}", entity.getDisplayName(), videoId);
@@ -148,7 +144,6 @@ public class NotificationScheduler {
                 String thumbnail = json.get("thumbnail").getAsString();
                 String url = "https://youtube.com/watch?v=" + videoId;
                 
-                // التأكد إذا كان المقطع من RSS هو في الأساس بث مباشر (لتجنب الخلط)
                 if (youtubeService.isVideoLiveStream(videoId)) {
                     log.info("Detected live stream from RSS for {}: {}", entity.getDisplayName(), videoId);
                     sendLiveNotification(entity, videoId, url, title, thumbnail, "YOUTUBE");
