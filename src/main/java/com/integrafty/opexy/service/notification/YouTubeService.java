@@ -172,19 +172,38 @@ public class YouTubeService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
             String html = response.getBody();
 
-            if (html != null && html.contains("\"isLive\":true")) {
-                String videoId = extractValue(html, "\"videoId\":\"([a-zA-Z0-9_-]+)\"");
-                String title = extractValue(html, "\"title\":\"(.*?)\"");
-                
-                if (videoId.isEmpty()) return Optional.empty();
+            if (html != null) {
+                String canonicalUrl = extractValue(html, "<link rel=\"canonical\" href=\"(.*?)\"");
+                if (canonicalUrl != null && canonicalUrl.contains("watch?v=")) {
+                    
+                    // EXTRA PROTECTION: Verify the page actually belongs to the target channel
+                    String pageChannelId = extractValue(html, "<meta itemprop=\"channelId\" content=\"(.*?)\"");
+                    if (pageChannelId.isEmpty()) {
+                        pageChannelId = extractValue(html, "\"channelId\":\"(UC[a-zA-Z0-9_-]+)\"");
+                    }
+                    
+                    if (!pageChannelId.isEmpty() && !pageChannelId.equals(channelId)) {
+                        log.warn("YouTube Live Check: Blocked false positive. Expected {}, found {}", channelId, pageChannelId);
+                        return Optional.empty();
+                    }
 
-                JsonObject video = new JsonObject();
-                video.addProperty("videoId", videoId);
-                video.addProperty("title", title.isEmpty() ? "Live Stream" : title);
-                video.addProperty("thumbnail", "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg");
-                
-                log.info("YouTube Live Found: {} ({})", title, videoId);
-                return Optional.of(video);
+                    String videoId = extractValue(canonicalUrl, "v=([a-zA-Z0-9_-]+)");
+                    
+                    if (!videoId.isEmpty() && html.contains("\"isLive\":true")) {
+                        String title = extractValue(html, "<meta name=\"title\" content=\"(.*?)\"");
+                        if (title.isEmpty()) {
+                            title = extractValue(html, "\"title\":\"(.*?)\"");
+                        }
+                        
+                        JsonObject video = new JsonObject();
+                        video.addProperty("videoId", videoId);
+                        video.addProperty("title", title.isEmpty() ? "Live Stream" : title);
+                        video.addProperty("thumbnail", "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg");
+                        
+                        log.info("YouTube Live Found: {} ({})", title, videoId);
+                        return Optional.of(video);
+                    }
+                }
             }
         } catch (Exception e) {
             log.debug("YouTube Live Check: Failed for {} - {}", channelId, e.getMessage());
