@@ -100,7 +100,7 @@ public class ModerationCommands implements MultiSlashCommand {
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MODERATE_MEMBERS)));
 
         list.add(Commands.slash("clear", "تـــنـــظـــيـــف الـــرســـائـــل مـــن الـــقـــنـــاة")
-                .addOption(OptionType.INTEGER, "amount", "عـــدد الـــرســـائـــل (1-100)", true)
+                .addOption(OptionType.INTEGER, "amount", "عـــدد الـــرســـائـــل ", true)
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE)));
 
         list.add(Commands.slash("move", "نـــقـــل عـــضـــو إلـــى روم صـــوتـــي آخـــر")
@@ -373,7 +373,7 @@ public class ModerationCommands implements MultiSlashCommand {
     private void handleClear(SlashCommandInteractionEvent event) {
         if (!hasPerm(event, Permission.MESSAGE_MANAGE)) return;
         int amt = event.getOption("amount").getAsInt();
-        if (amt < 1 || amt > 100) {
+        if (amt < 1) {
             replyEphemeral(event, EmbedUtil.error("INVALID AMOUNT", "Provide a value between 1 and 100."));
             return;
         }
@@ -384,28 +384,24 @@ public class ModerationCommands implements MultiSlashCommand {
         event.getChannel().getIterableHistory().takeAsync(amt).thenAccept(msgs -> {
             try {
                 // Filter messages older than 2 weeks (Discord limit for bulk delete)
-                long twoWeeksAgo = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
-                List<net.dv8tion.jda.api.entities.Message> toDelete = msgs.stream()
-                        .filter(m -> m.getTimeCreated().toInstant().toEpochMilli() > twoWeeksAgo)
-                        .toList();
-
-                if (toDelete.isEmpty()) {
-                    event.getHook().sendMessage(new MessageCreateBuilder()
-                            .setComponents(EmbedUtil.error("FAIL", "تـــم الـــعـــثـــور عـــلـــى رســـائـــل قـــديـــمـــة جـــداً (أكـــثـــر مـــن أسبوعـــيـــن) ولا يـــمـــكـــن حـــذفـــهـــا بـــالـــجـــمـــلـــة."))
-                            .useComponentsV2(true).build()).queue();
-                    return;
+                long twoWeeksAgo = System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(14) + java.util.concurrent.TimeUnit.HOURS.toMillis(1);
+                java.util.List<net.dv8tion.jda.api.entities.Message> youngMessages = new java.util.ArrayList<>();
+                java.util.List<net.dv8tion.jda.api.entities.Message> oldMessages = new java.util.ArrayList<>();
+                for (net.dv8tion.jda.api.entities.Message m : msgs) {
+                    if (m.getTimeCreated().toInstant().toEpochMilli() > twoWeeksAgo) youngMessages.add(m);
+                    else oldMessages.add(m);
                 }
-
-                event.getGuildChannel().deleteMessages(toDelete).queue(v -> {
-                    event.getHook().sendMessage(new MessageCreateBuilder()
-                            .setComponents(EmbedUtil.success("Purge Complete", toDelete.size() + " messages purged successfully."))
-                            .useComponentsV2(true).build()).queue();
-                    logModAction(event, "clear", "Intelligence Wipe: " + toDelete.size() + " units in " + event.getChannel().getAsMention(), null, EmbedUtil.DANGER);
-                }, e -> {
-                    event.getHook().sendMessage(new MessageCreateBuilder()
-                            .setComponents(EmbedUtil.error("ERROR", "حدث خطأ أثناء الحذف: " + e.getMessage()))
-                            .useComponentsV2(true).build()).queue();
-                });
+                net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel channel = event.getChannel().asGuildMessageChannel();
+                for (int i = 0; i < youngMessages.size(); i += 100) {
+                    java.util.List<net.dv8tion.jda.api.entities.Message> chunk = youngMessages.subList(i, Math.min(i + 100, youngMessages.size()));
+                    if (chunk.size() >= 2) channel.deleteMessages(chunk).queue(null, e -> {});
+                    else if (chunk.size() == 1) chunk.get(0).delete().queue(null, e -> {});
+                }
+                for (net.dv8tion.jda.api.entities.Message oldM : oldMessages) oldM.delete().queue(null, e -> {});
+                event.getHook().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
+                        .setComponents(EmbedUtil.success("Purge Complete", msgs.size() + " messages purged successfully."))
+                        .useComponentsV2(true).build()).queue();
+                logModAction(event, "clear", "Intelligence Wipe: " + msgs.size() + " units in " + event.getChannel().getAsMention(), null, EmbedUtil.DANGER);
             } catch (Exception e) {
                 event.getHook().sendMessage(new MessageCreateBuilder()
                         .setComponents(EmbedUtil.error("SYSTEM ERROR", e.getMessage()))

@@ -33,7 +33,6 @@ public class KickService {
         String flaresolverrUrl = System.getenv().getOrDefault("FLARESOLVERR_URL", DEFAULT_FLARESOLVERR_URL);
         
         try {
-            // Target the API directly via FlareSolverr to avoid frontend HTML rendering issues
             String targetUrl = "https://kick.com/api/v1/channels/" + cleanUsername;
             
             
@@ -56,13 +55,11 @@ public class KickService {
                 if (json.has("solution")) {
                     String html = json.getAsJsonObject("solution").get("response").getAsString();
                     
-                    // The API response will be JSON, but FlareSolverr (headless Chrome) wraps it in HTML
                     String rawJson = html;
                     Matcher m = Pattern.compile("<pre[^>]*>(.*?)</pre>", Pattern.DOTALL).matcher(html);
                     if (m.find()) {
                         rawJson = m.group(1);
                     } else {
-                        // Strip HTML tags as fallback
                         rawJson = html.replaceAll("<[^>]+>", "").trim();
                     }
                     
@@ -77,7 +74,6 @@ public class KickService {
                         }
                     } catch (Exception e) {
                         log.warn("Kick API Parse Error for {}: {}", cleanUsername, e.getMessage());
-                        // Fallback check if JSON parsing fails for some reason
                         if (rawJson.contains("\"is_live\":true") || rawJson.contains("\"is_live\": true")) {
                             log.info("Kick: {} is LIVE (API Text Fallback match)", cleanUsername);
                             JsonObject dummyLive = new JsonObject();

@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -34,13 +36,15 @@ public class NotificationScheduler {
     private static final String LIVE_ROLE_MENTION = "<@&1487196786488770610>";
     private static final String VIDEO_ROLE_MENTION = "<@&1500269236583399454>";
 
+    private final Map<Long, String> localContentCache = new ConcurrentHashMap<>();
+
     @Scheduled(fixedRate = 60000)
-    @org.springframework.transaction.annotation.Transactional
     public void checkNotifications() {
         log.info("Starting notification check cycle...");
         List<NotificationEntity> entities = notificationRepository.findAll();
         for (NotificationEntity entity : entities) {
-            if (!entity.isActive()) continue;
+            if (!entity.isActive())
+                continue;
 
             try {
                 switch (entity.getPlatform().toUpperCase()) {
@@ -63,21 +67,30 @@ public class NotificationScheduler {
     private void handleKick(NotificationEntity entity) {
         kickService.getStreamStatus(entity.getChannelId()).ifPresent(livestream -> {
             String streamId = livestream.get("id").getAsString();
-            if (entity.getLastContentId() == null) {
+            String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
+            if (lastId == null) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
+                localContentCache.put(entity.getId(), streamId);
                 return;
             }
-            if (!streamId.equals(entity.getLastContentId())) {
+            if (!streamId.equals(lastId)) {
                 String title = livestream.get("session_title").getAsString();
-                
+
                 String thumbnail = "";
                 if (livestream.has("thumbnail") && !livestream.get("thumbnail").isJsonNull()) {
-                    thumbnail = livestream.getAsJsonObject("thumbnail").get("url").getAsString();
+                    String rawUrl = livestream.getAsJsonObject("thumbnail").get("url").getAsString();
+                    if (rawUrl != null && !rawUrl.isEmpty()) {
+                        try {
+                            thumbnail = "https://wsrv.nl/?url=" + java.net.URLEncoder.encode(rawUrl, "UTF-8");
+                        } catch (Exception e) {
+                            thumbnail = rawUrl;
+                        }
+                    }
                 }
-                
+
                 log.info("Kick Live: {} | Title: {} | Thumbnail: {}", entity.getDisplayName(), title, thumbnail);
-                
+
                 String url = "https://kick.com/" + entity.getChannelId();
                 sendLiveNotification(entity, streamId, url, title, thumbnail, "KICK");
             }
@@ -87,14 +100,17 @@ public class NotificationScheduler {
     private void handleTwitch(NotificationEntity entity) {
         twitchService.getStreamStatus(entity.getChannelId()).ifPresent(json -> {
             String streamId = json.get("id").getAsString();
-            if (entity.getLastContentId() == null) {
+            String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
+            if (lastId == null) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
+                localContentCache.put(entity.getId(), streamId);
                 return;
             }
-            if (!streamId.equals(entity.getLastContentId())) {
+            if (!streamId.equals(lastId)) {
                 String title = json.get("title").getAsString();
-                String thumbnail = json.get("thumbnail_url").getAsString().replace("{width}", "1280").replace("{height}", "720");
+                String thumbnail = json.get("thumbnail_url").getAsString().replace("{width}", "1280")
+                        .replace("{height}", "720");
                 String url = "https://twitch.tv/" + entity.getChannelId();
                 sendLiveNotification(entity, streamId, url, title, thumbnail, "TWITCH");
             }
@@ -116,13 +132,15 @@ public class NotificationScheduler {
         if (liveStream.isPresent()) {
             JsonObject json = liveStream.get();
             String videoId = json.get("videoId").getAsString();
-            if (entity.getLastContentId() == null) {
+            String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
+            if (lastId == null) {
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
+                localContentCache.put(entity.getId(), videoId);
                 log.info("Baseline set for YouTube Live {}: {}", entity.getDisplayName(), videoId);
                 return;
             }
-            if (!videoId.equals(entity.getLastContentId())) {
+            if (!videoId.equals(lastId)) {
                 String title = json.get("title").getAsString();
                 String thumbnail = json.get("thumbnail").getAsString();
                 String url = "https://youtube.com/watch?v=" + videoId;
@@ -133,17 +151,19 @@ public class NotificationScheduler {
 
         youtubeService.getLatestVideo(entity.getChannelId()).ifPresent(json -> {
             String videoId = json.get("videoId").getAsString();
-            if (entity.getLastContentId() == null) {
+            String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
+            if (lastId == null) {
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
+                localContentCache.put(entity.getId(), videoId);
                 log.info("Baseline set for YouTube {}: {}", entity.getDisplayName(), videoId);
                 return;
             }
-            if (!videoId.equals(entity.getLastContentId())) {
+            if (!videoId.equals(lastId)) {
                 String title = json.get("title").getAsString();
                 String thumbnail = json.get("thumbnail").getAsString();
                 String url = "https://youtube.com/watch?v=" + videoId;
-                
+
                 if (youtubeService.isVideoLiveStream(videoId)) {
                     log.info("Detected live stream from RSS for {}: {}", entity.getDisplayName(), videoId);
                     sendLiveNotification(entity, videoId, url, title, thumbnail, "YOUTUBE");
@@ -154,48 +174,60 @@ public class NotificationScheduler {
         });
     }
 
-    private void sendLiveNotification(NotificationEntity entity, String contentId, String url, String title, String thumbnail, String platform) {
+    private void sendLiveNotification(NotificationEntity entity, String contentId, String url, String title,
+            String thumbnail, String platform) {
         TextChannel channel = jda.getTextChannelById(LIVE_CHANNEL_ID);
         if (channel == null) {
-            log.warn("🚨 Cannot send live notification for {}: Channel ID {} not found or bot lacks permissions!", entity.getDisplayName(), LIVE_CHANNEL_ID);
+            log.warn("🚨 Cannot send live notification for {}: Channel ID {} not found or bot lacks permissions!",
+                    entity.getDisplayName(), LIVE_CHANNEL_ID);
             return;
         }
 
         entity.setLastContentId(contentId);
         notificationRepository.save(entity);
+        localContentCache.put(entity.getId(), contentId);
 
-        String body = String.format("%s\n\n### %s\n**%s is Live now on %s !**\n\nClick the button below to join the stream.", LIVE_ROLE_MENTION, title, entity.getDisplayName(), platform);
-        Container container = EmbedUtil.containerBranded(platform, "Live Stream", body, thumbnail, ActionRow.of(Button.link(url, "Watch Stream")));
+        String body = String.format(
+                "%s\n\n### %s\n**%s is Live now on %s !**\n\nClick the button below to join the stream.",
+                LIVE_ROLE_MENTION, title, entity.getDisplayName(), platform);
+        Container container = EmbedUtil.containerBranded(platform, "Live Stream", body, thumbnail,
+                ActionRow.of(Button.link(url, "Watch Stream")));
 
         MessageCreateBuilder builder = new MessageCreateBuilder()
-            .setComponents(container)
-            .useComponentsV2(true);
-        
+                .setComponents(container)
+                .useComponentsV2(true);
+
         channel.sendMessage(builder.build())
-            .useComponentsV2(true)
-            .queue();
+                .useComponentsV2(true)
+                .queue();
     }
 
-    private void sendVideoNotification(NotificationEntity entity, String contentId, String url, String title, String thumbnail) {
+    private void sendVideoNotification(NotificationEntity entity, String contentId, String url, String title,
+            String thumbnail) {
         TextChannel channel = jda.getTextChannelById(VIDEO_CHANNEL_ID);
         if (channel == null) {
-            log.warn("🚨 Cannot send video notification for {}: Channel ID {} not found or bot lacks permissions!", entity.getDisplayName(), VIDEO_CHANNEL_ID);
+            log.warn("🚨 Cannot send video notification for {}: Channel ID {} not found or bot lacks permissions!",
+                    entity.getDisplayName(), VIDEO_CHANNEL_ID);
             return;
         }
 
         entity.setLastContentId(contentId);
         notificationRepository.save(entity);
+        localContentCache.put(entity.getId(), contentId);
 
         log.info("Sending video notification for {} to channel {}", entity.getDisplayName(), VIDEO_CHANNEL_ID);
-        String body = String.format("%s\n\n### %s\n**New Video from %s !**\n\nClick the button below to watch the video.", VIDEO_ROLE_MENTION, title, entity.getDisplayName());
-        Container container = EmbedUtil.containerBranded("YOUTUBE", "New Upload", body, thumbnail, ActionRow.of(Button.link(url, "Watch Video")));
+        String body = String.format(
+                "%s\n\n### %s\n**New Video from %s !**\n\nClick the button below to watch the video.",
+                VIDEO_ROLE_MENTION, title, entity.getDisplayName());
+        Container container = EmbedUtil.containerBranded("YOUTUBE", "New Upload", body, thumbnail,
+                ActionRow.of(Button.link(url, "Watch Video")));
 
         MessageCreateBuilder builder = new MessageCreateBuilder()
-            .setComponents(container)
-            .useComponentsV2(true);
-        
+                .setComponents(container)
+                .useComponentsV2(true);
+
         channel.sendMessage(builder.build())
-            .useComponentsV2(true)
-            .queue(msg -> log.info("Video notification sent successfully for {}", entity.getDisplayName()));
+                .useComponentsV2(true)
+                .queue(msg -> log.info("Video notification sent successfully for {}", entity.getDisplayName()));
     }
 }

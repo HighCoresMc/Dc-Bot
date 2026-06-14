@@ -31,11 +31,8 @@ public class TwitchService {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 String html = response.getBody();
                 
-                // Twitch embeds live status metadata in the page source
                 if (html.contains("\"isLiveBroadcast\":true")) {
                     JsonObject stream = new JsonObject();
-                    // We generate a unique ID based on the hour to avoid spam, 
-                    // as we don't have the real Stream ID without API
                     stream.addProperty("id", username + "_" + (System.currentTimeMillis() / 3600000)); 
                     stream.addProperty("title", extractValue(html, "\"description\":\"(.*?)\""));
                     stream.addProperty("thumbnail_url", "https://static-cdn.jtvnw.net/previews-ttv/live_user_" + username.toLowerCase() + "-1280x720.jpg");
