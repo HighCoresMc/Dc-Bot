@@ -23,6 +23,7 @@ public class MessageListener extends ListenerAdapter {
     private final JDA jda;
     private final AutoReplyService autoReplyService;
     private final WordFilterService wordFilterService;
+    private final com.integrafty.opexy.service.ImageModerationService imageModerationService;
 
     @Value("${opexy.roles.op-staff}")
     private String staffRoleId;
@@ -62,6 +63,62 @@ public class MessageListener extends ListenerAdapter {
 
             logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS, 
                     EmbedUtil.createOldLogEmbed("word-filter", logBody, event.getMember(), event.getAuthor(), event.getMember(), EmbedUtil.DANGER));
+            return;
+        }
+
+        // Auto NSFW Media Filter (No bypass for staff)
+        boolean isNsfw = false;
+        
+        // 1. Check Stickers
+        for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : event.getMessage().getStickers()) {
+            if (imageModerationService.isPornographic(sticker.getIconUrl())) {
+                isNsfw = true;
+                break;
+            }
+        }
+
+        // 2. Check Attachments
+        if (!isNsfw) {
+            for (net.dv8tion.jda.api.entities.Message.Attachment attachment : event.getMessage().getAttachments()) {
+                if (attachment.isImage() || attachment.isVideo()) {
+                    if (imageModerationService.isPornographic(attachment.getUrl())) {
+                        isNsfw = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 3. Check Content URLs (like Tenor GIFs)
+        if (!isNsfw && content.contains("http")) {
+            String[] words = content.split("\\s+");
+            for (String w : words) {
+                if (w.startsWith("http://") || w.startsWith("https://")) {
+                    if (imageModerationService.isPornographic(w)) {
+                        isNsfw = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (isNsfw) {
+            event.getMessage().delete().queue(null, err -> {});
+
+            event.getChannel()
+                    .sendMessage("⚠️ <@" + event.getAuthor().getId() + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")
+                    .delay(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .flatMap(net.dv8tion.jda.api.entities.Message::delete)
+                    .queue(null, err -> {});
+
+            String logBody = "### 🛡️ RESTRICTED NSFW MEDIA DETECTED\n" +
+                    "▫️ **User:** " + event.getAuthor().getAsMention() + " (`" + event.getAuthor().getId() + "`)\n" +
+                    "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
+                    "▫️ **Type:** `AI_AUTO_DETECT`\n" +
+                    "▫️ **Original content:** ```" + content + "```";
+
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS, 
+                    EmbedUtil.createOldLogEmbed("nsfw-filter", logBody, event.getMember(), event.getAuthor(), event.getMember(), EmbedUtil.DANGER));
             return;
         }
 
