@@ -73,10 +73,33 @@ public class MessageListener extends ListenerAdapter {
         }
 
         // Auto NSFW Media Filter (No bypass for staff)
-        boolean isNsfw = false;
+        if (checkNsfw(event.getMessage(), content, event.getMember(), event.getAuthor(), event.getChannel(), event.getGuild())) {
+            return;
+        }
 
+        // Auto Replies
+        String autoReply = autoReplyService.getResponse(content);
+        if (autoReply != null) {
+            event.getMessage().reply(autoReply).queue();
+        }
+    }
+
+    @Override
+    public void onMessageUpdate(net.dv8tion.jda.api.events.message.MessageUpdateEvent event) {
+        if (!event.isFromGuild())
+            return;
+        if (event.getAuthor().isBot())
+            return;
+        
+        // Auto NSFW Media Filter (No bypass for staff)
+        checkNsfw(event.getMessage(), event.getMessage().getContentRaw(), event.getMember(), event.getAuthor(), event.getChannel(), event.getGuild());
+    }
+
+    private boolean checkNsfw(net.dv8tion.jda.api.entities.Message message, String content, net.dv8tion.jda.api.entities.Member member, net.dv8tion.jda.api.entities.User author, net.dv8tion.jda.api.entities.channel.middleman.MessageChannel channel, net.dv8tion.jda.api.entities.Guild guild) {
+        boolean isNsfw = false;
+        
         // 1. Check Stickers
-        for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : event.getMessage().getStickers()) {
+        for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : message.getStickers()) {
             if (imageModerationService.isPornographic(sticker.getIconUrl())) {
                 isNsfw = true;
                 break;
@@ -85,7 +108,7 @@ public class MessageListener extends ListenerAdapter {
 
         // 2. Check Attachments
         if (!isNsfw) {
-            for (net.dv8tion.jda.api.entities.Message.Attachment attachment : event.getMessage().getAttachments()) {
+            for (net.dv8tion.jda.api.entities.Message.Attachment attachment : message.getAttachments()) {
                 if (attachment.isImage() || attachment.isVideo()) {
                     if (imageModerationService.isPornographic(attachment.getUrl())) {
                         isNsfw = true;
@@ -94,8 +117,8 @@ public class MessageListener extends ListenerAdapter {
                 }
             }
         }
-
-        // 3. Check Content URLs (like Tenor GIFs)
+        
+        // 3. Check Content URLs
         if (!isNsfw && content.contains("http")) {
             String[] words = content.split("\\s+");
             for (String w : words) {
@@ -108,34 +131,46 @@ public class MessageListener extends ListenerAdapter {
             }
         }
 
-        if (isNsfw) {
-            event.getMessage().delete().queue(null, err -> {
-            });
+        // 4. Check Embeds (Tenor GIFs)
+        if (!isNsfw) {
+            for (net.dv8tion.jda.api.entities.MessageEmbed embed : message.getEmbeds()) {
+                if (embed.getImage() != null && embed.getImage().getUrl() != null) {
+                    if (imageModerationService.isPornographic(embed.getImage().getUrl())) {
+                        isNsfw = true;
+                        break;
+                    }
+                } else if (embed.getVideoInfo() != null && embed.getVideoInfo().getUrl() != null) {
+                    if (imageModerationService.isPornographic(embed.getVideoInfo().getUrl())) {
+                        isNsfw = true;
+                        break;
+                    }
+                } else if (embed.getThumbnail() != null && embed.getThumbnail().getUrl() != null) {
+                    if (imageModerationService.isPornographic(embed.getThumbnail().getUrl())) {
+                        isNsfw = true;
+                        break;
+                    }
+                }
+            }
+        }
 
-            event.getChannel()
-                    .sendMessage("⚠️ <@" + event.getAuthor().getId()
-                            + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")
+        if (isNsfw) {
+            message.delete().queue(null, err -> {});
+
+            channel.sendMessage("⚠️ <@" + author.getId() + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")
                     .delay(5, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)
-                    .queue(null, err -> {
-                    });
+                    .queue(null, err -> {});
 
             String logBody = "### 🛡️ RESTRICTED NSFW MEDIA DETECTED\n" +
-                    "▫️ **User:** " + event.getAuthor().getAsMention() + " (`" + event.getAuthor().getId() + "`)\n" +
-                    "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
+                    "▫️ **User:** " + author.getAsMention() + " (`" + author.getId() + "`)\n" +
+                    "▫️ **Channel:** " + channel.getAsMention() + "\n" +
                     "▫️ **Type:** `AI_AUTO_DETECT`\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
-                    EmbedUtil.createOldLogEmbed("nsfw-filter", logBody, event.getMember(), event.getAuthor(),
-                            event.getMember(), EmbedUtil.DANGER));
-            return;
+            logManager.logEmbed(guild, LogManager.LOG_BLOCKED_WORDS, 
+                    EmbedUtil.createOldLogEmbed("nsfw-filter", logBody, member, author, member, EmbedUtil.DANGER));
+            return true;
         }
-
-        // Auto Replies
-        String autoReply = autoReplyService.getResponse(content);
-        if (autoReply != null) {
-            event.getMessage().reply(autoReply).queue();
-        }
+        return false;
     }
 }

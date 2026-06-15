@@ -48,7 +48,7 @@ public class ImageModerationService {
                         double erotica = nudity.path("erotica").asDouble(0);
                         double suggestive = nudity.path("suggestive").asDouble(0);
                         
-                        return sexualActivity > 0.4 || sexualDisplay > 0.4 || erotica > 0.4 || suggestive > 0.4;
+                        return sexualActivity > 0.1 || sexualDisplay > 0.1 || erotica > 0.1 || suggestive > 0.1;
                     }
                 } else {
                     log.warn("[NSFW Filter] Sightengine API error: {}", root.path("error").path("message").asText());
