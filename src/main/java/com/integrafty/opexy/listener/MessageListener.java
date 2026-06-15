@@ -125,6 +125,9 @@ public class MessageListener extends ListenerAdapter {
             String[] words = content.split("\\s+");
             for (String w : words) {
                 if (w.startsWith("http://") || w.startsWith("https://")) {
+                    if (w.contains("tenor.com/view") || w.contains("giphy.com/gifs") || w.contains("gfycat.com/")) {
+                        continue;
+                    }
                     if (imageModerationService.isPornographic(w)) {
                         isNsfw = true;
                         break;
@@ -137,17 +140,16 @@ public class MessageListener extends ListenerAdapter {
         if (!isNsfw) {
             for (net.dv8tion.jda.api.entities.MessageEmbed embed : message.getEmbeds()) {
                 if (embed.getImage() != null && embed.getImage().getUrl() != null) {
-                    if (imageModerationService.isPornographic(embed.getImage().getUrl())) {
+                    String url = embed.getImage().getUrl();
+                    if (isImageUrl(url) && imageModerationService.isPornographic(url)) {
                         isNsfw = true;
                         break;
                     }
-                } else if (embed.getVideoInfo() != null && embed.getVideoInfo().getUrl() != null) {
-                    if (imageModerationService.isPornographic(embed.getVideoInfo().getUrl())) {
-                        isNsfw = true;
-                        break;
-                    }
-                } else if (embed.getThumbnail() != null && embed.getThumbnail().getUrl() != null) {
-                    if (imageModerationService.isPornographic(embed.getThumbnail().getUrl())) {
+                }
+                
+                if (embed.getThumbnail() != null && embed.getThumbnail().getUrl() != null) {
+                    String url = embed.getThumbnail().getUrl();
+                    if (isImageUrl(url) && imageModerationService.isPornographic(url)) {
                         isNsfw = true;
                         break;
                     }
@@ -174,5 +176,15 @@ public class MessageListener extends ListenerAdapter {
             return true;
         }
         return false;
+    }
+
+    private boolean isImageUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+        if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov") || 
+            lower.contains(".mp4?") || lower.contains(".webm?") || lower.contains(".mov?")) {
+            return false;
+        }
+        return true;
     }
 }
