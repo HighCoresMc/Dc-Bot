@@ -22,14 +22,15 @@ public class ImageModerationService {
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-    
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     public boolean isPornographic(String imageUrl) {
         try {
-            String url = "https://api.sightengine.com/1.0/check.json?models=nudity-2.0" 
-                    + "&api_user=" + apiUser 
-                    + "&api_secret=" + apiSecret 
+            log.info("[NSFW Filter] Checking image URL: {}", imageUrl);
+            String url = "https://api.sightengine.com/1.0/check.json?models=nudity-2.0"
+                    + "&api_user=" + apiUser
+                    + "&api_secret=" + apiSecret
                     + "&url=" + java.net.URLEncoder.encode(imageUrl, "UTF-8");
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -38,6 +39,7 @@ public class ImageModerationService {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("[NSFW Filter] Status code: {}, Response: {}", response.statusCode(), response.body());
             if (response.statusCode() == 200) {
                 JsonNode root = mapper.readTree(response.body());
                 if ("success".equals(root.path("status").asText())) {
@@ -47,8 +49,10 @@ public class ImageModerationService {
                         double sexualDisplay = nudity.path("sexual_display").asDouble(0);
                         double erotica = nudity.path("erotica").asDouble(0);
                         double suggestive = nudity.path("suggestive").asDouble(0);
-                        
-                        return sexualActivity > 0.1 || sexualDisplay > 0.1 || erotica > 0.1 || suggestive > 0.1;
+
+                        boolean isNsfw = sexualActivity > 0.1 || sexualDisplay > 0.1 || erotica > 0.1 || suggestive > 0.1;
+                        log.info("[NSFW Filter] Evaluation result for {}: {}", imageUrl, isNsfw);
+                        return isNsfw;
                     }
                 } else {
                     log.warn("[NSFW Filter] Sightengine API error: {}", root.path("error").path("message").asText());

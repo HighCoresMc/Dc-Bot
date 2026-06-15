@@ -96,6 +96,8 @@ public class MessageListener extends ListenerAdapter {
     }
 
     private boolean checkNsfw(net.dv8tion.jda.api.entities.Message message, String content, net.dv8tion.jda.api.entities.Member member, net.dv8tion.jda.api.entities.User author, net.dv8tion.jda.api.entities.channel.middleman.MessageChannel channel, net.dv8tion.jda.api.entities.Guild guild) {
+        log.info("[NSFW Filter] checkNsfw triggered. Content: '{}', Attachments: {}, Embeds: {}, Stickers: {}", 
+                 content, message.getAttachments().size(), message.getEmbeds().size(), message.getStickers().size());
         boolean isNsfw = false;
         
         // 1. Check Stickers
