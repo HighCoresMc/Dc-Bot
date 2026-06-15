@@ -73,7 +73,3 @@ opexy:
       sonic-fingers: "1500583805289762897"
   channels:
     mod-log: "1500224385351553185"
-
-openai:
-  api:
-    key: ${OPENAI_API_KEY:}
