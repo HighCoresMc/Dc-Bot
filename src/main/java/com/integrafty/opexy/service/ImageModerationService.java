@@ -16,11 +16,11 @@ import java.time.Duration;
 @Slf4j
 public class ImageModerationService {
 
-    private final String apiUser = "631680776";
-    private final String apiSecret = "MkUcMWGyxX3wfUx7nkG9Pwcrzvs5XzHo";
+    @Value("${openai.api.key}")
+    private String apiKey;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(Duration.ofSeconds(8))
             .build();
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -28,35 +28,49 @@ public class ImageModerationService {
     public boolean isPornographic(String imageUrl) {
         try {
             log.info("[NSFW Filter] Checking image URL: {}", imageUrl);
-            String url = "https://api.sightengine.com/1.0/check.json?models=nudity-2.0"
-                    + "&api_user=" + apiUser
-                    + "&api_secret=" + apiSecret
-                    + "&url=" + java.net.URLEncoder.encode(imageUrl, "UTF-8");
+            if (apiKey == null || apiKey.isBlank()) {
+                log.warn("[NSFW Filter] OpenAI API key is missing. Moderation check skipped.");
+                return false;
+            }
+            
+            java.util.Map<String, Object> imageMap = java.util.Map.of("url", imageUrl);
+            java.util.Map<String, Object> inputItem = java.util.Map.of("type", "image_url", "image_url", imageMap);
+            java.util.Map<String, Object> requestBody = java.util.Map.of(
+                    "model", "omni-moderation-latest",
+                    "input", java.util.List.of(inputItem)
+            );
+            
+            String jsonPayload = mapper.writeValueAsString(requestBody);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .GET()
+                    .uri(URI.create("https://api.openai.com/v1/moderations"))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             log.info("[NSFW Filter] Status code: {}, Response: {}", response.statusCode(), response.body());
+            
             if (response.statusCode() == 200) {
                 JsonNode root = mapper.readTree(response.body());
-                if ("success".equals(root.path("status").asText())) {
-                    JsonNode nudity = root.path("nudity");
-                    if (!nudity.isMissingNode()) {
-                        double sexualActivity = nudity.path("sexual_activity").asDouble(0);
-                        double sexualDisplay = nudity.path("sexual_display").asDouble(0);
-                        double erotica = nudity.path("erotica").asDouble(0);
-                        double suggestive = nudity.path("suggestive").asDouble(0);
-
-                        boolean isNsfw = sexualActivity > 0.1 || sexualDisplay > 0.1 || erotica > 0.1 || suggestive > 0.1;
-                        log.info("[NSFW Filter] Evaluation result for {}: {}", imageUrl, isNsfw);
-                        return isNsfw;
-                    }
-                } else {
-                    log.warn("[NSFW Filter] Sightengine API error: {}", root.path("error").path("message").asText());
+                JsonNode results = root.path("results");
+                if (results.isArray() && results.size() > 0) {
+                    JsonNode firstResult = results.get(0);
+                    boolean flagged = firstResult.path("flagged").asBoolean();
+                    
+                    JsonNode scores = firstResult.path("category_scores");
+                    double sexual = scores.path("sexual").asDouble(0);
+                    double sexualMinors = scores.path("sexual/minors").asDouble(0);
+                    
+                    log.info("[NSFW Filter] OpenAI evaluation - flagged: {}, sexual score: {}, sexual/minors score: {}", flagged, sexual, sexualMinors);
+                    
+                    boolean isNsfw = flagged || sexual > 0.1 || sexualMinors > 0.1;
+                    log.info("[NSFW Filter] Final result: {}", isNsfw);
+                    return isNsfw;
                 }
+            } else {
+                log.warn("[NSFW Filter] OpenAI API error status: {}, response: {}", response.statusCode(), response.body());
             }
         } catch (Exception e) {
             log.warn("[NSFW Filter] Failed to moderate image URL {}: {}", imageUrl, e.getMessage());
