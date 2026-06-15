@@ -43,9 +43,7 @@ public class ImageModerationService {
                 JsonNode root = mapper.readTree(response.body());
                 if (root.has("rating_label")) {
                     String ratingLabel = root.get("rating_label").asText();
-                    // ModerateContent returns "everyone", "teen", or "adult"
-                    // We only want to block "adult" (pornographic) content to avoid random false positives.
-                    return "adult".equalsIgnoreCase(ratingLabel);
+                    return "adult".equalsIgnoreCase(ratingLabel) || "teen".equalsIgnoreCase(ratingLabel);
                 }
             }
         } catch (Exception e) {
