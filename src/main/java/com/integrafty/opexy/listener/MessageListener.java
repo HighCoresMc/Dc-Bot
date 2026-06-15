@@ -32,8 +32,10 @@ public class MessageListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-        if (!event.isFromGuild()) return;
-        if (event.getAuthor().isBot()) return;
+        if (!event.isFromGuild())
+            return;
+        if (event.getAuthor().isBot())
+            return;
 
         String content = event.getMessage().getContentRaw();
 
@@ -45,14 +47,17 @@ public class MessageListener extends ListenerAdapter {
         String forbidden = isStaff ? null : wordFilterService.findForbiddenWord(content);
         if (forbidden != null) {
             // 1. Delete message
-            event.getMessage().delete().queue(null, err -> {});
+            event.getMessage().delete().queue(null, err -> {
+            });
 
             // 2. Alert user (auto-delete after 5s)
             event.getChannel()
-                    .sendMessage("⚠️ <@" + event.getAuthor().getId() + ">, your message was removed for containing a restricted word.")
+                    .sendMessage("⚠️ <@" + event.getAuthor().getId()
+                            + ">, your message was removed for containing a restricted word.")
                     .delay(5, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)
-                    .queue(null, err -> {});
+                    .queue(null, err -> {
+                    });
 
             // 3. Log to centralized mod-log channel
             String logBody = "### 🛡️ RESTRICTED WORD DETECTED\n" +
@@ -61,14 +66,15 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS, 
-                    EmbedUtil.createOldLogEmbed("word-filter", logBody, event.getMember(), event.getAuthor(), event.getMember(), EmbedUtil.DANGER));
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
+                    EmbedUtil.createOldLogEmbed("word-filter", logBody, event.getMember(), event.getAuthor(),
+                            event.getMember(), EmbedUtil.DANGER));
             return;
         }
 
         // Auto NSFW Media Filter (No bypass for staff)
         boolean isNsfw = false;
-        
+
         // 1. Check Stickers
         for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : event.getMessage().getStickers()) {
             if (imageModerationService.isPornographic(sticker.getIconUrl())) {
@@ -88,7 +94,7 @@ public class MessageListener extends ListenerAdapter {
                 }
             }
         }
-        
+
         // 3. Check Content URLs (like Tenor GIFs)
         if (!isNsfw && content.contains("http")) {
             String[] words = content.split("\\s+");
@@ -103,13 +109,16 @@ public class MessageListener extends ListenerAdapter {
         }
 
         if (isNsfw) {
-            event.getMessage().delete().queue(null, err -> {});
+            event.getMessage().delete().queue(null, err -> {
+            });
 
             event.getChannel()
-                    .sendMessage("⚠️ <@" + event.getAuthor().getId() + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")
+                    .sendMessage("⚠️ <@" + event.getAuthor().getId()
+                            + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")
                     .delay(5, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)
-                    .queue(null, err -> {});
+                    .queue(null, err -> {
+                    });
 
             String logBody = "### 🛡️ RESTRICTED NSFW MEDIA DETECTED\n" +
                     "▫️ **User:** " + event.getAuthor().getAsMention() + " (`" + event.getAuthor().getId() + "`)\n" +
@@ -117,8 +126,9 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **Type:** `AI_AUTO_DETECT`\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS, 
-                    EmbedUtil.createOldLogEmbed("nsfw-filter", logBody, event.getMember(), event.getAuthor(), event.getMember(), EmbedUtil.DANGER));
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
+                    EmbedUtil.createOldLogEmbed("nsfw-filter", logBody, event.getMember(), event.getAuthor(),
+                            event.getMember(), EmbedUtil.DANGER));
             return;
         }
 

@@ -16,8 +16,8 @@ import java.time.Duration;
 @Slf4j
 public class ImageModerationService {
 
-    @Value("${opexy.nsfw.api.key:}")
-    private String apiKey;
+    private final String apiUser = "631680776";
+    private final String apiSecret = "MkUcMWGyxX3wfUx7nkG9Pwcrzvs5XzHo";
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -26,13 +26,12 @@ public class ImageModerationService {
     private final ObjectMapper mapper = new ObjectMapper();
 
     public boolean isPornographic(String imageUrl) {
-        String activeKey = apiKey;
-        if (activeKey == null || activeKey.trim().isEmpty()) {
-            activeKey = "f0cf44a07204dc2b15201c2a0afe0a0d"; // Public free key from homepage
-        }
-        
         try {
-            String url = "https://api.moderatecontent.com/moderate/?key=" + activeKey + "&url=" + java.net.URLEncoder.encode(imageUrl, "UTF-8");
+            String url = "https://api.sightengine.com/1.0/check.json?models=nudity-2.0" 
+                    + "&api_user=" + apiUser 
+                    + "&api_secret=" + apiSecret 
+                    + "&url=" + java.net.URLEncoder.encode(imageUrl, "UTF-8");
+
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .GET()
@@ -41,9 +40,18 @@ public class ImageModerationService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 JsonNode root = mapper.readTree(response.body());
-                if (root.has("rating_label")) {
-                    String ratingLabel = root.get("rating_label").asText();
-                    return "adult".equalsIgnoreCase(ratingLabel) || "teen".equalsIgnoreCase(ratingLabel);
+                if ("success".equals(root.path("status").asText())) {
+                    JsonNode nudity = root.path("nudity");
+                    if (!nudity.isMissingNode()) {
+                        double sexualActivity = nudity.path("sexual_activity").asDouble(0);
+                        double sexualDisplay = nudity.path("sexual_display").asDouble(0);
+                        double erotica = nudity.path("erotica").asDouble(0);
+                        double suggestive = nudity.path("suggestive").asDouble(0);
+                        
+                        return sexualActivity > 0.4 || sexualDisplay > 0.4 || erotica > 0.4 || suggestive > 0.4;
+                    }
+                } else {
+                    log.warn("[NSFW Filter] Sightengine API error: {}", root.path("error").path("message").asText());
                 }
             }
         } catch (Exception e) {
