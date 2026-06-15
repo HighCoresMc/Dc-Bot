@@ -178,7 +178,7 @@ public class YouTubeService {
 
                     String videoId = extractValue(canonicalUrl, "v=([a-zA-Z0-9_-]+)");
                     
-                    if (!videoId.isEmpty() && html.contains("\"isLive\":true")) {
+                    if (!videoId.isEmpty() && (html.contains("\"isLive\":true") || html.contains("\"isLive\": true"))) {
                         String title = extractValue(html, "<meta name=\"title\" content=\"(.*?)\"");
                         if (title.isEmpty()) {
                             title = extractValue(html, "\"title\":\"(.*?)\"");
@@ -218,7 +218,7 @@ public class YouTubeService {
             String html = response.getBody();
 
             if (html != null) {
-                return html.contains("\"isLive\":true") || html.contains("isLiveBroadcast") || html.contains("\"isUpcoming\":true");
+                return html.contains("\"isLive\":true") || html.contains("\"isLive\": true");
             }
         } catch (Exception e) {
             log.debug("YouTube Live Check for Video {}: Failed - {}", videoId, e.getMessage());
