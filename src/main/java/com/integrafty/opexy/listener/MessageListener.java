@@ -30,11 +30,22 @@ public class MessageListener extends ListenerAdapter {
 
     private final LogManager logManager;
 
+    private final java.util.Set<Long> moderatedMessages = java.util.Collections.newSetFromMap(
+            new java.util.LinkedHashMap<Long, Boolean>() {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<Long, Boolean> eldest) {
+                    return size() > 100;
+                }
+            }
+    );
+
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         if (!event.isFromGuild())
             return;
         if (event.getAuthor().isBot())
+            return;
+        if (moderatedMessages.contains(event.getMessageIdLong()))
             return;
 
         String content = event.getMessage().getContentRaw();
@@ -46,6 +57,7 @@ public class MessageListener extends ListenerAdapter {
         // Word Filter
         String forbidden = isStaff ? null : wordFilterService.findForbiddenWord(content);
         if (forbidden != null) {
+            moderatedMessages.add(event.getMessageIdLong());
             // 1. Delete message
             event.getMessage().delete().queue(null, err -> {
             });
@@ -90,6 +102,8 @@ public class MessageListener extends ListenerAdapter {
             return;
         if (event.getAuthor().isBot())
             return;
+        if (moderatedMessages.contains(event.getMessageIdLong()))
+            return;
         
         // Auto NSFW Media Filter (No bypass for staff)
         checkNsfw(event.getMessage(), event.getMessage().getContentRaw(), event.getMember(), event.getAuthor(), event.getChannel(), event.getGuild());
@@ -98,6 +112,9 @@ public class MessageListener extends ListenerAdapter {
     private boolean checkNsfw(net.dv8tion.jda.api.entities.Message message, String content, net.dv8tion.jda.api.entities.Member member, net.dv8tion.jda.api.entities.User author, net.dv8tion.jda.api.entities.channel.middleman.MessageChannel channel, net.dv8tion.jda.api.entities.Guild guild) {
         log.info("[NSFW Filter] checkNsfw triggered. Content: '{}', Attachments: {}, Embeds: {}, Stickers: {}", 
                  content, message.getAttachments().size(), message.getEmbeds().size(), message.getStickers().size());
+        if (moderatedMessages.contains(message.getIdLong())) {
+            return false;
+        }
         boolean isNsfw = false;
         
         // 1. Check Stickers
@@ -158,6 +175,7 @@ public class MessageListener extends ListenerAdapter {
         }
 
         if (isNsfw) {
+            moderatedMessages.add(message.getIdLong());
             message.delete().queue(null, err -> {});
 
             channel.sendMessage("⚠️ <@" + author.getId() + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")

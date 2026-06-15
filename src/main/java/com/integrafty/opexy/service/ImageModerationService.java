@@ -136,7 +136,7 @@ public class ImageModerationService {
                     double probNsfw = expNsfw / (expNormal + expNsfw);
 
                     log.info("[NSFW Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit, nsfwLogit, probNsfw);
-                    boolean isNsfw = probNsfw > 0.45;
+                    boolean isNsfw = probNsfw > 0.85;
                     log.info("[NSFW Filter] Final result: {}", isNsfw);
                     return isNsfw;
                 }
