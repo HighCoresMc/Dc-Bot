@@ -33,7 +33,7 @@ public class NotificationScheduler {
 
     private static final String LIVE_CHANNEL_ID = "1487140470172815574";
     private static final String VIDEO_CHANNEL_ID = "1487204004076191946";
-    private static final String LIVE_ROLE_MENTION = "<@&1487196786488770610>";
+    private static final String LIVE_ROLE_MENTION = "<@&1500269236583399454>";
     private static final String VIDEO_ROLE_MENTION = "<@&1500269236583399454>";
 
     private final Map<Long, String> localContentCache = new ConcurrentHashMap<>();
