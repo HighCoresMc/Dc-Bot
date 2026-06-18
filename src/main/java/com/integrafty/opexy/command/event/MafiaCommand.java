@@ -43,7 +43,6 @@ public class MafiaCommand implements MultiSlashCommand {
     public void execute(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("mafia")) return;
 
-        // Check permissions (Group Event - Staff Only)
         boolean hasRole = event.getMember().getRoles().stream()
                 .anyMatch(r -> r.getId().equals(hypeManagerId) || r.getId().equals(hypeEventsId));
         
@@ -64,9 +63,9 @@ public class MafiaCommand implements MultiSlashCommand {
         event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
                 .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "🕵️ لعبة المافيا — Mafia Game", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN,
                         net.dv8tion.jda.api.components.actionrow.ActionRow.of(
-                                net.dv8tion.jda.api.components.buttons.Button.primary("mafia_join", "انضمام ✋"),
-                                net.dv8tion.jda.api.components.buttons.Button.danger("mafia_start", "بدء اللعبة (المنظم فقط) 🚀"),
-                                net.dv8tion.jda.api.components.buttons.Button.secondary("mafia_stop", "إغلاق الفعالية 🛑")
+                                net.dv8tion.jda.api.components.buttons.Button.primary("mafia_join", "انضمام"),
+                                net.dv8tion.jda.api.components.buttons.Button.danger("mafia_start", "بدء اللعبة (المنظم فقط)"),
+                                net.dv8tion.jda.api.components.buttons.Button.secondary("mafia_stop", "إغلاق الفعالية")
                         )))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue();

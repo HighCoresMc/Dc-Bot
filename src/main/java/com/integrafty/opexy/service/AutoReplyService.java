@@ -21,7 +21,6 @@ public class AutoReplyService {
 
     private final AutoReplyRepository autoReplyRepository;
 
-    // In-memory cache
     private final Map<String, String> cache = new HashMap<>();
 
     @PostConstruct
@@ -29,7 +28,6 @@ public class AutoReplyService {
         refreshCache();
     }
 
-    // Reload every 10 minutes
     @Scheduled(fixedDelay = 600_000)
     public void refreshCache() {
         try {
@@ -72,7 +70,10 @@ public class AutoReplyService {
         String lower = content.toLowerCase();
         synchronized (cache) {
             for (Map.Entry<String, String> entry : cache.entrySet()) {
-                if (lower.contains(entry.getKey())) return entry.getValue();
+                String keyword = entry.getKey();
+                if (lower.matches("(^|.*\\s)" + java.util.regex.Pattern.quote(keyword) + "(\\s.*|$)")) {
+                    return entry.getValue();
+                }
             }
         }
         return null;

@@ -45,12 +45,12 @@ public class ScavengerHuntCommand implements MultiSlashCommand {
 
     @Override
     public void execute(SlashCommandInteractionEvent event) {
-        if (!event.getName().equals("hunt")) return;
+        if (!event.getName().equals("hunt"))
+            return;
 
-        // Check permissions
         boolean hasRole = event.getMember().getRoles().stream()
                 .anyMatch(r -> r.getId().equals(hypeManagerId) || r.getId().equals(hypeEventsId));
-        
+
         if (!hasRole) {
             event.reply("❌ عذراً، هذا الأمر مخصص لمشرفي الفعاليات فقط.").setEphemeral(true).queue();
             return;
@@ -62,37 +62,17 @@ public class ScavengerHuntCommand implements MultiSlashCommand {
         }
 
         long reward = 5000;
-        String code = huntManager.startHunt(reward, event.getGuild(), event.getMember());
+        TextChannel targetChannel = event.getChannel().asTextChannel();
+        String code = huntManager.startHunt(reward, event.getGuild(), event.getMember(), targetChannel);
 
-        List<TextChannel> channels = event.getGuild().getTextChannels().stream()
-                .filter(ch -> ch.canTalk())
-                .filter(ch -> event.getGuild().getPublicRole().hasPermission(ch, Permission.VIEW_CHANNEL))
-                .filter(ch -> {
-                    String n = ch.getName().toLowerCase();
-                    return !n.contains("log") && !n.contains("staff") && !n.contains("admin") && !n.contains("mod") && !n.contains("hidden");
-                })
-                .collect(Collectors.toList());
-
-        TextChannel targetChannel = channels.get(random.nextInt(channels.size()));
-        
-        // Hide code in target channel
-        targetChannel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("DISCOVERY", "🔍 لقد وجدت شيئاً!", 
-                        "لقد عثرت على الكود السري! الكود هو: **" + code + "**\nأسرع واكتبه في قناة الفعاليات لتفوز!", 
-                        com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
-                .useComponentsV2(true).build())
-                .useComponentsV2(true).queue();
-
-        String body = "🔎 **فعالية الصيد بدأت!**\n\nتم إخفاء كود سري في إحدى قنوات السيرفر!\n\n**المهمة:** ابحث عن الكود واكتبه هنا في الشات لتفوز بـ **" + reward + " opex**!\n\n*ملاحظة: الكود يبدأ بـ OP- ويتبعه 6 أحرف.*";
+        String body = "🔎 **فعالية الصيد بدأت!**\n\nتم إرسال كود سري!\n\n**المهمة:** أسرع واكتب الكود هنا في الشات لتفوز بـ **"
+                + reward + " opex**!\n\n*ملاحظة: الكود يبدأ بـ OP- ويتبعه 6 أحرف.*";
 
         event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("EVENT", "فعالية الصيد — Scavenger Hunt", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("EVENT",
+                        "فعالية الصيد — Scavenger Hunt", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                 .useComponentsV2(true).build())
-                .setEphemeral(true)
+                .setEphemeral(false)
                 .useComponentsV2(true).queue();
-
-        // Notify the supervisor (Ephemeral)
-        event.getHook().sendMessage("🤫 تم إخفاء الكود **" + code + "** في قناة: " + targetChannel.getAsMention())
-                .setEphemeral(true).queue();
     }
 }

@@ -377,14 +377,14 @@ public class JawlahManager extends ListenerAdapter {
             game.setSelectedValue(val);
             game.getUsedQuestions().add(key);
 
-            // Fix repeating questions: pick one that wasn't shown yet
             String qKey = game.selectedCategory + "_" + game.selectedSubCategory;
             List<JawlahQuestion> qs = questionBank.getOrDefault(qKey, new ArrayList<>());
             List<JawlahQuestion> available = qs.stream().filter(que -> !game.displayedQuestionTexts.contains(que.text))
                     .toList();
             if (available.isEmpty()) {
                 event.reply("⚠️ لا يوجد أسئلة متبقية في هذه الفئة! الرجاء اختيار فئة أو قيمة أخرى.").setEphemeral(true).queue();
-                game.getUsedQuestions().remove(key); // Revert the value usage
+                game.getUsedQuestions().remove(key);
+                game.setSelectedValue(0);
                 return;
             }
             JawlahQuestion q = available.get(new Random().nextInt(available.size()));
@@ -445,6 +445,7 @@ public class JawlahManager extends ListenerAdapter {
 
     private void showQuestionPrompt(net.dv8tion.jda.api.interactions.callbacks.IReplyCallback event, JawlahGame game) {
         JawlahQuestion q = game.getCurrentQuestion();
+        if (q == null) return;
         game.setAttemptsLeft(game.getEnabledHelpers().contains("جاوب جوابين ✌️") ? 2 : 1);
 
         String modifiers = (game.isPitActive() ? "⛳ **الـحـفـرة مـفـعـلـة**\n" : "")
@@ -507,8 +508,7 @@ public class JawlahManager extends ListenerAdapter {
                 }
                 timeLeft[0]--;
 
-                // Update timer in message
-                if (timeLeft[0] > 0 && timeLeft[0] % 5 == 0) { // Update every 5 seconds to reduce rate limits
+                if (timeLeft[0] > 0 && timeLeft[0] % 5 == 0) {
                     TextChannel channel = jda.getTextChannelById(channelId);
                     if (channel != null && game.lastQuestionMessageId != 0) {
                         channel.retrieveMessageById(game.lastQuestionMessageId).queue(msg -> {
@@ -540,8 +540,10 @@ public class JawlahManager extends ListenerAdapter {
                     cancelTimer(channelId);
                     TextChannel channel = jda.getTextChannelById(channelId);
                     if (channel != null) {
-                        channel.sendMessage("⏰ **انتهى الوقت!** تم تخطي الدور لعدم الإجابة.").queue();
+                        String ans = game.getCurrentQuestion() != null ? game.getCurrentQuestion().answer : "غير معروف";
+                        channel.sendMessage("⏰ **انتهى الوقت!** الإجابة كانت: **" + ans + "**\nتم تخطي الدور لعدم الإجابة.").queue();
                         game.setCurrentQuestion(null);
+                        game.setSelectedValue(0);
                         game.setGoldenQuestion(false);
                         game.setPitActive(false);
                         game.getEnabledHelpers().clear();
@@ -671,7 +673,7 @@ public class JawlahManager extends ListenerAdapter {
                 else {
                     game.getEnabledHelpers().add(h);
                     if (game.selectedValue > 0)
-                        game.usedHelpers.add(h); // Mark as used if activated during a question
+                        game.usedHelpers.add(h);
                 }
 
                 if (game.selectedValue > 0)

@@ -73,7 +73,7 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                 EmbedUtil.createOldLogEmbed("speed", logDetails, event.getMember(), null, null, EmbedUtil.INFO));
 
         event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "⚡ تحدي الـ 7 ثواني!", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "تحدي الـ 7 ثواني!", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue(hook -> {
             
@@ -91,8 +91,8 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                         if (timeTaken <= 7000) {
                             finished.set(true);
                             msgEvent.getMessage().reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                                    .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "🏆 فائز بالتحدي!", 
-                                            "مبروك <@" + msgEvent.getAuthor().getId() + ">! لقد كتبت الكلمة بسرعة خارقة وربحت **" + reward + " opex**!\n\n⏱️ الوقت: **" + (timeTaken / 1000.0) + " ثانية**", 
+                                    .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "فائز بالتحدي!", 
+                                            "مبروك <@" + msgEvent.getAuthor().getId() + ">! لقد كتبت الكلمة بسرعة خارقة وربحت **" + reward + " opex**!\n\nالوقت: **" + (timeTaken / 1000.0) + " ثانية**", 
                                             com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                                     .useComponentsV2(true).build())
                                     .useComponentsV2(true).queue();
@@ -101,11 +101,10 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                                 stats.setSpeedWins(stats.getSpeedWins() + 1);
                             });
 
-                            // LOGGING
-                            String logWin = String.format("### ⚡ تحدي السرعة: فوز\n▫️ **الفائز:** <@%s>\n▫️ **الوقت:** %.2f ثانية\n▫️ **الكلمة:** %s", 
-                                    msgEvent.getAuthor().getId(), (timeTaken / 1000.0), word);
-                            logManager.logEmbed(event.getGuild(), LogManager.LOG_GAMES, 
-                                    EmbedUtil.createOldLogEmbed("speed", logWin, null, msgEvent.getAuthor(), null, EmbedUtil.SUCCESS));
+                            String logWin = String.format("### فعالية السرعة: فوز\n▫️ **الفائز:** <@%s>\n▫️ **الكلمة:** `%s`\n▫️ **الجائزة:** %d opex",
+                                    msgEvent.getAuthor().getId(), word, reward);
+                            logManager.logEmbed(event.getGuild(), com.integrafty.opexy.service.LogManager.LOG_GAMES, 
+                                    com.integrafty.opexy.utils.EmbedUtil.createOldLogEmbed("speed", logWin, null, msgEvent.getMember(), null, com.integrafty.opexy.utils.EmbedUtil.SUCCESS));
 
                             event.getJDA().removeEventListener(this);
                         }
@@ -115,24 +114,21 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
 
             event.getJDA().addEventListener(listener);
 
-            // Timeout
             event.getChannel().sendMessage("...").queueAfter(7, TimeUnit.SECONDS, msg -> {
                 event.getJDA().removeEventListener(listener);
                 msg.delete().queue();
                 if (!finished.get()) {
                     event.getChannel().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                            .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "⌛ انتهى الوقت!", 
+                            .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "انتهى الوقت!", 
                                     "للأسف، لم يتمكن أحد من كتابة الكلمة في الوقت المحدد. حظاً أوفر في المرة القادمة!", 
                                     com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                             .useComponentsV2(true).build())
                             .useComponentsV2(true).queue();
 
-                    // LOGGING
                     String logTimeout = String.format("### ⚡ تحدي السرعة: انتهى الوقت\n▫️ **الكلمة:** %s\n▫️ لم يفز أحد.", word);
                     logManager.logEmbed(event.getGuild(), LogManager.LOG_GAMES, 
                             EmbedUtil.createOldLogEmbed("speed", logTimeout, null, null, null, EmbedUtil.DANGER));
                 }
             });
-        });
     }
 }

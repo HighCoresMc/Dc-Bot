@@ -13,6 +13,8 @@ import jakarta.annotation.PostConstruct;
 import java.util.Collections;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 
 @Service
 @RequiredArgsConstructor
@@ -26,30 +28,67 @@ public class ScavengerHuntManager extends ListenerAdapter {
     private final Random random = new Random();
 
     private String activeCode = null;
+    private String activeCodeBackup = null;
     private long reward = 5000;
+    private String codeMessageId = null;
+    private net.dv8tion.jda.api.entities.channel.concrete.TextChannel huntChannel = null;
+    private java.util.concurrent.ScheduledFuture<?> huntTimer = null;
+    private final java.util.concurrent.ScheduledExecutorService scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
 
     @PostConstruct
     public void init() {
-        // Redundant - CommandManager registers all ListenerAdapter beans automatically
-        // jda.addEventListener(this);
     }
 
-    public String startHunt(long rewardAmount, net.dv8tion.jda.api.entities.Guild guild, net.dv8tion.jda.api.entities.Member organizer) {
-        this.activeCode = "OP-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+    private String generateCode() {
+        return "OP-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+    }
+
+    public String startHunt(long rewardAmount, net.dv8tion.jda.api.entities.Guild guild, net.dv8tion.jda.api.entities.Member organizer, net.dv8tion.jda.api.entities.channel.concrete.TextChannel channel) {
+        String code = generateCode();
+        this.activeCode = code;
+        this.activeCodeBackup = code;
         this.reward = rewardAmount;
-        
-        // LOGGING
-        String logDetails = String.format("### 🔍 فعالية الصيد: بدء الفعالية\n▫️ **المنظم:** %s\n▫️ **الجائزة:** %d opex\n▫️ **الكود:** ||%s||", 
-                organizer.getAsMention(), rewardAmount, activeCode);
+        this.huntChannel = channel;
+        this.codeMessageId = null;
+
+        MessageCreateAction action = channel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("DISCOVERY", "🔍 لقد وجدت شيئاً!",
+                        "لقد عثرت على الكود السري! الكود هو: **" + code + "**\nأسرع واكتبه لتفوز!",
+                        com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                .useComponentsV2(true).build());
+                
+        action.queue(msg -> {
+            this.codeMessageId = msg.getId();
+        });
+
+        huntTimer = scheduler.schedule(() -> {
+            if (activeCode != null) {
+                if (huntChannel != null) {
+                    huntChannel.sendMessage("⏰ **انتهى الوقت!** لم يقم أحد بكتابة الكود.").queue();
+                }
+                stopHunt();
+            }
+        }, 3, TimeUnit.MINUTES);
+
+        String logDetails = String.format("### 🔎 فعالية الصيد: بدء الفعالية\n▫️ **المنظم:** %s\n▫️ **الجائزة:** %d opex\n▫️ **الكود:** `%s`\n▫️ **القناة:** %s", 
+                organizer.getAsMention(), rewardAmount, code, channel.getAsMention());
         logManager.logEmbed(guild, LogManager.LOG_GAMES, 
-                EmbedUtil.createOldLogEmbed("hunt", logDetails, organizer, null, null, EmbedUtil.INFO));
+                EmbedUtil.createOldLogEmbed("scavenger-hunt", logDetails, organizer, null, null, EmbedUtil.INFO));
                 
         return activeCode;
     }
 
-
     public void stopHunt() {
         this.activeCode = null;
+        if (huntTimer != null) {
+            huntTimer.cancel(false);
+        }
+        eventManager.endGroupEvent();
+        if (huntChannel != null && codeMessageId != null) {
+            huntChannel.deleteMessageById(codeMessageId).queue(null, e -> {});
+        }
+        this.codeMessageId = null;
+        this.huntChannel = null;
     }
 
     @Override
@@ -58,27 +97,23 @@ public class ScavengerHuntManager extends ListenerAdapter {
 
         String content = event.getMessage().getContentRaw().trim().toUpperCase();
         if (content.equals(activeCode)) {
-            String winnerId = event.getAuthor().getId();
-            activeCode = null; // One winner only
-            eventManager.endGroupEvent();
-            
-            economyService.addBalance(winnerId, event.getGuild().getId(), reward);
-            
-            event.getChannel().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                    .setComponents(EmbedUtil.success("EVENT", "🎉 مبروك <@" + winnerId + ">! لقد وجدت الكود الصحيح وفزت بـ **" + reward + " opex**!"))
-                    .useComponentsV2(true)
-                    .build())
-                    .useComponentsV2(true)
-                    .queue();
-            
-            // LOGGING
-            String logDetails = String.format("### 🔍 فعالية الصيد: انتهت الفعالية\n▫️ **الفائز:** <@%s>\n▫️ **الجائزة:** %d opex", 
-                    winnerId, reward);
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_GAMES, 
-                    EmbedUtil.createOldLogEmbed("hunt", logDetails, null, null, null, EmbedUtil.SUCCESS));
+            long rewardWon = reward; 
+            stopHunt(); 
 
-            // Stats
-            achievementService.updateStats(event.getAuthor().getIdLong(), event.getGuild(), s -> {});
+            event.getMessage().reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
+                    .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("WINNER", "🏆 فائز بفعالية الصيد!", 
+                            "مبروك <@" + event.getAuthor().getId() + ">! لقد عثرت على الكود السري أولاً وربحت **" + rewardWon + " opex**!", 
+                            com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                    .useComponentsV2(true).build())
+                    .queue();
+
+            String logWin = String.format("### 🔎 فعالية الصيد: فوز\n▫️ **الفائز:** <@%s>\n▫️ **الكود:** `%s`\n▫️ **الجائزة:** %d opex", 
+                    event.getAuthor().getId(), activeCodeBackup, rewardWon);
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_GAMES, 
+                    EmbedUtil.createOldLogEmbed("scavenger-hunt", logWin, null, event.getMember(), null, EmbedUtil.SUCCESS));
+
+            achievementService.updateStats(event.getAuthor().getIdLong(), event.getGuild(), stats -> {
+            });
         }
     }
 }

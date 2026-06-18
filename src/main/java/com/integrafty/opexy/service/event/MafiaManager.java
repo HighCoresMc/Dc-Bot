@@ -40,7 +40,6 @@ public class MafiaManager extends ListenerAdapter {
         this.currentGame = new MafiaGame(channelId);
         this.organizerId = organizer.getIdLong();
         
-        // LOGGING
         String logDetails = String.format("### 🕵️ فعالية المافيا: بدء الفعالية\n▫️ **المنظم:** %s\n▫️ **القناة:** <#%d>", organizer.getAsMention(), channelId);
         logManager.logEmbed(guild, LogManager.LOG_GAMES, 
                 EmbedUtil.createOldLogEmbed("mafia", logDetails, organizer, null, null, EmbedUtil.INFO));
@@ -68,8 +67,8 @@ public class MafiaManager extends ListenerAdapter {
                  event.reply("❌ هذا الزر للمنظمين فقط.").setEphemeral(true).queue();
                  return;
             }
-            if (currentGame.getPlayers().size() < 3) { // Lowered for testing, PRD says 5
-                event.reply("❌ يجب وجود 5 لاعبين على الأقل للبدء.").setEphemeral(true).queue();
+            if (currentGame.getPlayers().size() < 5) {
+                event.reply("يجب وجود 5 لاعبين على الأقل للبدء.").setEphemeral(true).queue();
                 return;
             }
             startGame(event);
@@ -90,10 +89,10 @@ public class MafiaManager extends ListenerAdapter {
                       "\n**القوانين:**\n• الحد الأدنى للاعبين: 5.\n• النهار للمناقشة، والليل لتنفيذ الأدوار.";
 
         event.editMessage(new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "🕵️ لعبة المافيا — Mafia Game", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN,
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "لعبة المافيا — Mafia Game", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN,
                         net.dv8tion.jda.api.components.actionrow.ActionRow.of(
-                                net.dv8tion.jda.api.components.buttons.Button.primary("mafia_join", "انضمام ✋"),
-                                net.dv8tion.jda.api.components.buttons.Button.danger("mafia_start", "بدء اللعبة (المنظم فقط) 🚀")
+                                net.dv8tion.jda.api.components.buttons.Button.primary("mafia_join", "انضمام"),
+                                net.dv8tion.jda.api.components.buttons.Button.danger("mafia_start", "بدء اللعبة (المنظم فقط)")
                         )))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue();
@@ -107,12 +106,11 @@ public class MafiaManager extends ListenerAdapter {
                 .setComponents(Collections.emptyList())
                 .queue();
 
-        // Notify players privately
         for (long pid : currentGame.getPlayers().keySet()) {
             MafiaGame.Role role = currentGame.getPlayers().get(pid);
-            String roleName = role == MafiaGame.Role.MAFIA ? "المافيا 🔪" : 
-                             role == MafiaGame.Role.DOCTOR ? "الطبيب 💉" : 
-                             role == MafiaGame.Role.DETECTIVE ? "المحقق 🔍" : "مواطن 👤";
+            String roleName = role == MafiaGame.Role.MAFIA ? "المافيا" : 
+                             role == MafiaGame.Role.DOCTOR ? "الطبيب" : 
+                             role == MafiaGame.Role.DETECTIVE ? "المحقق" : "مواطن";
             
             event.getGuild().retrieveMemberById(pid).queue(m -> {
                 m.getUser().openPrivateChannel().queue(pc -> {
@@ -131,12 +129,9 @@ public class MafiaManager extends ListenerAdapter {
         currentGame.setTargetToInvestigate(null);
 
         event.getChannel().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "🌙 حل الليل...", "أغمض الجميع أعينهم... حان دور المافيا والطبيب والمحقق.", com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "حل الليل...", "أغمض الجميع أعينهم... حان دور المافيا والطبيب والمحقق.", com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue();
-        
-        // Show action buttons to roles privately or via ephemeral (ephemeral is safer for multi-player interaction in one channel)
-        // For simplicity in this demo, we use the channel but only the role can click
         
         List<Button> buttons = new ArrayList<>();
         for (long pid : currentGame.getAlivePlayers()) {
@@ -151,7 +146,6 @@ public class MafiaManager extends ListenerAdapter {
                 .useComponentsV2(true)
                 .queue();
 
-        // Wait 20 seconds for night actions
         scheduler.schedule(() -> startDay(event), 20, TimeUnit.SECONDS);
     }
 
@@ -161,25 +155,25 @@ public class MafiaManager extends ListenerAdapter {
         MafiaGame.Role role = currentGame.getPlayers().get(actorId);
 
         if (!currentGame.getAlivePlayers().contains(actorId)) {
-            event.reply("💀 الأموات لا يتحدثون.").setEphemeral(true).queue();
+            event.reply("الأموات لا يتحدثون.").setEphemeral(true).queue();
             return;
         }
 
         if (role == MafiaGame.Role.MAFIA) {
             currentGame.setTargetToKill(targetId);
-            event.reply("🔪 اخترت قتل <@" + targetId + ">").setEphemeral(true).queue();
+            event.reply("اخترت قتل <@" + targetId + ">").setEphemeral(true).queue();
         } else if (role == MafiaGame.Role.DOCTOR) {
             currentGame.setTargetToSave(targetId);
-            event.reply("💉 اخترت حماية <@" + targetId + ">").setEphemeral(true).queue();
+            event.reply("اخترت حماية <@" + targetId + ">").setEphemeral(true).queue();
         } else if (role == MafiaGame.Role.DETECTIVE) {
             currentGame.setTargetToInvestigate(targetId);
             boolean isMafia = currentGame.getPlayers().get(targetId) == MafiaGame.Role.MAFIA;
-            event.reply("🔍 نتيجة التحقيق: الشخص " + (isMafia ? "**مافيا!!**" : "مواطن صالح.")).setEphemeral(true).queue();
+            event.reply("نتيجة التحقيق: الشخص " + (isMafia ? "**مافيا!!**" : "مواطن صالح.")).setEphemeral(true).queue();
             if (isMafia) {
                 achievementService.updateStats(actorId, event.getGuild(), s -> s.setDetectiveReveals(s.getDetectiveReveals() + 1));
             }
         } else {
-            event.reply("👤 ليس لديك دور ليلي.").setEphemeral(true).queue();
+            event.reply("ليس لديك دور ليلي.").setEphemeral(true).queue();
         }
     }
 
@@ -189,20 +183,19 @@ public class MafiaManager extends ListenerAdapter {
         Long killed = currentGame.getTargetToKill();
         Long saved = currentGame.getTargetToSave();
         
-        String resultMsg = "☀️ طلع النهار!";
+        String resultMsg = "طلع النهار!";
         if (killed != null && !killed.equals(saved)) {
             currentGame.getAlivePlayers().remove(killed);
-            resultMsg += "\n💀 للأسف، استيقظتم على خبر مقتل <@" + killed + ">!";
+            resultMsg += "\nللأسف، استيقظتم على خبر مقتل <@" + killed + ">!";
         } else {
-            resultMsg += "\n🛡️ ليلة هادئة، لم يمت أحد!";
+            resultMsg += "\nليلة هادئة، لم يمت أحد!";
         }
 
         event.getChannel().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "☀️ بداية يوم جديد", resultMsg + "\n\n**وقت المناقشة (20 ثانية)**", com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "بداية يوم جديد", resultMsg + "\n\n**وقت المناقشة (20 ثانية)**", com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue();
 
-        // Check Win Condition
         if (checkWin(event)) return;
 
         scheduler.schedule(() -> startVoting(event), 20, TimeUnit.SECONDS);
@@ -218,7 +211,7 @@ public class MafiaManager extends ListenerAdapter {
         }
 
         event.getChannel().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setContent("🗳️ حان وقت التصويت! من هو المافيا؟")
+                .setContent("حان وقت التصويت! من هو المافيا؟")
                 .setComponents(com.integrafty.opexy.util.ComponentUtil.splitToRows(buttons))
                 .useComponentsV2(true)
                 .build())
@@ -233,12 +226,12 @@ public class MafiaManager extends ListenerAdapter {
         long targetId = Long.parseLong(event.getComponentId().replace("mafia_vote_", ""));
 
         if (!currentGame.getAlivePlayers().contains(voterId)) {
-            event.reply("💀 لا يمكنك التصويت وأنت ميت.").setEphemeral(true).queue();
+            event.reply("لا يمكنك التصويت وأنت ميت.").setEphemeral(true).queue();
             return;
         }
 
         currentGame.getVotes().put(voterId, targetId);
-        event.reply("✅ تم تسجيل تصويتك ضد <@" + targetId + ">").setEphemeral(true).queue();
+        event.reply("تم تسجيل تصويتك ضد <@" + targetId + ">").setEphemeral(true).queue();
     }
 
     private void endDay(ButtonInteractionEvent event) {
@@ -259,13 +252,12 @@ public class MafiaManager extends ListenerAdapter {
         if (votedOut != null) {
             currentGame.getAlivePlayers().remove(votedOut);
             boolean wasMafia = currentGame.getPlayers().get(votedOut) == MafiaGame.Role.MAFIA;
-            event.getChannel().sendMessage("⚖️ بقرار الأغلبية، تم إعدام <@" + votedOut + ">! لقد كان: **" + (wasMafia ? "المافيا!" : "مواطن بريء") + "**").queue();
+            event.getChannel().sendMessage("بقرار الأغلبية، تم إعدام <@" + votedOut + ">! لقد كان: **" + (wasMafia ? "المافيا!" : "مواطن بريء") + "**").queue();
             
-            // Stats
             final long fVotedOut = votedOut;
             achievementService.updateStats(votedOut, event.getGuild(), s -> s.setVotesReceived(s.getVotesReceived() + 1));
         } else {
-            event.getChannel().sendMessage("⚖️ تعادل في الأصوات، لم يتم إعدام أحد.").queue();
+            event.getChannel().sendMessage("تعادل في الأصوات، لم يتم إعدام أحد.").queue();
         }
 
         if (checkWin(event)) return;
@@ -282,10 +274,10 @@ public class MafiaManager extends ListenerAdapter {
         }
 
         if (mafiaCount == 0) {
-            endGame(event, "المواطنين 🛡️");
+            endGame(event, "المواطنين");
             return true;
         } else if (mafiaCount >= citizenCount) {
-            endGame(event, "المافيا 🔪");
+            endGame(event, "المافيا");
             return true;
         }
         return false;
@@ -294,11 +286,10 @@ public class MafiaManager extends ListenerAdapter {
     private void endGame(ButtonInteractionEvent event, String winner) {
         eventManager.endGroupEvent();
         event.getChannel().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "🏁 انتهت اللعبة!", "الفائز هم: **" + winner + "**\n\nشكراً للجميع على اللعب!", com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
+                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("GAME", "انتهت اللعبة!", "الفائز هم: **" + winner + "**\n\nشكراً للجميع على اللعب!", com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue();
         
-        // Update wins
         for (long pid : currentGame.getPlayers().keySet()) {
             MafiaGame.Role role = currentGame.getPlayers().get(pid);
             achievementService.updateStats(pid, event.getGuild(), s -> {
@@ -306,7 +297,6 @@ public class MafiaManager extends ListenerAdapter {
                 if (role == MafiaGame.Role.CITIZEN) s.setCitizenCount(s.getCitizenCount() + 1);
             });
         }
-        // LOGGING
         String logDetails = String.format("### 🕵️ فعالية المافيا: انتهت اللعبة\n▫️ **الفائز:** %s\n▫️ **عدد اللاعبين:** %d", 
                 winner, currentGame.getPlayers().size());
         logManager.logEmbed(event.getGuild(), LogManager.LOG_GAMES, 
