@@ -130,5 +130,6 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                             EmbedUtil.createOldLogEmbed("speed", logTimeout, null, null, null, EmbedUtil.DANGER));
                 }
             });
+        });
     }
 }
