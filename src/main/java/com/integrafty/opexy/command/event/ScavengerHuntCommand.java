@@ -61,7 +61,7 @@ public class ScavengerHuntCommand implements MultiSlashCommand {
             return;
         }
 
-        long reward = 5000;
+        long reward = 500;
         TextChannel targetChannel = event.getChannel().asTextChannel();
         String code = huntManager.startHunt(reward, event.getGuild(), event.getMember(), targetChannel);
 

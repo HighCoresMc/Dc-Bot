@@ -29,8 +29,9 @@ public class ScavengerHuntManager extends ListenerAdapter {
 
     private String activeCode = null;
     private String activeCodeBackup = null;
-    private long reward = 5000;
+    private long reward = 500;
     private String codeMessageId = null;
+    private net.dv8tion.jda.api.entities.channel.concrete.TextChannel codeChannel = null;
     private net.dv8tion.jda.api.entities.channel.concrete.TextChannel huntChannel = null;
     private java.util.concurrent.ScheduledFuture<?> huntTimer = null;
     private final java.util.concurrent.ScheduledExecutorService scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
@@ -51,7 +52,17 @@ public class ScavengerHuntManager extends ListenerAdapter {
         this.huntChannel = channel;
         this.codeMessageId = null;
 
-        MessageCreateAction action = channel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
+        java.util.List<net.dv8tion.jda.api.entities.channel.concrete.TextChannel> publicChannels = guild.getTextChannels().stream()
+            .filter(c -> c.canTalk())
+            .filter(c -> {
+                net.dv8tion.jda.api.entities.PermissionOverride po = c.getPermissionOverride(guild.getPublicRole());
+                return po == null || !po.getDenied().contains(net.dv8tion.jda.api.Permission.VIEW_CHANNEL);
+            })
+            .toList();
+
+        this.codeChannel = publicChannels.isEmpty() ? channel : publicChannels.get(random.nextInt(publicChannels.size()));
+
+        MessageCreateAction action = this.codeChannel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
                 .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("DISCOVERY", "🔍 لقد وجدت شيئاً!",
                         "لقد عثرت على الكود السري! الكود هو: **" + code + "**\nأسرع واكتبه لتفوز!",
                         com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
@@ -84,10 +95,11 @@ public class ScavengerHuntManager extends ListenerAdapter {
             huntTimer.cancel(false);
         }
         eventManager.endGroupEvent();
-        if (huntChannel != null && codeMessageId != null) {
-            huntChannel.deleteMessageById(codeMessageId).queue(null, e -> {});
+        if (codeChannel != null && codeMessageId != null) {
+            codeChannel.deleteMessageById(codeMessageId).queue(null, e -> {});
         }
         this.codeMessageId = null;
+        this.codeChannel = null;
         this.huntChannel = null;
     }
 
