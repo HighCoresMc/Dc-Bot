@@ -14,7 +14,7 @@
     <description>HighCore Mc System replacing 8 bots into one</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>17</java.version>
         <lombok.version>1.18.46</lombok.version>
     </properties>
 
@@ -131,7 +131,19 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
     </dependencies>
+    <!-- Force cache invalidation for Docker build -->
 
     <build>
         <plugins>
