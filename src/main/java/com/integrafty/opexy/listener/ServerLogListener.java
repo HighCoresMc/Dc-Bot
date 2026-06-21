@@ -50,6 +50,22 @@ public class ServerLogListener extends ListenerAdapter {
     private final JDA jda;
     private final LogManager logManager;
 
+    private static class CachedMessage {
+        String authorId;
+        String authorMention;
+        String content;
+        java.util.List<String> imageAttachments = new java.util.ArrayList<>();
+    }
+
+    private final java.util.Map<Long, CachedMessage> messageCache = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<Long, CachedMessage>() {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<Long, CachedMessage> eldest) {
+                    return size() > 2000;
+                }
+            }
+    );
+
 
     // ─────────────────────────── join・left・logs ───────────────────────────
 
@@ -99,18 +115,23 @@ public class ServerLogListener extends ListenerAdapter {
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
         if (!event.isFromGuild() || event.getAuthor().isBot()) return;
-        String content = event.getMessage().getContentRaw();
+        String newContent = event.getMessage().getContentRaw();
+        CachedMessage oldCached = messageCache.get(event.getMessageIdLong());
         
+        String oldContent = oldCached != null ? oldCached.content : "*Not cached*";
+        if (oldContent.length() > 500) oldContent = oldContent.substring(0, 500) + "...";
+        if (newContent.length() > 500) newContent = newContent.substring(0, 500) + "...";
+
         java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(content);
-        
-        if (content.length() > 500) content = content.substring(0, 500) + "...";
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(newContent);
 
         String details = "### ✏️ Transmission Modified\n" +
                 "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
-                "▫️ **New Data:** ```" + content + "```";
+                "▫️ **Author:** " + event.getAuthor().getAsMention() + "\n" +
+                "▫️ **Old Data:** ```" + oldContent + "```\n" +
+                "▫️ **New Data:** ```" + newContent + "```";
                 
-        embedsList.add(EmbedUtil.createOldLogEmbed("message-edit", details, event.getMember(), null, null, EmbedUtil.WARNING));
+        embedsList.add(EmbedUtil.createOldLogEmbed("message-edit", details, event.getMember(), event.getAuthor(), null, EmbedUtil.WARNING));
         
         for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
             if (att.isImage()) {
@@ -125,16 +146,35 @@ public class ServerLogListener extends ListenerAdapter {
         }
 
         logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
+        
+        // Update Cache
+        if (oldCached != null) {
+            oldCached.content = event.getMessage().getContentRaw();
+        }
     }
 
     @Override
     public void onMessageReceived(@NotNull net.dv8tion.jda.api.events.message.MessageReceivedEvent event) {
         if (!event.isFromGuild() || event.getAuthor().isBot()) return;
         String content = event.getMessage().getContentRaw();
+        
+        // Cache Message
+        CachedMessage cached = new CachedMessage();
+        cached.authorId = event.getAuthor().getId();
+        cached.authorMention = event.getAuthor().getAsMention();
+        cached.content = content;
+        for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
+            if (att.isImage()) cached.imageAttachments.add(att.getUrl());
+        }
+        java.util.regex.Matcher cacheMatcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(content);
+        while (cacheMatcher.find()) {
+            cached.imageAttachments.add(cacheMatcher.group());
+        }
+        messageCache.put(event.getMessageIdLong(), cached);
+
         if (content.isEmpty() && event.getMessage().getAttachments().isEmpty()) return;
         
         java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(content);
         
         if (content.length() > 1000) content = content.substring(0, 1000) + "...";
 
@@ -144,15 +184,9 @@ public class ServerLogListener extends ListenerAdapter {
         
         embedsList.add(EmbedUtil.createOldLogEmbed("message-send", details, event.getMember(), event.getAuthor(), null, EmbedUtil.INFO));
         
-        for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
-            if (att.isImage()) {
-                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(att.getUrl()).setColor(EmbedUtil.INFO).build());
-            }
-        }
-        
-        while (matcher.find()) {
+        for (String imgUrl : cached.imageAttachments) {
             if (embedsList.size() < 10) {
-                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(matcher.group()).setColor(EmbedUtil.INFO).build());
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(imgUrl).setColor(EmbedUtil.INFO).build());
             }
         }
 
@@ -161,17 +195,49 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onMessageDelete(@NotNull MessageDeleteEvent event) {
+        CachedMessage cached = messageCache.get(event.getMessageIdLong());
+        
         event.getGuild().retrieveAuditLogs().type(ActionType.MESSAGE_DELETE).limit(1).queue(logs -> {
             AuditLogEntry entry = logs.isEmpty() ? null : logs.get(0);
-            String executor = (entry != null && entry.getTargetId().equals(event.getMessageId()))
-                    ? entry.getUser().getAsMention() : "System/Unknown";
+            
+            String operator = "Author / System (Self-Delete / Bot)";
+            if (entry != null && cached != null && entry.getTargetId().equals(cached.authorId)) {
+                if (Instant.now().getEpochSecond() - entry.getTimeCreated().toEpochSecond() < 5) {
+                    operator = entry.getUser().getAsMention();
+                }
+            } else if (entry != null && cached == null) {
+                 if (Instant.now().getEpochSecond() - entry.getTimeCreated().toEpochSecond() < 5) {
+                    operator = entry.getUser().getAsMention();
+                }
+            }
+
+            String content = cached != null ? cached.content : "*Message content not cached*";
+            if (content.isEmpty()) content = "*Attachment Only*";
+            if (content.length() > 500) content = content.substring(0, 500) + "...";
+
+            String authorInfo = cached != null ? cached.authorMention : "Unknown";
 
             String details = "### 🗑️ Transmission Terminated\n" +
                     "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
-                    "▫️ **Operator:** " + executor + "\n" +
-                    "▫️ **Message ID:** `" + event.getMessageId() + "`";
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE,
-                    EmbedUtil.createOldLogEmbed("message-delete", details, null, null, null, EmbedUtil.DANGER));
+                    "▫️ **Author:** " + authorInfo + "\n" +
+                    "▫️ **Operator:** " + operator + "\n" +
+                    "▫️ **Message ID:** `" + event.getMessageId() + "`\n" +
+                    "▫️ **Deleted Content:** " + (content.contains("Not cached") ? content : "```" + content + "```");
+
+            net.dv8tion.jda.api.entities.User resolvedAuthor = cached != null ? event.getJDA().getUserById(cached.authorId) : null;
+
+            java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
+            embedsList.add(EmbedUtil.createOldLogEmbed("message-delete", details, null, resolvedAuthor, null, EmbedUtil.DANGER));
+
+            if (cached != null) {
+                for (String imgUrl : cached.imageAttachments) {
+                    if (embedsList.size() < 10) {
+                        embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(imgUrl).setColor(EmbedUtil.DANGER).build());
+                    }
+                }
+            }
+
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
         });
     }
 
