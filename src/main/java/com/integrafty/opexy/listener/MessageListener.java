@@ -115,22 +115,24 @@ public class MessageListener extends ListenerAdapter {
         if (moderatedMessages.contains(message.getIdLong())) {
             return false;
         }
-        boolean isNsfw = false;
+        String blockReason = null;
         
         // 1. Check Stickers
         for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : message.getStickers()) {
-            if (imageModerationService.isPornographic(sticker.getIconUrl())) {
-                isNsfw = true;
+            String res = imageModerationService.checkImage(sticker.getIconUrl());
+            if (res != null) {
+                blockReason = res;
                 break;
             }
         }
 
         // 2. Check Attachments
-        if (!isNsfw) {
+        if (blockReason == null) {
             for (net.dv8tion.jda.api.entities.Message.Attachment attachment : message.getAttachments()) {
                 if (attachment.isImage() || attachment.isVideo()) {
-                    if (imageModerationService.isPornographic(attachment.getUrl())) {
-                        isNsfw = true;
+                    String res = imageModerationService.checkImage(attachment.getUrl());
+                    if (res != null) {
+                        blockReason = res;
                         break;
                     }
                 }
@@ -138,15 +140,16 @@ public class MessageListener extends ListenerAdapter {
         }
         
         // 3. Check Content URLs
-        if (!isNsfw && content.contains("http")) {
+        if (blockReason == null && content.contains("http")) {
             String[] words = content.split("\\s+");
             for (String w : words) {
                 if (w.startsWith("http://") || w.startsWith("https://")) {
                     if (w.contains("tenor.com/view") || w.contains("giphy.com/gifs") || w.contains("gfycat.com/")) {
                         continue;
                     }
-                    if (imageModerationService.isPornographic(w)) {
-                        isNsfw = true;
+                    String res = imageModerationService.checkImage(w);
+                    if (res != null) {
+                        blockReason = res;
                         break;
                     }
                 }
@@ -154,43 +157,50 @@ public class MessageListener extends ListenerAdapter {
         }
 
         // 4. Check Embeds (Tenor GIFs)
-        if (!isNsfw) {
+        if (blockReason == null) {
             for (net.dv8tion.jda.api.entities.MessageEmbed embed : message.getEmbeds()) {
                 if (embed.getImage() != null && embed.getImage().getUrl() != null) {
                     String url = embed.getImage().getUrl();
-                    if (isImageUrl(url) && imageModerationService.isPornographic(url)) {
-                        isNsfw = true;
-                        break;
+                    if (isImageUrl(url)) {
+                        String res = imageModerationService.checkImage(url);
+                        if (res != null) {
+                            blockReason = res;
+                            break;
+                        }
                     }
                 }
                 
                 if (embed.getThumbnail() != null && embed.getThumbnail().getUrl() != null) {
                     String url = embed.getThumbnail().getUrl();
-                    if (isImageUrl(url) && imageModerationService.isPornographic(url)) {
-                        isNsfw = true;
-                        break;
+                    if (isImageUrl(url)) {
+                        String res = imageModerationService.checkImage(url);
+                        if (res != null) {
+                            blockReason = res;
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        if (isNsfw) {
+        if (blockReason != null) {
             moderatedMessages.add(message.getIdLong());
             message.delete().queue(null, err -> {});
 
-            channel.sendMessage("⚠️ <@" + author.getId() + ">, your message was removed for containing restricted media (NSFW/Pornographic content).")
+            String reasonMsg = blockReason.equals("SCAM_QR") ? "malicious trade/scam links" : "restricted media (NSFW/Pornographic content)";
+            channel.sendMessage("⚠️ <@" + author.getId() + ">, your message was removed for containing " + reasonMsg + ".")
                     .delay(5, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)
                     .queue(null, err -> {});
 
-            String logBody = "### 🛡️ RESTRICTED NSFW MEDIA DETECTED\n" +
+            String logBody = "### 🛡️ RESTRICTED " + blockReason + " DETECTED\n" +
                     "▫️ **User:** " + author.getAsMention() + " (`" + author.getId() + "`)\n" +
                     "▫️ **Channel:** " + channel.getAsMention() + "\n" +
                     "▫️ **Type:** `AI_AUTO_DETECT`\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
             logManager.logEmbed(guild, LogManager.LOG_BLOCKED_WORDS, 
-                    EmbedUtil.createOldLogEmbed("nsfw-filter", logBody, member, author, member, EmbedUtil.DANGER));
+                    EmbedUtil.createOldLogEmbed("image-filter", logBody, member, author, member, EmbedUtil.DANGER));
             return true;
         }
         return false;

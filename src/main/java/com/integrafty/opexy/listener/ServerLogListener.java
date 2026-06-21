@@ -100,13 +100,31 @@ public class ServerLogListener extends ListenerAdapter {
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
         if (!event.isFromGuild() || event.getAuthor().isBot()) return;
         String content = event.getMessage().getContentRaw();
+        
+        java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(content);
+        
         if (content.length() > 500) content = content.substring(0, 500) + "...";
 
         String details = "### ✏️ Transmission Modified\n" +
                 "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                 "▫️ **New Data:** ```" + content + "```";
-        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE,
-                EmbedUtil.createOldLogEmbed("message-edit", details, event.getMember(), null, null, EmbedUtil.WARNING));
+                
+        embedsList.add(EmbedUtil.createOldLogEmbed("message-edit", details, event.getMember(), null, null, EmbedUtil.WARNING));
+        
+        for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
+            if (att.isImage()) {
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(att.getUrl()).setColor(EmbedUtil.WARNING).build());
+            }
+        }
+        
+        while (matcher.find()) {
+            if (embedsList.size() < 10) {
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(matcher.group()).setColor(EmbedUtil.WARNING).build());
+            }
+        }
+
+        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
     }
 
     @Override
@@ -115,14 +133,30 @@ public class ServerLogListener extends ListenerAdapter {
         String content = event.getMessage().getContentRaw();
         if (content.isEmpty() && event.getMessage().getAttachments().isEmpty()) return;
         
+        java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(content);
+        
         if (content.length() > 1000) content = content.substring(0, 1000) + "...";
 
         String details = "### 📩 New Transmission\n" +
                 "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                 "▫️ **Content:** " + (content.isEmpty() ? "*Attachment Only*" : "```" + content + "```");
         
-        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE,
-                EmbedUtil.createOldLogEmbed("message-send", details, event.getMember(), event.getAuthor(), null, EmbedUtil.INFO));
+        embedsList.add(EmbedUtil.createOldLogEmbed("message-send", details, event.getMember(), event.getAuthor(), null, EmbedUtil.INFO));
+        
+        for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
+            if (att.isImage()) {
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(att.getUrl()).setColor(EmbedUtil.INFO).build());
+            }
+        }
+        
+        while (matcher.find()) {
+            if (embedsList.size() < 10) {
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(matcher.group()).setColor(EmbedUtil.INFO).build());
+            }
+        }
+
+        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
     }
 
     @Override

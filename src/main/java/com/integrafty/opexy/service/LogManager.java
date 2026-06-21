@@ -37,11 +37,11 @@ public class LogManager {
         });
     }
 
-    public void logEmbed(Guild guild, String channelId, MessageEmbed embed) {
-        if (guild == null || embed == null || channelId == null) return;
+    public void logEmbed(Guild guild, String channelId, MessageEmbed... embeds) {
+        if (guild == null || embeds == null || embeds.length == 0 || channelId == null) return;
         TextChannel ch = resolve(guild, channelId);
         if (ch != null) {
-            ch.sendMessageEmbeds(embed)
+            ch.sendMessageEmbeds(java.util.Arrays.asList(embeds))
               .setAllowedMentions(java.util.Collections.emptyList())
               .queue(null, err -> log.warn("[LogManager] Failed to send embed to {}: {}", channelId, err.getMessage()));
         }

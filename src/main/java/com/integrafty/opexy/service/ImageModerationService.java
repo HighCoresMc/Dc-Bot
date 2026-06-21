@@ -16,6 +16,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+
 @Service
 @Slf4j
 public class ImageModerationService {
@@ -77,10 +84,10 @@ public class ImageModerationService {
         }
     }
 
-    public boolean isPornographic(String imageUrl) {
+    public String checkImage(String imageUrl) {
         if (session == null) {
-            log.warn("[NSFW Filter] ONNX session is not initialized. Skipping check.");
-            return false;
+            log.warn("[Image Filter] ONNX session is not initialized. Skipping check.");
+            return null;
         }
         try {
             log.info("[NSFW Filter] Checking image URL: {}", imageUrl);
@@ -90,8 +97,8 @@ public class ImageModerationService {
                     .build();
             HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() != 200) {
-                log.warn("[NSFW Filter] Failed to fetch image: status code {}", response.statusCode());
-                return false;
+                log.warn("[Image Filter] Failed to fetch image: status code {}", response.statusCode());
+                return null;
             }
 
             BufferedImage original;
@@ -99,8 +106,21 @@ public class ImageModerationService {
                 original = ImageIO.read(is);
             }
             if (original == null) {
-                log.warn("[NSFW Filter] Failed to decode image from URL");
-                return false;
+                log.warn("[Image Filter] Failed to decode image from URL");
+                return null;
+            }
+
+            // QR Scanner
+            try {
+                LuminanceSource source = new BufferedImageLuminanceSource(original);
+                BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                Result qrResult = new MultiFormatReader().decode(bitmap);
+                String text = qrResult.getText().toLowerCase();
+                if (text.contains("steam") || text.contains("discord.gift") || text.contains("nitro") || text.contains("trade") || text.contains("free")) {
+                    log.info("[Image Filter] Malicious QR Code detected: {}", text);
+                    return "SCAM_QR";
+                }
+            } catch (Exception ignored) {
             }
 
             BufferedImage resized = new BufferedImage(224, 224, BufferedImage.TYPE_INT_RGB);
@@ -135,15 +155,15 @@ public class ImageModerationService {
                     double expNsfw = Math.exp(nsfwLogit);
                     double probNsfw = expNsfw / (expNormal + expNsfw);
 
-                    log.info("[NSFW Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit, nsfwLogit, probNsfw);
+                    log.info("[Image Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit, nsfwLogit, probNsfw);
                     boolean isNsfw = probNsfw > 0.85;
-                    log.info("[NSFW Filter] Final result: {}", isNsfw);
-                    return isNsfw;
+                    log.info("[Image Filter] Final result: {}", isNsfw);
+                    return isNsfw ? "NSFW" : null;
                 }
             }
         } catch (Exception e) {
-            log.warn("[NSFW Filter] Failed to moderate image URL {}: {}", imageUrl, e.getMessage());
+            log.warn("[Image Filter] Failed to moderate image URL {}: {}", imageUrl, e.getMessage());
         }
-        return false;
+        return null;
     }
 }
