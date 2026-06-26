@@ -62,7 +62,7 @@ public class MessageListener extends ListenerAdapter {
             event.getMessage().delete().queue(null, err -> {
             });
 
-            boolean isStrict = wordFilterService.isStrictWord(forbidden);
+            boolean isStrict = wordFilterService.isStrict(forbidden);
             boolean timedOut = false;
 
             if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {

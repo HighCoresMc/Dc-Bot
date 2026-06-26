@@ -7,12 +7,12 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 @Entity
-@Table(name = "word_filter")
+@Table(name = "word_whitelist")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class WordFilterEntity {
+public class WordWhitelistEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,7 +20,4 @@ public class WordFilterEntity {
 
     @Column(name = "word", unique = true, nullable = false)
     private String word;
-
-    @Column(name = "strict", nullable = false)
-    private boolean strict = false;
 }

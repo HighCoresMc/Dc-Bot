@@ -1,7 +1,9 @@
 package com.integrafty.opexy.service;
 
 import com.integrafty.opexy.entity.WordFilterEntity;
+import com.integrafty.opexy.entity.WordWhitelistEntity;
 import com.integrafty.opexy.repository.WordFilterRepository;
+import com.integrafty.opexy.repository.WordWhitelistRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,11 +11,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.ArrayList;
+import java.util.regex.Matcher;
 
 @Service
 @RequiredArgsConstructor
@@ -21,65 +25,20 @@ import java.util.ArrayList;
 public class WordFilterService {
 
     private final WordFilterRepository wordFilterRepository;
+    private final WordWhitelistRepository wordWhitelistRepository;
+    private final List<FilterPattern> filterPatterns = new ArrayList<>();
+    private final Set<String> whitelistWords = new HashSet<>();
 
-    private final Set<String> forbiddenWords = new HashSet<>();
-
-    private final List<CompiledFilter> strictFilters = new ArrayList<>();
-    private final List<CompiledFilter> contextFilters = new ArrayList<>();
-
-    private static final Set<String> STRICT_ROOTS = java.util.Arrays.stream(new String[]{
-        "aHR0cDo=", // http:
-        "aHR0cHM6", // https:
-        "MTg0LjU3LjUxLjI0NQ==", // 184.57.51.245
-        "MTE5MDMwNTU4NjcxMDA3MzQyNw==", // 1190305586710073427
-        "emFib3VyaQ==", // zabori (transliterated or direct)
-        "2LLYqNmI2LE=", // زبوري
-        "2KfbjNix", // اير
-        "2qnYsw==", // كس
-        "2LfZiti6", // طيز
-        "2K7Ysdin", // خرا
-        "2KfZhNix2K3Zhdin", // الحرام
-        "2KfZhNmC2K3YqNip", // القحبة
-        "2YbZitmD", // نيك
-        "2KrZhtin2ag=", // تناك
-        "2YXZhtmI2ag=", // منوك
-        "2YrZhtmK2ag=", // ينيك
-        "2YLYrdio2Kk=", // قحبة
-        "2YLYrdio2Kg=", // قحبه
-        "2YLYp9it2YrYqA==", // قاحيب
-        "2LTYsdmF2YjYt9ip", // شرموطه
-        "2LTYsdmF2YjYt9ip", // شرموطة
-        "2LTYsdin2YXZiti3", // شراميط
-        "2LnYsdi1", // عرص
-        "2KfZhNiv2YrZi9ir", // الديوث
-        "2LTYp9iw", // شاذ
-        "2LLYqg==", // زب
-        "2K7ZhtuK2Kw=", // خنيث
-        "2KfZhNiv2YrZi9ir", // ديوث
-        "2KfZhNi12KfYsQ==", // الصاع
-        "2LfZitis2g==", // طيرك
-        "2LfZitiK" // طيري
-    }).map(base64 -> {
-        try {
-            // Check if standard UTF-8 or fallback
-            byte[] bytes = java.util.Base64.getDecoder().decode(base64);
-            return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            return base64;
-        }
-    }).collect(java.util.stream.Collectors.toSet());
-
-    private static class CompiledFilter {
+    private static class FilterPattern {
         private final String originalWord;
         private final Pattern pattern;
+        private final boolean strict;
 
-        public CompiledFilter(String originalWord, Pattern pattern) {
+        public FilterPattern(String originalWord, Pattern pattern, boolean strict) {
             this.originalWord = originalWord;
             this.pattern = pattern;
+            this.strict = strict;
         }
-
-        public String getOriginalWord() { return originalWord; }
-        public Pattern getPattern() { return pattern; }
     }
 
     @PostConstruct
@@ -91,42 +50,23 @@ public class WordFilterService {
     public void reload() {
         try {
             List<WordFilterEntity> all = wordFilterRepository.findAll();
-            synchronized (forbiddenWords) {
-                forbiddenWords.clear();
-                all.forEach(e -> forbiddenWords.add(e.getWord().toLowerCase()));
-            }
-
-            List<CompiledFilter> newStrict = new ArrayList<>();
-            List<CompiledFilter> newContext = new ArrayList<>();
-
-            for (WordFilterEntity entity : all) {
-                String originalWord = entity.getWord();
-                if (originalWord == null || originalWord.trim().isEmpty()) continue;
-
-                String collapsedWord = collapseRepeatedChars(originalWord);
-                String regexStr = buildFillerInsensitiveRegex(collapsedWord);
-
-                if (isStrictWord(originalWord)) {
-                    Pattern p = Pattern.compile(regexStr, Pattern.CASE_INSENSITIVE);
-                    newStrict.add(new CompiledFilter(originalWord, p));
-                } else {
-                    String contextRegex = "(^|(?<=\\s|\\p{Punct}))" + regexStr + "((?=\\s|\\p{Punct})|$)";
-                    Pattern p = Pattern.compile(contextRegex, Pattern.CASE_INSENSITIVE);
-                    newContext.add(new CompiledFilter(originalWord, p));
+            List<WordWhitelistEntity> whitelistAll = wordWhitelistRepository.findAll();
+            synchronized (filterPatterns) {
+                filterPatterns.clear();
+                for (WordFilterEntity entity : all) {
+                    FilterPattern fp = compileWord(entity);
+                    if (fp != null) {
+                        filterPatterns.add(fp);
+                    }
                 }
             }
-
-            synchronized (strictFilters) {
-                strictFilters.clear();
-                strictFilters.addAll(newStrict);
+            synchronized (whitelistWords) {
+                whitelistWords.clear();
+                for (WordWhitelistEntity entity : whitelistAll) {
+                    whitelistWords.add(sanitize(entity.getWord()));
+                }
             }
-            synchronized (contextFilters) {
-                contextFilters.clear();
-                contextFilters.addAll(newContext);
-            }
-
-            log.info("Word filter reloaded. Total words: {}. Strict: {}. Context: {}", 
-                     forbiddenWords.size(), newStrict.size(), newContext.size());
+            log.info("Word filter reloaded. Total patterns: {}, whitelist: {}", filterPatterns.size(), whitelistWords.size());
         } catch (Exception e) {
             log.error("Failed to reload word filter: {}", e.getMessage());
         }
@@ -134,9 +74,15 @@ public class WordFilterService {
 
     @Transactional
     public void addWord(String word) {
+        addWord(word, false);
+    }
+
+    @Transactional
+    public void addWord(String word, boolean strict) {
         if (wordFilterRepository.findByWordIgnoreCase(word).isEmpty()) {
             WordFilterEntity entity = new WordFilterEntity();
             entity.setWord(word.toLowerCase());
+            entity.setStrict(strict);
             wordFilterRepository.save(entity);
         }
         reload();
@@ -153,93 +99,130 @@ public class WordFilterService {
     }
 
     public String findForbiddenWord(String content) {
-        if (content == null || content.trim().isEmpty()) return null;
-
-        String sanitized = normalizeArabic(content);
-        sanitized = collapseRepeatedChars(sanitized);
-
-        synchronized (strictFilters) {
-            for (CompiledFilter filter : strictFilters) {
-                if (filter.getPattern().matcher(sanitized).find()) {
-                    return filter.getOriginalWord();
+        if (content == null || content.isEmpty()) {
+            return null;
+        }
+        String sanitizedContent = sanitize(content);
+        synchronized (filterPatterns) {
+            for (FilterPattern fp : filterPatterns) {
+                Matcher matcher = fp.pattern.matcher(sanitizedContent);
+                if (matcher.find()) {
+                    int start = matcher.start();
+                    int end = matcher.end();
+                    int tokenStart = start;
+                    while (tokenStart > 0 && !isBoundaryChar(sanitizedContent.charAt(tokenStart - 1))) {
+                        tokenStart--;
+                    }
+                    int tokenEnd = end;
+                    while (tokenEnd < sanitizedContent.length() && !isBoundaryChar(sanitizedContent.charAt(tokenEnd))) {
+                        tokenEnd++;
+                    }
+                    String token = sanitizedContent.substring(tokenStart, tokenEnd);
+                    if (isWhitelisted(token)) {
+                        continue;
+                    }
+                    return fp.originalWord;
                 }
             }
         }
-
-        synchronized (contextFilters) {
-            for (CompiledFilter filter : contextFilters) {
-                if (filter.getPattern().matcher(sanitized).find()) {
-                    return filter.getOriginalWord();
-                }
-            }
-        }
-
         return null;
     }
 
-    public Set<String> getAllWords() {
-        synchronized (forbiddenWords) {
-            return new HashSet<>(forbiddenWords);
-        }
+    private boolean isBoundaryChar(char c) {
+        return Character.isWhitespace(c) || Pattern.matches("\\p{Punct}", String.valueOf(c));
     }
 
-    private String collapseRepeatedChars(String str) {
-        if (str == null || str.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        char prev = 0;
-        for (int i = 0; i < str.length(); i++) {
-            char c = str.charAt(i);
-            if (c != prev || Character.isWhitespace(c) || !Character.isLetterOrDigit(c)) {
-                sb.append(c);
-                prev = c;
-            }
+    private boolean isWhitelisted(String token) {
+        if (token == null || token.isEmpty()) {
+            return false;
         }
-        return sb.toString();
-    }
-
-    private String normalizeArabic(String str) {
-        if (str == null) return "";
-        String normalized = str.replace("\u0640", "");
-        normalized = normalized.replaceAll("[\\u064B-\\u065F\\u0670]", "");
-        normalized = normalized.replace('أ', 'a')
-                               .replace('إ', 'a')
-                               .replace('آ', 'a')
-                               .replace('ا', 'a')
-                               .replace('ة', 'h')
-                               .replace('ه', 'h')
-                               .replace('ى', 'y')
-                               .replace('ي', 'y');
-        return normalized;
-    }
-
-    private String buildFillerInsensitiveRegex(String word) {
-        String normalized = normalizeArabic(word);
-        StringBuilder regex = new StringBuilder();
-        for (int i = 0; i < normalized.length(); i++) {
-            if (i > 0) {
-                regex.append("[\\s_\\-\\+\\.\\*\\u0640]*");
-            }
-            char c = normalized.charAt(i);
-            if ("\\^$.|?*+()[]{}".indexOf(c) >= 0) {
-                regex.append('\\').append(c);
-            } else {
-                regex.append(c);
-            }
-        }
-        return regex.toString();
-    }
-
-    public boolean isStrictWord(String word) {
-        String normalized = normalizeArabic(word).trim();
-        if (normalized.contains("http") || normalized.contains("184.57.51.245") || normalized.contains("1190305586710073427")) {
-            return true;
-        }
-        for (String root : STRICT_ROOTS) {
-            String normalizedRoot = normalizeArabic(root);
-            if (normalized.contains(normalizedRoot) || normalizedRoot.contains(normalized)) {
-                return true;
+        String sanitized = sanitize(token);
+        synchronized (whitelistWords) {
+            for (String whitelisted : whitelistWords) {
+                if (sanitized.contains(whitelisted)) {
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    public Set<String> getAllWords() {
+        Set<String> words = new HashSet<>();
+        synchronized (filterPatterns) {
+            for (FilterPattern fp : filterPatterns) {
+                words.add(fp.originalWord);
+            }
+        }
+        return words;
+    }
+
+    public boolean isStrict(String word) {
+        if (word == null) {
+            return false;
+        }
+        synchronized (filterPatterns) {
+            for (FilterPattern fp : filterPatterns) {
+                if (fp.originalWord.equalsIgnoreCase(word)) {
+                    return fp.strict;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String sanitize(String text) {
+        if (text == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+            if (c >= 0x064B && c <= 0x065F) {
+                continue;
+            }
+            if (c == '\u0640') {
+                continue;
+            }
+            if (c == 'أ' || c == 'إ' || c == 'آ' || c == 'ٱ') {
+                c = 'ا';
+            } else if (c == 'ة') {
+                c = 'ه';
+            } else if (c == 'ى' || c == 'ئ') {
+                c = 'ي';
+            } else if (c == 'ؤ') {
+                c = 'و';
+            }
+            sb.append(c);
+        }
+        String result = sb.toString();
+        result = result.replaceAll("(.)\\1+", "$1");
+        return result;
+    }
+
+    private FilterPattern compileWord(WordFilterEntity entity) {
+        String originalWord = entity.getWord();
+        String sanitized = sanitize(originalWord);
+        if (sanitized.isEmpty()) {
+            return null;
+        }
+        StringBuilder regex = new StringBuilder();
+        for (int i = 0; i < sanitized.length(); i++) {
+            char c = sanitized.charAt(i);
+            regex.append(Pattern.quote(String.valueOf(c)));
+            if (i < sanitized.length() - 1) {
+                regex.append("[\\s_\\-\\+\\.\\*\\u0640]*");
+            }
+        }
+        boolean strict = entity.isStrict();
+        String finalRegex;
+        if (strict) {
+            finalRegex = regex.toString();
+        } else {
+            finalRegex = "(?:^|\\s|[\\p{Punct}])(" + regex.toString() + ")(?:$|\\s|[\\p{Punct}])";
+        }
+        Pattern pattern = Pattern.compile(finalRegex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        return new FilterPattern(originalWord, pattern, strict);
     }
 }
