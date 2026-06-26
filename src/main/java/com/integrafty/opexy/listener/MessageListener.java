@@ -52,7 +52,7 @@ public class MessageListener extends ListenerAdapter {
 
         // Staff bypass word filter
         boolean isStaff = event.getMember() != null &&
-                event.getMember().getRoles().stream().anyMatch(r -> r.getId().equals(staffRoleId));
+                event.getMember().getRoles().stream().anyMatch(r -> r.getId().equals(staffRoleId) || r.getId().equals("1487152572207861870"));
 
         // Word Filter
         String forbidden = isStaff ? null : wordFilterService.findForbiddenWord(content);
@@ -62,10 +62,28 @@ public class MessageListener extends ListenerAdapter {
             event.getMessage().delete().queue(null, err -> {
             });
 
+            boolean isStrict = wordFilterService.isStrictWord(forbidden);
+            boolean timedOut = false;
+
+            if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
+                try {
+                    event.getMember().timeoutFor(java.time.Duration.ofHours(1))
+                            .reason("Restricted word filter (Strict Match): " + forbidden)
+                            .queue();
+                    timedOut = true;
+                } catch (Exception ignored) {}
+            }
+
             // 2. Alert user (auto-delete after 5s)
+            String alertMessage = "⚠️ <@" + event.getAuthor().getId()
+                    + ">, your message was removed for containing a restricted word.";
+            if (timedOut) {
+                alertMessage = "❌ <@" + event.getAuthor().getId()
+                        + ">, you have been timed out for 1 hour for using a restricted word.";
+            }
+
             event.getChannel()
-                    .sendMessage("⚠️ <@" + event.getAuthor().getId()
-                            + ">, your message was removed for containing a restricted word.")
+                    .sendMessage(alertMessage)
                     .delay(5, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)
                     .queue(null, err -> {
@@ -76,6 +94,8 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **User:** " + event.getAuthor().getAsMention() + " (`" + event.getAuthor().getId() + "`)\n" +
                     "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                     "▫️ **Forbidden term:** `" + forbidden + "`\n" +
+                    "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
+                    "▫️ **Action:** " + (timedOut ? "Muted (Timeout 1 Hour)" : "Message Deleted") + "\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
             logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
