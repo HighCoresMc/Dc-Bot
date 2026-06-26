@@ -67,7 +67,7 @@ public class MessageListener extends ListenerAdapter {
 
             if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
                 try {
-                    event.getMember().timeoutFor(java.time.Duration.ofHours(1))
+                    event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
                             .reason("Restricted word filter (Strict Match): " + forbidden)
                             .queue();
                     timedOut = true;
@@ -78,8 +78,8 @@ public class MessageListener extends ListenerAdapter {
             String alertMessage = "⚠️ <@" + event.getAuthor().getId()
                     + ">, your message was removed for containing a restricted word.";
             if (timedOut) {
-                alertMessage = "❌ <@" + event.getAuthor().getId()
-                        + ">, you have been timed out for 1 hour for using a restricted word.";
+                alertMessage = "⚠️ <@" + event.getAuthor().getId()
+                        + ">, your message was removed and you have been timed out for **3 minutes** for using a restricted word.";
             }
 
             event.getChannel()
@@ -95,7 +95,7 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                     "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                     "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
-                    "▫️ **Action:** " + (timedOut ? "Muted (Timeout 1 Hour)" : "Message Deleted") + "\n" +
+                    "▫️ **Action:** " + (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted") + "\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
             logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
