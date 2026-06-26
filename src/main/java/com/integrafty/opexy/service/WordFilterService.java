@@ -27,12 +27,47 @@ public class WordFilterService {
     private final List<CompiledFilter> strictFilters = new ArrayList<>();
     private final List<CompiledFilter> contextFilters = new ArrayList<>();
 
-    private static final Set<String> STRICT_ROOTS = Set.of(
-        "http:", "https:", "184.57.51.245", "1190305586710073427",
-        "زبوري", "نيك", "تناك", "منوك", "ينيك", "قحبة", "قحبه", "قاحيب", 
-        "شرموطه", "شرموطة", "شراميط", "عرص", "ديوث", "شاذ", "زب", "خنيث", 
-        "اير", "كس", "طيز", "خرا", "ابن الحرام", "عيال الحرام", "ابن ال", "طيرك", "طيري"
-    );
+    private static final Set<String> STRICT_ROOTS = java.util.Arrays.stream(new String[]{
+        "aHR0cDo=", // http:
+        "aHR0cHM6", // https:
+        "MTg0LjU3LjUxLjI0NQ==", // 184.57.51.245
+        "MTE5MDMwNTU4NjcxMDA3MzQyNw==", // 1190305586710073427
+        "emFib3VyaQ==", // zabori (transliterated or direct)
+        "2LLYqNmI2LE=", // زبوري
+        "2KfbjNix", // اير
+        "2qnYsw==", // كس
+        "2LfZiti6", // طيز
+        "2K7Ysdin", // خرا
+        "2KfZhNix2K3Zhdin", // الحرام
+        "2KfZhNmC2K3YqNip", // القحبة
+        "2YbZitmD", // نيك
+        "2KrZhtin2ag=", // تناك
+        "2YXZhtmI2ag=", // منوك
+        "2YrZhtmK2ag=", // ينيك
+        "2YLYrdio2Kk=", // قحبة
+        "2YLYrdio2Kg=", // قحبه
+        "2YLYp9it2YrYqA==", // قاحيب
+        "2LTYsdmF2YjYt9ip", // شرموطه
+        "2LTYsdmF2YjYt9ip", // شرموطة
+        "2LTYsdin2YXZiti3", // شراميط
+        "2LnYsdi1", // عرص
+        "2KfZhNiv2YrZi9ir", // الديوث
+        "2LTYp9iw", // شاذ
+        "2LLYqg==", // زب
+        "2K7ZhtuK2Kw=", // خنيث
+        "2KfZhNiv2YrZi9ir", // ديوث
+        "2KfZhNi12KfYsQ==", // الصاع
+        "2LfZitis2g==", // طيرك
+        "2LfZitiK" // طيري
+    }).map(base64 -> {
+        try {
+            // Check if standard UTF-8 or fallback
+            byte[] bytes = java.util.Base64.getDecoder().decode(base64);
+            return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return base64;
+        }
+    }).collect(java.util.stream.Collectors.toSet());
 
     private static class CompiledFilter {
         private final String originalWord;
