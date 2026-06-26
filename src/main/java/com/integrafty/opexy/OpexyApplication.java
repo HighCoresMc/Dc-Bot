@@ -13,7 +13,8 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.audio.AudioModuleConfig;
-import club.minnced.discord.jdave.interop.JDaveSessionFactory;
+import moe.kyokobot.libdave.NativeDaveFactory;
+import moe.kyokobot.libdave.jda.LDJDADaveSessionFactory;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -77,7 +78,7 @@ public class OpexyApplication {
             
             return JDABuilder.createDefault(token)
                 .setAudioModuleConfig(new AudioModuleConfig()
-                    .withDaveSessionFactory(new JDaveSessionFactory()))
+                    .withDaveSessionFactory(new LDJDADaveSessionFactory(new NativeDaveFactory())))
                 .enableIntents(
                     GatewayIntent.GUILD_MEMBERS,
                     GatewayIntent.GUILD_MESSAGES,
