@@ -54,6 +54,7 @@ public class ServerLogListener extends ListenerAdapter {
         String authorId;
         String authorMention;
         String content;
+        boolean isBot;
         java.util.List<String> imageAttachments = new java.util.ArrayList<>();
     }
 
@@ -114,7 +115,7 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
-        if (!event.isFromGuild()) return;
+        if (!event.isFromGuild() || event.getAuthor().isBot()) return;
         String newContent = event.getMessage().getContentRaw();
         CachedMessage oldCached = messageCache.get(event.getMessageIdLong());
         
@@ -151,8 +152,6 @@ public class ServerLogListener extends ListenerAdapter {
         if (oldCached != null) {
             oldCached.content = event.getMessage().getContentRaw();
         }
-        
-        if (event.getAuthor().isBot()) return;
     }
 
     @Override
@@ -165,6 +164,7 @@ public class ServerLogListener extends ListenerAdapter {
         cached.authorId = event.getAuthor().getId();
         cached.authorMention = event.getAuthor().getAsMention();
         cached.content = content;
+        cached.isBot = event.getAuthor().isBot();
         for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
             if (att.isImage()) cached.imageAttachments.add(att.getUrl());
         }
@@ -200,6 +200,7 @@ public class ServerLogListener extends ListenerAdapter {
     @Override
     public void onMessageDelete(@NotNull MessageDeleteEvent event) {
         CachedMessage cached = messageCache.get(event.getMessageIdLong());
+        if (cached != null && cached.isBot) return;
         
         event.getGuild().retrieveAuditLogs().type(ActionType.MESSAGE_DELETE).limit(1).queue(logs -> {
             AuditLogEntry entry = logs.isEmpty() ? null : logs.get(0);
