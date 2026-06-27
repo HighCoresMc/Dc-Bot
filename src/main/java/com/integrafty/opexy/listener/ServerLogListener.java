@@ -114,7 +114,7 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
-        if (!event.isFromGuild() || event.getAuthor().isBot()) return;
+        if (!event.isFromGuild()) return;
         String newContent = event.getMessage().getContentRaw();
         CachedMessage oldCached = messageCache.get(event.getMessageIdLong());
         
@@ -151,11 +151,13 @@ public class ServerLogListener extends ListenerAdapter {
         if (oldCached != null) {
             oldCached.content = event.getMessage().getContentRaw();
         }
+        
+        if (event.getAuthor().isBot()) return;
     }
 
     @Override
     public void onMessageReceived(@NotNull net.dv8tion.jda.api.events.message.MessageReceivedEvent event) {
-        if (!event.isFromGuild() || event.getAuthor().isBot()) return;
+        if (!event.isFromGuild()) return;
         String content = event.getMessage().getContentRaw();
         
         // Cache Message
@@ -171,6 +173,8 @@ public class ServerLogListener extends ListenerAdapter {
             cached.imageAttachments.add(cacheMatcher.group());
         }
         messageCache.put(event.getMessageIdLong(), cached);
+
+        if (event.getAuthor().isBot()) return;
 
         if (content.isEmpty() && event.getMessage().getAttachments().isEmpty()) return;
         
