@@ -64,9 +64,7 @@ public class ServerLogListener extends ListenerAdapter {
                 protected boolean removeEldestEntry(java.util.Map.Entry<Long, CachedMessage> eldest) {
                     return size() > 2000;
                 }
-            }
-    );
-
+            });
 
     // ─────────────────────────── join・left・logs ───────────────────────────
 
@@ -75,10 +73,12 @@ public class ServerLogListener extends ListenerAdapter {
         long age = (Instant.now().getEpochSecond() - event.getUser().getTimeCreated().toEpochSecond()) / 86400;
         String details = "### 🟢 Access Granted: New Unit Arrival\n" +
                 "▫️ **Account Age:** `" + age + " Days`\n" +
-                "▫️ **Registry Date:** `" + DateTimeFormatter.ISO_INSTANT.format(event.getUser().getTimeCreated().toInstant()) + "`\n" +
+                "▫️ **Registry Date:** `"
+                + DateTimeFormatter.ISO_INSTANT.format(event.getUser().getTimeCreated().toInstant()) + "`\n" +
                 "▫️ **Current Population:** `" + event.getGuild().getMemberCount() + "`";
         logManager.logEmbed(event.getGuild(), LogManager.LOG_JOIN_LEFT,
-                EmbedUtil.createOldLogEmbed("member-join", details, null, event.getUser(), event.getMember(), EmbedUtil.SUCCESS));
+                EmbedUtil.createOldLogEmbed("member-join", details, null, event.getUser(), event.getMember(),
+                        EmbedUtil.SUCCESS));
     }
 
     @Override
@@ -115,39 +115,49 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
-        if (!event.isFromGuild() || event.getAuthor().isBot()) return;
+        if (!event.isFromGuild() || event.getAuthor().isBot())
+            return;
         String newContent = event.getMessage().getContentRaw();
         CachedMessage oldCached = messageCache.get(event.getMessageIdLong());
-        
+
         String oldContent = oldCached != null ? oldCached.content : "*Not cached*";
-        if (oldContent.length() > 500) oldContent = oldContent.substring(0, 500) + "...";
-        if (newContent.length() > 500) newContent = newContent.substring(0, 500) + "...";
+        if (oldContent.length() > 500)
+            oldContent = oldContent.substring(0, 500) + "...";
+        if (newContent.length() > 500)
+            newContent = newContent.substring(0, 500) + "...";
 
         java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(newContent);
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?",
+                        java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(newContent);
 
         String details = "### ✏️ Transmission Modified\n" +
                 "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                 "▫️ **Author:** " + event.getAuthor().getAsMention() + "\n" +
                 "▫️ **Old Data:** ```" + oldContent + "```\n" +
                 "▫️ **New Data:** ```" + newContent + "```";
-                
-        embedsList.add(EmbedUtil.createOldLogEmbed("message-edit", details, event.getMember(), event.getAuthor(), null, EmbedUtil.WARNING));
-        
+
+        embedsList.add(EmbedUtil.createOldLogEmbed("message-edit", details, event.getMember(), event.getAuthor(), null,
+                EmbedUtil.WARNING));
+
         for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
             if (att.isImage()) {
-                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(att.getUrl()).setColor(EmbedUtil.WARNING).build());
-            }
-        }
-        
-        while (matcher.find()) {
-            if (embedsList.size() < 10) {
-                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(matcher.group()).setColor(EmbedUtil.WARNING).build());
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(att.getUrl()).setColor(EmbedUtil.WARNING)
+                        .build());
             }
         }
 
-        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
-        
+        while (matcher.find()) {
+            if (embedsList.size() < 10) {
+                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(matcher.group())
+                        .setColor(EmbedUtil.WARNING).build());
+            }
+        }
+
+        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE,
+                embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
+
         // Update Cache
         if (oldCached != null) {
             oldCached.content = event.getMessage().getContentRaw();
@@ -156,9 +166,10 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull net.dv8tion.jda.api.events.message.MessageReceivedEvent event) {
-        if (!event.isFromGuild()) return;
+        if (!event.isFromGuild())
+            return;
         String content = event.getMessage().getContentRaw();
-        
+
         // Cache Message
         CachedMessage cached = new CachedMessage();
         cached.authorId = event.getAuthor().getId();
@@ -166,59 +177,72 @@ public class ServerLogListener extends ListenerAdapter {
         cached.content = content;
         cached.isBot = event.getAuthor().isBot();
         for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
-            if (att.isImage()) cached.imageAttachments.add(att.getUrl());
+            if (att.isImage())
+                cached.imageAttachments.add(att.getUrl());
         }
-        java.util.regex.Matcher cacheMatcher = java.util.regex.Pattern.compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(content);
+        java.util.regex.Matcher cacheMatcher = java.util.regex.Pattern
+                .compile("https?://\\S+\\.(png|jpg|jpeg|gif|webp|bmp)(?:\\?\\S*)?",
+                        java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(content);
         while (cacheMatcher.find()) {
             cached.imageAttachments.add(cacheMatcher.group());
         }
         messageCache.put(event.getMessageIdLong(), cached);
 
-        if (event.getAuthor().isBot()) return;
+        if (event.getAuthor().isBot())
+            return;
 
-        if (content.isEmpty() && event.getMessage().getAttachments().isEmpty()) return;
-        
+        if (content.isEmpty() && event.getMessage().getAttachments().isEmpty())
+            return;
+
         java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
-        
-        if (content.length() > 1000) content = content.substring(0, 1000) + "...";
+
+        if (content.length() > 1000)
+            content = content.substring(0, 1000) + "...";
 
         String details = "### 📩 New Transmission\n" +
                 "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                 "▫️ **Content:** " + (content.isEmpty() ? "*Attachment Only*" : "```" + content + "```");
-        
-        embedsList.add(EmbedUtil.createOldLogEmbed("message-send", details, event.getMember(), event.getAuthor(), null, EmbedUtil.INFO));
-        
+
+        embedsList.add(EmbedUtil.createOldLogEmbed("message-send", details, event.getMember(), event.getAuthor(), null,
+                EmbedUtil.INFO));
+
         for (String imgUrl : cached.imageAttachments) {
             if (embedsList.size() < 10) {
-                embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(imgUrl).setColor(EmbedUtil.INFO).build());
+                embedsList
+                        .add(new net.dv8tion.jda.api.EmbedBuilder().setImage(imgUrl).setColor(EmbedUtil.INFO).build());
             }
         }
 
-        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
+        logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE,
+                embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
     }
 
     @Override
     public void onMessageDelete(@NotNull MessageDeleteEvent event) {
         CachedMessage cached = messageCache.get(event.getMessageIdLong());
-        if (cached != null && cached.isBot) return;
-        
+        if (cached != null && cached.isBot)
+            return;
+
         event.getGuild().retrieveAuditLogs().type(ActionType.MESSAGE_DELETE).limit(1).queue(logs -> {
             AuditLogEntry entry = logs.isEmpty() ? null : logs.get(0);
-            
+
             String operator = "Author / System (Self-Delete / Bot)";
             if (entry != null && cached != null && entry.getTargetId().equals(cached.authorId)) {
                 if (Instant.now().getEpochSecond() - entry.getTimeCreated().toEpochSecond() < 5) {
                     operator = entry.getUser().getAsMention();
                 }
             } else if (entry != null && cached == null) {
-                 if (Instant.now().getEpochSecond() - entry.getTimeCreated().toEpochSecond() < 5) {
+                if (Instant.now().getEpochSecond() - entry.getTimeCreated().toEpochSecond() < 5) {
                     operator = entry.getUser().getAsMention();
                 }
             }
 
             String content = cached != null ? cached.content : "*Message content not cached*";
-            if (content.isEmpty()) content = "*Attachment Only*";
-            if (content.length() > 500) content = content.substring(0, 500) + "...";
+            if (content.isEmpty())
+                content = "*Attachment Only*";
+            if (content.length() > 500)
+                content = content.substring(0, 500) + "...";
 
             String authorInfo = cached != null ? cached.authorMention : "Unknown";
 
@@ -229,20 +253,25 @@ public class ServerLogListener extends ListenerAdapter {
                     "▫️ **Message ID:** `" + event.getMessageId() + "`\n" +
                     "▫️ **Deleted Content:** " + (content.contains("Not cached") ? content : "```" + content + "```");
 
-            net.dv8tion.jda.api.entities.User resolvedAuthor = cached != null ? event.getJDA().getUserById(cached.authorId) : null;
+            net.dv8tion.jda.api.entities.User resolvedAuthor = cached != null
+                    ? event.getJDA().getUserById(cached.authorId)
+                    : null;
 
             java.util.List<net.dv8tion.jda.api.entities.MessageEmbed> embedsList = new java.util.ArrayList<>();
-            embedsList.add(EmbedUtil.createOldLogEmbed("message-delete", details, null, resolvedAuthor, null, EmbedUtil.DANGER));
+            embedsList.add(EmbedUtil.createOldLogEmbed("message-delete", details, null, resolvedAuthor, null,
+                    EmbedUtil.DANGER));
 
             if (cached != null) {
                 for (String imgUrl : cached.imageAttachments) {
                     if (embedsList.size() < 10) {
-                        embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(imgUrl).setColor(EmbedUtil.DANGER).build());
+                        embedsList.add(new net.dv8tion.jda.api.EmbedBuilder().setImage(imgUrl)
+                                .setColor(EmbedUtil.DANGER).build());
                     }
                 }
             }
 
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE, embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_MESSAGE,
+                    embedsList.toArray(new net.dv8tion.jda.api.entities.MessageEmbed[0]));
         });
     }
 
@@ -251,7 +280,7 @@ public class ServerLogListener extends ListenerAdapter {
     @Override
     public void onGuildVoiceUpdate(@NotNull GuildVoiceUpdateEvent event) {
         AudioChannel joined = event.getChannelJoined();
-        AudioChannel left   = event.getChannelLeft();
+        AudioChannel left = event.getChannelLeft();
         net.dv8tion.jda.api.entities.Member m = event.getMember();
         String details;
 
@@ -314,14 +343,16 @@ public class ServerLogListener extends ListenerAdapter {
         event.getGuild().retrieveAuditLogs().type(ActionType.MEMBER_ROLE_UPDATE).limit(1).queue(logs -> {
             AuditLogEntry entry = logs.isEmpty() ? null : logs.get(0);
             String operator = (entry != null && entry.getTargetId().equals(event.getUser().getId()))
-                    ? entry.getUser().getAsMention() : "Higher Authority";
+                    ? entry.getUser().getAsMention()
+                    : "Higher Authority";
             String roles = event.getRoles().stream().map(Role::getName).collect(Collectors.joining(", "));
             String details = "### ➕ Clearance Level Granted\n" +
                     "▫️ **Target:** " + event.getUser().getAsMention() + "\n" +
                     "▫️ **Operator:** " + operator + "\n" +
                     "▫️ **Role:** `" + roles + "`";
             logManager.logEmbed(event.getGuild(), LogManager.LOG_ROLES,
-                    EmbedUtil.createOldLogEmbed("clearance-add", details, null, event.getUser(), event.getMember(), EmbedUtil.SUCCESS));
+                    EmbedUtil.createOldLogEmbed("clearance-add", details, null, event.getUser(), event.getMember(),
+                            EmbedUtil.SUCCESS));
         });
     }
 
@@ -330,14 +361,16 @@ public class ServerLogListener extends ListenerAdapter {
         event.getGuild().retrieveAuditLogs().type(ActionType.MEMBER_ROLE_UPDATE).limit(1).queue(logs -> {
             AuditLogEntry entry = logs.isEmpty() ? null : logs.get(0);
             String operator = (entry != null && entry.getTargetId().equals(event.getUser().getId()))
-                    ? entry.getUser().getAsMention() : "Higher Authority";
+                    ? entry.getUser().getAsMention()
+                    : "Higher Authority";
             String roles = event.getRoles().stream().map(Role::getName).collect(Collectors.joining(", "));
             String details = "### ➖ Clearance Level Revoked\n" +
                     "▫️ **Target:** " + event.getUser().getAsMention() + "\n" +
                     "▫️ **Operator:** " + operator + "\n" +
                     "▫️ **Role:** `" + roles + "`";
             logManager.logEmbed(event.getGuild(), LogManager.LOG_ROLES,
-                    EmbedUtil.createOldLogEmbed("clearance-remove", details, null, event.getUser(), event.getMember(), EmbedUtil.DANGER));
+                    EmbedUtil.createOldLogEmbed("clearance-remove", details, null, event.getUser(), event.getMember(),
+                            EmbedUtil.DANGER));
         });
     }
 
@@ -395,20 +428,22 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onGuildMemberUpdateNickname(@NotNull GuildMemberUpdateNicknameEvent event) {
-        String old  = event.getOldNickname() != null ? event.getOldNickname() : "Original Name";
+        String old = event.getOldNickname() != null ? event.getOldNickname() : "Original Name";
         String curr = event.getNewNickname() != null ? event.getNewNickname() : "Reverted to Original";
         String details = "### 🏷️ Server Nickname Updated\n" +
                 "▫️ **Old:** `" + old + "`\n" +
                 "▫️ **New:** `" + curr + "`";
         logManager.logEmbed(event.getGuild(), LogManager.LOG_USERS,
-                EmbedUtil.createOldLogEmbed("user-nickname-update", details, null, event.getUser(), event.getMember(), EmbedUtil.GOLD));
+                EmbedUtil.createOldLogEmbed("user-nickname-update", details, null, event.getUser(), event.getMember(),
+                        EmbedUtil.GOLD));
     }
 
     // ─────────────────────────── commands・logs ───────────────────────────
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
-        if (event.getGuild() == null) return;
+        if (event.getGuild() == null)
+            return;
         String options = event.getOptions().stream()
                 .map(opt -> opt.getName() + ": " + resolveOption(opt))
                 .collect(Collectors.joining("\n"));
@@ -417,23 +452,27 @@ public class ServerLogListener extends ListenerAdapter {
                 "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                 "▫️ **Parameters:**\n" + (options.isEmpty() ? "`None`" : "```\n" + options + "\n```");
         logManager.logEmbed(event.getGuild(), LogManager.LOG_COMMANDS,
-                EmbedUtil.createOldLogEmbed("command-intercept", details, event.getMember(), null, null, EmbedUtil.INFO));
+                EmbedUtil.createOldLogEmbed("command-intercept", details, event.getMember(), null, null,
+                        EmbedUtil.INFO));
     }
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
-        if (event.getGuild() == null) return;
+        if (event.getGuild() == null)
+            return;
         String details = "### 🔘 Button Interaction\n" +
                 "▫️ **ID:** `" + event.getComponentId() + "`\n" +
                 "▫️ **Label:** `" + event.getComponent().getLabel() + "`\n" +
                 "▫️ **Channel:** " + event.getChannel().getAsMention();
         logManager.logEmbed(event.getGuild(), LogManager.LOG_COMMANDS,
-                EmbedUtil.createOldLogEmbed("button-intercept", details, event.getMember(), null, null, EmbedUtil.INFO));
+                EmbedUtil.createOldLogEmbed("button-intercept", details, event.getMember(), null, null,
+                        EmbedUtil.INFO));
     }
 
     @Override
     public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
-        if (event.getGuild() == null) return;
+        if (event.getGuild() == null)
+            return;
         String values = String.join(", ", event.getValues());
         String details = "### 📑 Menu Interaction\n" +
                 "▫️ **ID:** `" + event.getComponentId() + "`\n" +
@@ -445,7 +484,8 @@ public class ServerLogListener extends ListenerAdapter {
 
     // ─────────────────────────── Helpers ───────────────────────────
 
-    private void broadcastUserLog(String type, String details, net.dv8tion.jda.api.entities.User user, net.dv8tion.jda.api.entities.Member member) {
+    private void broadcastUserLog(String type, String details, net.dv8tion.jda.api.entities.User user,
+            net.dv8tion.jda.api.entities.Member member) {
         user.getJDA().getGuilds().forEach(guild -> {
             if (guild.getMember(user) != null) {
                 logManager.logEmbed(guild, LogManager.LOG_USERS,
@@ -455,9 +495,12 @@ public class ServerLogListener extends ListenerAdapter {
     }
 
     private String resolveOption(OptionMapping opt) {
-        if (opt.getType() == OptionType.USER)    return opt.getAsUser().getName();
-        if (opt.getType() == OptionType.ROLE)    return opt.getAsRole().getName();
-        if (opt.getType() == OptionType.CHANNEL) return opt.getAsChannel().getName();
+        if (opt.getType() == OptionType.USER)
+            return opt.getAsUser().getName();
+        if (opt.getType() == OptionType.ROLE)
+            return opt.getAsRole().getName();
+        if (opt.getType() == OptionType.CHANNEL)
+            return opt.getAsChannel().getName();
         return opt.getAsString();
     }
 }

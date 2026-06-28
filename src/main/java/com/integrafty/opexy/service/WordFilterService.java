@@ -207,21 +207,22 @@ public class WordFilterService {
         if (sanitized.isEmpty()) {
             return null;
         }
-        StringBuilder regex = new StringBuilder();
+        StringBuilder regexWithSpaces = new StringBuilder();
+        
         for (int i = 0; i < sanitized.length(); i++) {
             char c = sanitized.charAt(i);
-            regex.append(Pattern.quote(String.valueOf(c)));
+            String quoted = Pattern.quote(String.valueOf(c));
+            regexWithSpaces.append(quoted);
             if (i < sanitized.length() - 1) {
-                regex.append("[\\s_\\-\\+\\.\\*\\u0640]*");
+                regexWithSpaces.append("[\\s_\\-\\+\\.\\*\\u0640]*");
             }
         }
+        
         boolean strict = entity.isStrict();
-        String finalRegex;
-        if (strict) {
-            finalRegex = regex.toString();
-        } else {
-            finalRegex = "(?:^|\\s|[\\p{Punct}])(" + regex.toString() + ")(?:$|\\s|[\\p{Punct}])";
-        }
+        // Force bounded matching ALWAYS, effectively ignoring "strict" substring matching
+        // to prevent false positives like "اير" inside "ساير".
+        String finalRegex = "(?:^|\\s|[\\p{Punct}])(" + regexWithSpaces.toString() + ")(?:$|\\s|[\\p{Punct}])";
+        
         Pattern pattern = Pattern.compile(finalRegex, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
         return new FilterPattern(originalWord, pattern, strict);
     }
