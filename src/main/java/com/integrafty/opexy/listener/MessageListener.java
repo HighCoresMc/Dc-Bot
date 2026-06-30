@@ -207,7 +207,12 @@ public class MessageListener extends ListenerAdapter {
             moderatedMessages.add(message.getIdLong());
             message.delete().queue(null, err -> {});
 
-            String reasonMsg = blockReason.equals("SCAM_QR") ? "malicious trade/scam links" : "restricted media (NSFW/Pornographic content)";
+            String reasonMsg = "restricted media (NSFW/Pornographic content)";
+            if (blockReason.equals("SCAM_QR")) {
+                reasonMsg = "malicious trade/scam links";
+            } else if (blockReason.equals("SCAM_CRYPTO")) {
+                reasonMsg = "crypto scams/fake promotions";
+            }
             channel.sendMessage("⚠️ <@" + author.getId() + ">, your message was removed for containing " + reasonMsg + ".")
                     .delay(5, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)

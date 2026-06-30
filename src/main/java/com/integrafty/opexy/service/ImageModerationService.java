@@ -123,6 +123,27 @@ public class ImageModerationService {
             } catch (Exception ignored) {
             }
 
+            // OCR Scanner
+            try {
+                net.sourceforge.tess4j.Tesseract tesseract = new net.sourceforge.tess4j.Tesseract();
+                if (new java.io.File("/usr/share/tesseract-ocr/5/tessdata").exists()) {
+                    tesseract.setDatapath("/usr/share/tesseract-ocr/5/tessdata");
+                } else if (new java.io.File("/usr/share/tesseract-ocr/4.00/tessdata").exists()) {
+                    tesseract.setDatapath("/usr/share/tesseract-ocr/4.00/tessdata");
+                }
+                String ocrResult = tesseract.doOCR(original).toLowerCase();
+                if (ocrResult.contains("withdrawal success") || 
+                    ocrResult.contains("crypto") || 
+                    ocrResult.contains("usdt") || 
+                    ocrResult.contains("tether") || 
+                    (ocrResult.contains("promo code") && ocrResult.contains("bonus"))) {
+                    log.info("[Image Filter] Scam crypto image detected via OCR.");
+                    return "SCAM_CRYPTO";
+                }
+            } catch (Throwable e) {
+                log.warn("[Image Filter] OCR failed or not configured: {}", e.getMessage());
+            }
+
             BufferedImage resized = new BufferedImage(224, 224, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = resized.createGraphics();
             g.drawImage(original, 0, 0, 224, 224, null);

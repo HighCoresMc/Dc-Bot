@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y \
     libopus0 \
     libsodium23 \
     ffmpeg \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/opexy-1.0.0.jar /app/opexy-bot.jar
