@@ -30,13 +30,15 @@ public class MessageListener extends ListenerAdapter {
 
     private final LogManager logManager;
 
-    private final java.util.Set<Long> moderatedMessages = java.util.Collections.newSetFromMap(
-            new java.util.LinkedHashMap<Long, Boolean>() {
-                @Override
-                protected boolean removeEldestEntry(java.util.Map.Entry<Long, Boolean> eldest) {
-                    return size() > 100;
-                }
-            }
+    public static final java.util.Set<Long> moderatedMessages = java.util.Collections.synchronizedSet(
+            java.util.Collections.newSetFromMap(
+                    new java.util.LinkedHashMap<Long, Boolean>() {
+                        @Override
+                        protected boolean removeEldestEntry(java.util.Map.Entry<Long, Boolean> eldest) {
+                            return size() > 100;
+                        }
+                    }
+            )
     );
 
     private final java.util.Map<Long, Integer> scamOffenses = new java.util.concurrent.ConcurrentHashMap<>();

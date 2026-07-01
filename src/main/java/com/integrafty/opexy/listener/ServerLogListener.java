@@ -223,6 +223,10 @@ public class ServerLogListener extends ListenerAdapter {
         CachedMessage cached = messageCache.get(event.getMessageIdLong());
         if (cached != null && cached.isBot)
             return;
+        
+        if (MessageListener.moderatedMessages.contains(event.getMessageIdLong())) {
+            return; // Skip logging here since MessageListener already logged it with the image!
+        }
 
         event.getGuild().retrieveAuditLogs().type(ActionType.MESSAGE_DELETE).limit(1).queue(logs -> {
             AuditLogEntry entry = logs.isEmpty() ? null : logs.get(0);
