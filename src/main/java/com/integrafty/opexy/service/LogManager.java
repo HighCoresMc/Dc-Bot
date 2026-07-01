@@ -46,4 +46,21 @@ public class LogManager {
               .queue(null, err -> log.warn("[LogManager] Failed to send embed to {}: {}", channelId, err.getMessage()));
         }
     }
+
+    public void logEmbedWithImage(Guild guild, String channelId, MessageEmbed embed, byte[] fileData, String fileName) {
+        if (guild == null || embed == null || channelId == null) return;
+        TextChannel ch = resolve(guild, channelId);
+        if (ch != null) {
+            if (fileData != null && fileData.length > 0) {
+                ch.sendMessageEmbeds(embed)
+                  .addFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(fileData, fileName))
+                  .setAllowedMentions(java.util.Collections.emptyList())
+                  .queue(null, err -> log.warn("[LogManager] Failed to send embed to {}: {}", channelId, err.getMessage()));
+            } else {
+                ch.sendMessageEmbeds(embed)
+                  .setAllowedMentions(java.util.Collections.emptyList())
+                  .queue(null, err -> log.warn("[LogManager] Failed to send embed to {}: {}", channelId, err.getMessage()));
+            }
+        }
+    }
 }

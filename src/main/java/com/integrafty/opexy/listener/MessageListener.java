@@ -39,6 +39,8 @@ public class MessageListener extends ListenerAdapter {
             }
     );
 
+    private final java.util.Map<Long, Integer> scamOffenses = new java.util.concurrent.ConcurrentHashMap<>();
+
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         if (!event.isFromGuild())
@@ -104,6 +106,57 @@ public class MessageListener extends ListenerAdapter {
             return;
         }
 
+        // Word filter for forwarded messages
+        if (!isStaff && forbidden == null) {
+            for (net.dv8tion.jda.api.entities.messages.MessageSnapshot snapshot : event.getMessage().getMessageSnapshots()) {
+                String snapContent = snapshot.getContentRaw();
+                forbidden = wordFilterService.findForbiddenWord(snapContent);
+                if (forbidden != null) {
+                    content = snapContent; // Overwrite content so it logs the forwarded text
+                    
+                    moderatedMessages.add(event.getMessageIdLong());
+                    event.getMessage().delete().queue(null, err -> {});
+
+                    boolean isStrict = wordFilterService.isStrict(forbidden);
+                    boolean timedOut = false;
+                    if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
+                        try {
+                            event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
+                                    .reason("Restricted word filter (Strict Match) in forwarded message: " + forbidden)
+                                    .queue();
+                            timedOut = true;
+                        } catch (Exception ignored) {}
+                    }
+
+                    String alertMessage = "⚠️ <@" + event.getAuthor().getId()
+                            + ">, your message was removed for containing a restricted word.";
+                    if (timedOut) {
+                        alertMessage = "⚠️ <@" + event.getAuthor().getId()
+                                + ">, your message was removed and you have been timed out for **3 minutes** for using a restricted word.";
+                    }
+
+                    event.getChannel()
+                            .sendMessage(alertMessage)
+                            .delay(5, java.util.concurrent.TimeUnit.SECONDS)
+                            .flatMap(net.dv8tion.jda.api.entities.Message::delete)
+                            .queue(null, err -> {});
+
+                    String logBody = "### 🛡️ RESTRICTED WORD DETECTED (FORWARDED)\n" +
+                            "▫️ **User:** " + event.getAuthor().getAsMention() + " (`" + event.getAuthor().getId() + "`)\n" +
+                            "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
+                            "▫️ **Forbidden term:** `" + forbidden + "`\n" +
+                            "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
+                            "▫️ **Action:** " + (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted") + "\n" +
+                            "▫️ **Original content:** ```" + content + "```";
+
+                    logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
+                            EmbedUtil.createOldLogEmbed("word-filter", logBody, event.getMember(), event.getAuthor(),
+                                    event.getMember(), EmbedUtil.DANGER));
+                    return;
+                }
+            }
+        }
+
         // Auto NSFW Media Filter (No bypass for staff)
         if (checkNsfw(event.getMessage(), content, event.getMember(), event.getAuthor(), event.getChannel(), event.getGuild())) {
             return;
@@ -136,12 +189,14 @@ public class MessageListener extends ListenerAdapter {
             return false;
         }
         String blockReason = null;
+        String offendingUrl = null;
         
         // 1. Check Stickers
         for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : message.getStickers()) {
             String res = imageModerationService.checkImage(sticker.getIconUrl());
             if (res != null) {
                 blockReason = res;
+                offendingUrl = sticker.getIconUrl();
                 break;
             }
         }
@@ -153,9 +208,77 @@ public class MessageListener extends ListenerAdapter {
                     String res = imageModerationService.checkImage(attachment.getUrl());
                     if (res != null) {
                         blockReason = res;
+                        offendingUrl = attachment.getUrl();
                         break;
                     }
                 }
+            }
+        }
+        
+        // 2.5 Check Forwarded Messages (MessageSnapshots)
+        if (blockReason == null) {
+            for (net.dv8tion.jda.api.entities.messages.MessageSnapshot snapshot : message.getMessageSnapshots()) {
+                // Check snapshot stickers
+                for (net.dv8tion.jda.api.entities.sticker.StickerItem sticker : snapshot.getStickers()) {
+                    String res = imageModerationService.checkImage(sticker.getIconUrl());
+                    if (res != null) {
+                        blockReason = res;
+                        offendingUrl = sticker.getIconUrl();
+                        content = snapshot.getContentRaw();
+                        break;
+                    }
+                }
+                if (blockReason != null) break;
+
+                // Check snapshot attachments
+                for (net.dv8tion.jda.api.entities.Message.Attachment attachment : snapshot.getAttachments()) {
+                    if (attachment.isImage() || attachment.isVideo()) {
+                        String res = imageModerationService.checkImage(attachment.getUrl());
+                        if (res != null) {
+                            blockReason = res;
+                            offendingUrl = attachment.getUrl();
+                            content = snapshot.getContentRaw();
+                            break;
+                        }
+                    }
+                }
+                if (blockReason != null) break;
+
+                // Check snapshot text for URLs
+                String snapshotContent = snapshot.getContentRaw();
+                if (snapshotContent != null && snapshotContent.contains("http")) {
+                    String[] words = snapshotContent.split("\\s+");
+                    for (String w : words) {
+                        if (w.startsWith("http://") || w.startsWith("https://")) {
+                            if (w.contains("tenor.com") || w.contains("giphy.com") || w.contains("gfycat.com")) continue;
+                            String res = imageModerationService.checkImage(w);
+                            if (res != null) {
+                                blockReason = res;
+                                offendingUrl = w;
+                                content = snapshotContent;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (blockReason != null) break;
+
+                // Check snapshot embeds
+                for (net.dv8tion.jda.api.entities.MessageEmbed embed : snapshot.getEmbeds()) {
+                    if (embed.getImage() != null && embed.getImage().getUrl() != null) {
+                        String url = embed.getImage().getUrl();
+                        if (isImageUrl(url)) {
+                            String res = imageModerationService.checkImage(url);
+                            if (res != null) {
+                                blockReason = res;
+                                offendingUrl = url;
+                                content = snapshot.getContentRaw();
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (blockReason != null) break;
             }
         }
         
@@ -170,6 +293,7 @@ public class MessageListener extends ListenerAdapter {
                     String res = imageModerationService.checkImage(w);
                     if (res != null) {
                         blockReason = res;
+                        offendingUrl = w;
                         break;
                     }
                 }
@@ -185,6 +309,7 @@ public class MessageListener extends ListenerAdapter {
                         String res = imageModerationService.checkImage(url);
                         if (res != null) {
                             blockReason = res;
+                            offendingUrl = url;
                             break;
                         }
                     }
@@ -196,6 +321,7 @@ public class MessageListener extends ListenerAdapter {
                         String res = imageModerationService.checkImage(url);
                         if (res != null) {
                             blockReason = res;
+                            offendingUrl = url;
                             break;
                         }
                     }
@@ -205,27 +331,85 @@ public class MessageListener extends ListenerAdapter {
 
         if (blockReason != null) {
             moderatedMessages.add(message.getIdLong());
+            
+            // Download image before deleting message (so CDN link is still valid)
+            byte[] offendingImageBytes = null;
+            if (offendingUrl != null) {
+                try {
+                    java.net.URL url = new java.net.URL(offendingUrl);
+                    java.net.URLConnection conn = url.openConnection();
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) OpexyBot/1.0");
+                    java.io.InputStream is = conn.getInputStream();
+                    offendingImageBytes = is.readAllBytes();
+                    is.close();
+                } catch (Exception e) {
+                    log.warn("[Image Filter] Failed to download offending image from {}: {}", offendingUrl, e.getMessage());
+                }
+            }
+
             message.delete().queue(null, err -> {});
 
             String reasonMsg = "restricted media (NSFW/Pornographic content)";
+            boolean timedOut = false;
+            boolean banned = false;
+
             if (blockReason.equals("SCAM_QR")) {
                 reasonMsg = "malicious trade/scam links";
             } else if (blockReason.equals("SCAM_CRYPTO")) {
                 reasonMsg = "crypto scams/fake promotions";
+                // Enforce punishments
+                int count = scamOffenses.getOrDefault(author.getIdLong(), 0);
+                if (member != null && guild.getSelfMember().canInteract(member)) {
+                    if (count >= 1) {
+                        try {
+                            member.ban(0, java.util.concurrent.TimeUnit.DAYS)
+                                  .reason("Repeated crypto scam/fake promotion offenses")
+                                  .queue();
+                            banned = true;
+                        } catch (Exception ignored) {}
+                    } else {
+                        try {
+                            member.timeoutFor(java.time.Duration.ofDays(1))
+                                  .reason("Crypto scam/fake promotion image detected")
+                                  .queue();
+                            timedOut = true;
+                            scamOffenses.put(author.getIdLong(), count + 1);
+                        } catch (Exception ignored) {}
+                    }
+                }
             }
-            channel.sendMessage("⚠️ <@" + author.getId() + ">, your message was removed for containing " + reasonMsg + ".")
-                    .delay(5, java.util.concurrent.TimeUnit.SECONDS)
+
+            String actionTaken = banned ? "Banned" : (timedOut ? "Muted (Timeout 1 Day)" : "Message Deleted");
+            String alertMessage = "⚠️ <@" + author.getId() + ">, your message was removed for containing " + reasonMsg + ".";
+            if (banned) {
+                alertMessage = "⚠️ <@" + author.getId() + "> has been banned for repeated " + reasonMsg + ".";
+            } else if (timedOut) {
+                alertMessage = "⚠️ <@" + author.getId() + ">, your message was removed and you have been timed out for **1 Day** for posting " + reasonMsg + ".";
+            }
+
+            channel.sendMessage(alertMessage)
+                    .delay(10, java.util.concurrent.TimeUnit.SECONDS)
                     .flatMap(net.dv8tion.jda.api.entities.Message::delete)
                     .queue(null, err -> {});
 
+            String displayContent = content.isBlank() ? "*(No text, attachment only)*" : "```\n" + content + "\n```";
             String logBody = "### 🛡️ RESTRICTED " + blockReason + " DETECTED\n" +
                     "▫️ **User:** " + author.getAsMention() + " (`" + author.getId() + "`)\n" +
                     "▫️ **Channel:** " + channel.getAsMention() + "\n" +
                     "▫️ **Type:** `AI_AUTO_DETECT`\n" +
-                    "▫️ **Original content:** ```" + content + "```";
+                    "▫️ **Action:** `" + actionTaken + "`\n" +
+                    "▫️ **Original content:**\n" + displayContent;
 
-            logManager.logEmbed(guild, LogManager.LOG_BLOCKED_WORDS, 
-                    EmbedUtil.createOldLogEmbed("image-filter", logBody, member, author, member, EmbedUtil.DANGER));
+            net.dv8tion.jda.api.EmbedBuilder builder = new net.dv8tion.jda.api.EmbedBuilder(EmbedUtil.createOldLogEmbed("image-filter", logBody, member, author, member, EmbedUtil.DANGER));
+            
+            if (offendingImageBytes != null) {
+                builder.setImage("attachment://offense.png");
+                net.dv8tion.jda.api.entities.MessageEmbed embed = builder.build();
+                logManager.logEmbedWithImage(guild, LogManager.LOG_BLOCKED_WORDS, embed, offendingImageBytes, "offense.png");
+            } else {
+                net.dv8tion.jda.api.entities.MessageEmbed embed = builder.build();
+                logManager.logEmbed(guild, LogManager.LOG_BLOCKED_WORDS, embed);
+            }
             return true;
         }
         return false;

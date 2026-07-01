@@ -54,13 +54,15 @@ public class ImageModerationService {
 
     private void downloadModel(File target) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://huggingface.co/onnx-community/nsfw-image-detector-ONNX/resolve/main/onnx/model_quantized.onnx"))
+                .uri(URI.create(
+                        "https://huggingface.co/onnx-community/nsfw-image-detector-ONNX/resolve/main/onnx/model_quantized.onnx"))
                 .GET()
                 .build();
-        HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<java.io.InputStream> response = httpClient.send(request,
+                HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() == 200) {
             try (java.io.InputStream is = response.body();
-                 java.io.FileOutputStream fos = new java.io.FileOutputStream(target)) {
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(target)) {
                 byte[] buffer = new byte[8192];
                 int read;
                 while ((read = is.read(buffer)) != -1) {
@@ -76,8 +78,10 @@ public class ImageModerationService {
     @jakarta.annotation.PreDestroy
     public void onDestroy() {
         try {
-            if (session != null) session.close();
-            if (env != null) env.close();
+            if (session != null)
+                session.close();
+            if (env != null)
+                env.close();
             log.info("[NSFW Filter] ONNX session closed.");
         } catch (Exception e) {
             log.error("[NSFW Filter] Failed to close ONNX session", e);
@@ -95,7 +99,8 @@ public class ImageModerationService {
                     .uri(URI.create(imageUrl))
                     .GET()
                     .build();
-            HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<java.io.InputStream> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() != 200) {
                 log.warn("[Image Filter] Failed to fetch image: status code {}", response.statusCode());
                 return null;
@@ -116,7 +121,8 @@ public class ImageModerationService {
                 BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
                 Result qrResult = new MultiFormatReader().decode(bitmap);
                 String text = qrResult.getText().toLowerCase();
-                if (text.contains("steam") || text.contains("discord.gift") || text.contains("nitro") || text.contains("trade") || text.contains("free")) {
+                if (text.contains("steam") || text.contains("discord.gift") || text.contains("nitro")
+                        || text.contains("trade") || text.contains("free")) {
                     log.info("[Image Filter] Malicious QR Code detected: {}", text);
                     return "SCAM_QR";
                 }
@@ -132,12 +138,27 @@ public class ImageModerationService {
                     tesseract.setDatapath("/usr/share/tesseract-ocr/4.00/tessdata");
                 }
                 String ocrResult = tesseract.doOCR(original).toLowerCase();
-                if (ocrResult.contains("withdrawal success") || 
-                    ocrResult.contains("crypto") || 
-                    ocrResult.contains("usdt") || 
-                    ocrResult.contains("tether") || 
-                    (ocrResult.contains("promo code") && ocrResult.contains("bonus"))) {
-                    log.info("[Image Filter] Scam crypto image detected via OCR.");
+                boolean isScam = false;
+                
+                boolean hasCrypto = ocrResult.contains("crypto") || ocrResult.contains("usdt") || ocrResult.contains("btc") || ocrResult.contains("eth") || ocrResult.contains("tether");
+                boolean hasBonus = ocrResult.contains("bonus") || ocrResult.contains("promo code") || ocrResult.contains("giveaway") || ocrResult.contains("reward");
+                boolean hasAction = ocrResult.contains("deposit") || ocrResult.contains("claim") || ocrResult.contains("register") || ocrResult.contains("withdrawal");
+                boolean hasFakePlatform = ocrResult.contains("exchange") || ocrResult.contains("wallet");
+                boolean hasSuccess = ocrResult.contains("withdrawal success") || ocrResult.contains("successfully");
+
+                // Very strict rules to prevent false positives
+                if (hasCrypto && hasBonus && hasAction && (ocrResult.contains("code:") || ocrResult.contains("link"))) {
+                    isScam = true;
+                } else if (hasCrypto && hasSuccess && (ocrResult.contains("balance") || ocrResult.contains("received"))) {
+                    isScam = true;
+                } else if (ocrResult.contains("promo code") && ocrResult.contains("bonus") && hasCrypto && ocrResult.contains("deposit")) {
+                    isScam = true;
+                } else if (ocrResult.contains("giveaway") && hasCrypto && ocrResult.contains("claim") && ocrResult.contains("free")) {
+                    isScam = true;
+                }
+
+                if (isScam) {
+                    log.info("[Image Filter] Scam crypto image detected via OCR. Original text: {}", ocrResult.substring(0, Math.min(ocrResult.length(), 200)));
                     return "SCAM_CRYPTO";
                 }
             } catch (Throwable e) {
@@ -164,10 +185,11 @@ public class ImageModerationService {
                 floatValues[2 * 224 * 224 + i] = (b - 0.5f) / 0.5f;
             }
 
-            long[] shape = new long[]{1, 3, 224, 224};
+            long[] shape = new long[] { 1, 3, 224, 224 };
             java.nio.FloatBuffer buffer = java.nio.FloatBuffer.wrap(floatValues);
             try (OnnxTensor inputTensor = OnnxTensor.createTensor(env, buffer, shape)) {
-                try (OrtSession.Result results = session.run(java.util.Collections.singletonMap("pixel_values", inputTensor))) {
+                try (OrtSession.Result results = session
+                        .run(java.util.Collections.singletonMap("pixel_values", inputTensor))) {
                     float[][] logits = (float[][]) results.get(0).getValue();
                     float normalLogit = logits[0][0];
                     float nsfwLogit = logits[0][1];
@@ -176,7 +198,8 @@ public class ImageModerationService {
                     double expNsfw = Math.exp(nsfwLogit);
                     double probNsfw = expNsfw / (expNormal + expNsfw);
 
-                    log.info("[Image Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit, nsfwLogit, probNsfw);
+                    log.info("[Image Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit,
+                            nsfwLogit, probNsfw);
                     boolean isNsfw = probNsfw > 0.85;
                     log.info("[Image Filter] Final result: {}", isNsfw);
                     return isNsfw ? "NSFW" : null;
