@@ -42,6 +42,7 @@ public class MessageListener extends ListenerAdapter {
     );
 
     private final java.util.Map<Long, Integer> scamOffenses = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<Long, Integer> strictWordOffenses = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
@@ -68,20 +69,35 @@ public class MessageListener extends ListenerAdapter {
 
             boolean isStrict = wordFilterService.isStrict(forbidden);
             boolean timedOut = false;
+            boolean banned = false;
 
             if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
-                try {
-                    event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
-                            .reason("Restricted word filter (Strict Match): " + forbidden)
-                            .queue();
-                    timedOut = true;
-                } catch (Exception ignored) {}
+                int offenses = strictWordOffenses.getOrDefault(event.getAuthor().getIdLong(), 0);
+                if (offenses >= 1) {
+                    try {
+                        event.getMember().ban(0, java.util.concurrent.TimeUnit.DAYS)
+                                .reason("Repeated restricted word filter offenses (Strict Match)")
+                                .queue();
+                        banned = true;
+                    } catch (Exception ignored) {}
+                } else {
+                    try {
+                        event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
+                                .reason("Restricted word filter (Strict Match): " + forbidden)
+                                .queue();
+                        timedOut = true;
+                        strictWordOffenses.put(event.getAuthor().getIdLong(), offenses + 1);
+                    } catch (Exception ignored) {}
+                }
             }
 
             // 2. Alert user (auto-delete after 5s)
             String alertMessage = "⚠️ <@" + event.getAuthor().getId()
                     + ">, your message was removed for containing a restricted word.";
-            if (timedOut) {
+            if (banned) {
+                alertMessage = "⚠️ <@" + event.getAuthor().getId()
+                        + "> has been banned for repeated use of restricted words.";
+            } else if (timedOut) {
                 alertMessage = "⚠️ <@" + event.getAuthor().getId()
                         + ">, your message was removed and you have been timed out for **3 minutes** for using a restricted word.";
             }
@@ -99,7 +115,7 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                     "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                     "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
-                    "▫️ **Action:** " + (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted") + "\n" +
+                    "▫️ **Action:** " + (banned ? "Banned" : (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted")) + "\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
             logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
@@ -121,18 +137,33 @@ public class MessageListener extends ListenerAdapter {
 
                     boolean isStrict = wordFilterService.isStrict(forbidden);
                     boolean timedOut = false;
+                    boolean banned = false;
                     if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
-                        try {
-                            event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
-                                    .reason("Restricted word filter (Strict Match) in forwarded message: " + forbidden)
-                                    .queue();
-                            timedOut = true;
-                        } catch (Exception ignored) {}
+                        int offenses = strictWordOffenses.getOrDefault(event.getAuthor().getIdLong(), 0);
+                        if (offenses >= 1) {
+                            try {
+                                event.getMember().ban(0, java.util.concurrent.TimeUnit.DAYS)
+                                        .reason("Repeated restricted word filter offenses (Strict Match) in forwarded message")
+                                        .queue();
+                                banned = true;
+                            } catch (Exception ignored) {}
+                        } else {
+                            try {
+                                event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
+                                        .reason("Restricted word filter (Strict Match) in forwarded message: " + forbidden)
+                                        .queue();
+                                timedOut = true;
+                                strictWordOffenses.put(event.getAuthor().getIdLong(), offenses + 1);
+                            } catch (Exception ignored) {}
+                        }
                     }
 
                     String alertMessage = "⚠️ <@" + event.getAuthor().getId()
                             + ">, your message was removed for containing a restricted word.";
-                    if (timedOut) {
+                    if (banned) {
+                        alertMessage = "⚠️ <@" + event.getAuthor().getId()
+                                + "> has been banned for repeated use of restricted words.";
+                    } else if (timedOut) {
                         alertMessage = "⚠️ <@" + event.getAuthor().getId()
                                 + ">, your message was removed and you have been timed out for **3 minutes** for using a restricted word.";
                     }
@@ -148,7 +179,7 @@ public class MessageListener extends ListenerAdapter {
                             "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                             "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                             "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
-                            "▫️ **Action:** " + (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted") + "\n" +
+                            "▫️ **Action:** " + (banned ? "Banned" : (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted")) + "\n" +
                             "▫️ **Original content:** ```" + content + "```";
 
                     logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,

@@ -74,9 +74,16 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
 
         if (id.equals("bw_add")) {
             TextInput word = TextInput.create("word", TextInputStyle.SHORT)
-                    .setPlaceholder("Banned term...").setRequired(true).build();
-            event.replyModal(Modal.create("modal_bw_add", "Add Banned Word")
+                    .setPlaceholder("Normal banned term...").setRequired(true).build();
+            event.replyModal(Modal.create("modal_bw_add", "Add Normal Banned Word")
                     .addComponents(net.dv8tion.jda.api.components.label.Label.of("Banned Word", word))
+                    .build()).queue();
+
+        } else if (id.equals("bw_add_strict")) {
+            TextInput word = TextInput.create("word", TextInputStyle.SHORT)
+                    .setPlaceholder("Strict banned term...").setRequired(true).build();
+            event.replyModal(Modal.create("modal_bw_add_strict", "Add Strict Banned Word")
+                    .addComponents(net.dv8tion.jda.api.components.label.Label.of("Strict Banned Word", word))
                     .build()).queue();
 
         } else if (id.equals("bw_remove")) {
@@ -93,11 +100,22 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
 
         if (id.equals("modal_bw_add")) {
             String word = event.getValue("word").getAsString();
-            wordFilterService.addWord(word);
+            wordFilterService.addWord(word, false);
             sendPanel(event, true);
 
             // LOGGING
             String logDetails = String.format("### ➕ Banned Word Added\n▫️ **Term:** `%s`\n▫️ **Moderator:** %s",
+                    word, event.getMember().getAsMention());
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD, 
+                    EmbedUtil.createOldLogEmbed("banned-word-add", logDetails, event.getMember(), null, null, EmbedUtil.SUCCESS));
+
+        } else if (id.equals("modal_bw_add_strict")) {
+            String word = event.getValue("word").getAsString();
+            wordFilterService.addWord(word, true);
+            sendPanel(event, true);
+
+            // LOGGING
+            String logDetails = String.format("### ➕ Strict Banned Word Added\n▫️ **Term:** `%s`\n▫️ **Moderator:** %s",
                     word, event.getMember().getAsMention());
             logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD, 
                     EmbedUtil.createOldLogEmbed("banned-word-add", logDetails, event.getMember(), null, null, EmbedUtil.SUCCESS));
@@ -122,11 +140,26 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
         if (all.isEmpty()) {
             sb.append("*No terms indexed.*");
         } else {
-            all.forEach(e -> sb.append("▫️ `").append(e.getWord()).append("`\n"));
+            StringBuilder normal = new StringBuilder("#### 🟡 Normal Terms (Warn & Delete)\n");
+            StringBuilder strict = new StringBuilder("#### 🔴 Strict Terms (Timeout & Ban)\n");
+            boolean hasNormal = false;
+            boolean hasStrict = false;
+            for (WordFilterEntity e : all) {
+                if (e.isStrict()) {
+                    strict.append("▫️ `").append(e.getWord()).append("`\n");
+                    hasStrict = true;
+                } else {
+                    normal.append("▫️ `").append(e.getWord()).append("`\n");
+                    hasNormal = true;
+                }
+            }
+            if (hasNormal) sb.append(normal).append("\n");
+            if (hasStrict) sb.append(strict).append("\n");
         }
 
         ActionRow row = ActionRow.of(
-                Button.secondary("bw_add", "Add Term"),
+                Button.secondary("bw_add", "Add Normal Term"),
+                Button.danger("bw_add_strict", "Add Strict Term"),
                 Button.secondary("bw_remove", "Remove Term"));
 
         Container container = EmbedUtil.containerBranded("MODERATION", "Filter Hub", sb.toString(), null, row);
