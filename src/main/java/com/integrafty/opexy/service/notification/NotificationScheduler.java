@@ -65,16 +65,19 @@ public class NotificationScheduler {
     }
 
     private boolean isHighCoreRelated(String text) {
-        if (text == null) return false;
+        if (text == null)
+            return false;
         String regex = "(?i)(^|[^a-zA-Z])(highcore|highcoremc|highcore mc|hcmc|hc)([^a-zA-Z]|$)";
         return java.util.regex.Pattern.compile(regex).matcher(text).find();
     }
 
     private void handleKick(NotificationEntity entity) {
         kickService.getStreamStatus(entity.getChannelId()).ifPresent(livestream -> {
-            String streamId = livestream.has("id") && !livestream.get("id").isJsonNull() ? livestream.get("id").getAsString() : String.valueOf(System.currentTimeMillis());
+            String streamId = livestream.has("id") && !livestream.get("id").isJsonNull()
+                    ? livestream.get("id").getAsString()
+                    : String.valueOf(System.currentTimeMillis());
             String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
-            
+
             if (lastId == null) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
@@ -82,16 +85,17 @@ public class NotificationScheduler {
                 log.info("Baseline set for Kick {}: {}", entity.getDisplayName(), streamId);
                 return;
             }
-            
+
             if (!streamId.equals(lastId)) {
                 // Always update cache so we don't keep processing the same ignored stream
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), streamId);
 
-                String title = livestream.has("session_title") && !livestream.get("session_title").isJsonNull() 
-                               ? livestream.get("session_title").getAsString() : "Live on Kick!";
-                
+                String title = livestream.has("session_title") && !livestream.get("session_title").isJsonNull()
+                        ? livestream.get("session_title").getAsString()
+                        : "Live on Kick!";
+
                 if (isHighCoreRelated(title)) {
                     String thumbnail = "";
                     if (livestream.has("thumbnail") && !livestream.get("thumbnail").isJsonNull()) {
@@ -111,17 +115,23 @@ public class NotificationScheduler {
                     String url = "https://kick.com/" + entity.getChannelId();
                     sendLiveNotification(entity, streamId, url, title, thumbnail, "KICK");
                 } else {
-                    log.info("Ignored Kick stream for {} (Title doesn't match HighCore keywords): {}", entity.getDisplayName(), title);
+                    log.info("Ignored Kick stream for {} (Title doesn't match HighCore keywords): {}",
+                            entity.getDisplayName(), title);
                 }
+            } else {
+
+                log.info("Kick: {} is LIVE | Stream ongoing (ID: {}) - Already processed/ignored",
+                        entity.getDisplayName(), streamId);
             }
         });
     }
 
     private void handleTwitch(NotificationEntity entity) {
         twitchService.getStreamStatus(entity.getChannelId()).ifPresent(json -> {
-            String streamId = json.has("id") && !json.get("id").isJsonNull() ? json.get("id").getAsString() : String.valueOf(System.currentTimeMillis());
+            String streamId = json.has("id") && !json.get("id").isJsonNull() ? json.get("id").getAsString()
+                    : String.valueOf(System.currentTimeMillis());
             String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
-            
+
             if (lastId == null) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
@@ -129,22 +139,29 @@ public class NotificationScheduler {
                 log.info("Baseline set for Twitch {}: {}", entity.getDisplayName(), streamId);
                 return;
             }
-            
+
             if (!streamId.equals(lastId)) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), streamId);
 
-                String title = json.has("title") && !json.get("title").isJsonNull() ? json.get("title").getAsString() : "Live on Twitch!";
-                
+                String title = json.has("title") && !json.get("title").isJsonNull() ? json.get("title").getAsString()
+                        : "Live on Twitch!";
+
                 if (isHighCoreRelated(title)) {
-                    String thumbnail = json.has("thumbnail_url") && !json.get("thumbnail_url").isJsonNull() 
-                                       ? json.get("thumbnail_url").getAsString().replace("{width}", "1280").replace("{height}", "720") : "";
+                    String thumbnail = json.has("thumbnail_url") && !json.get("thumbnail_url").isJsonNull()
+                            ? json.get("thumbnail_url").getAsString().replace("{width}", "1280").replace("{height}",
+                                    "720")
+                            : "";
                     String url = "https://twitch.tv/" + entity.getChannelId();
                     sendLiveNotification(entity, streamId, url, title, thumbnail, "TWITCH");
                 } else {
-                    log.info("Ignored Twitch stream for {} (Title doesn't match HighCore keywords): {}", entity.getDisplayName(), title);
+                    log.info("Ignored Twitch stream for {} (Title doesn't match HighCore keywords): {}",
+                            entity.getDisplayName(), title);
                 }
+            } else {
+                log.info("Twitch: {} is LIVE | Stream ongoing (ID: {}) - Already processed/ignored",
+                        entity.getDisplayName(), streamId);
             }
         });
     }
@@ -165,7 +182,7 @@ public class NotificationScheduler {
             JsonObject json = liveStream.get();
             String videoId = json.get("videoId").getAsString();
             String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
-            
+
             if (lastId == null) {
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
@@ -173,20 +190,21 @@ public class NotificationScheduler {
                 log.info("Baseline set for YouTube Live {}: {}", entity.getDisplayName(), videoId);
                 return;
             }
-            
+
             if (!videoId.equals(lastId)) {
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), videoId);
 
                 String title = json.get("title").getAsString();
-                
+
                 if (isHighCoreRelated(title)) {
                     String thumbnail = json.get("thumbnail").getAsString();
                     String url = "https://youtube.com/watch?v=" + videoId;
                     sendLiveNotification(entity, videoId, url, title, thumbnail, "YOUTUBE");
                 } else {
-                    log.info("Ignored YouTube Live for {} (Title doesn't match HighCore keywords): {}", entity.getDisplayName(), title);
+                    log.info("Ignored YouTube Live for {} (Title doesn't match HighCore keywords): {}",
+                            entity.getDisplayName(), title);
                 }
             }
             return;
@@ -195,7 +213,7 @@ public class NotificationScheduler {
         youtubeService.getLatestVideo(entity.getChannelId()).ifPresent(json -> {
             String videoId = json.get("videoId").getAsString();
             String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
-            
+
             if (lastId == null) {
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
@@ -203,14 +221,14 @@ public class NotificationScheduler {
                 log.info("Baseline set for YouTube {}: {}", entity.getDisplayName(), videoId);
                 return;
             }
-            
+
             if (!videoId.equals(lastId)) {
                 entity.setLastContentId(videoId);
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), videoId);
 
                 String title = json.get("title").getAsString();
-                
+
                 if (isHighCoreRelated(title)) {
                     String thumbnail = json.get("thumbnail").getAsString();
                     String url = "https://youtube.com/watch?v=" + videoId;
@@ -222,7 +240,8 @@ public class NotificationScheduler {
                         sendVideoNotification(entity, videoId, url, title, thumbnail);
                     }
                 } else {
-                    log.info("Ignored YouTube Video for {} (Title doesn't match HighCore keywords): {}", entity.getDisplayName(), title);
+                    log.info("Ignored YouTube Video for {} (Title doesn't match HighCore keywords): {}",
+                            entity.getDisplayName(), title);
                 }
             }
         });
