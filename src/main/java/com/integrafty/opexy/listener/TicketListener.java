@@ -673,16 +673,57 @@ public class TicketListener extends ListenerAdapter {
             msg.setUserId(event.getAuthor().getId());
             msg.setUserName(event.getAuthor().getName());
             
-            StringBuilder content = new StringBuilder(event.getMessage().getContentRaw());
-            for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
-                content.append("\n[ATTACHMENT: ").append(att.getUrl()).append("]");
-            }
-            
-            if (content.length() == 0 && event.getMessage().getEmbeds().size() > 0) {
-                content.append("[Embed Content]");
-            }
-            
-            msg.setContent(content.toString());
+                          com.google.gson.JsonObject payload = new com.google.gson.JsonObject();
+              payload.addProperty("raw", event.getMessage().getContentRaw());
+              
+              com.google.gson.JsonArray atts = new com.google.gson.JsonArray();
+              for (net.dv8tion.jda.api.entities.Message.Attachment att : event.getMessage().getAttachments()) {
+                  com.google.gson.JsonObject a = new com.google.gson.JsonObject();
+                  a.addProperty("url", att.getUrl());
+                  a.addProperty("name", att.getFileName());
+                  a.addProperty("isImage", att.isImage());
+                  a.addProperty("isVideo", att.isVideo());
+                  atts.add(a);
+              }
+              payload.add("attachments", atts);
+              
+              com.google.gson.JsonArray embeds = new com.google.gson.JsonArray();
+              for (net.dv8tion.jda.api.entities.MessageEmbed e : event.getMessage().getEmbeds()) {
+                  com.google.gson.JsonObject em = new com.google.gson.JsonObject();
+                  if (e.getTitle() != null) em.addProperty("title", e.getTitle());
+                  if (e.getDescription() != null) em.addProperty("description", e.getDescription());
+                  if (e.getColor() != null) em.addProperty("color", String.format("#%06x", e.getColor().getRGB() & 0xFFFFFF));
+                  if (e.getImage() != null) em.addProperty("image", e.getImage().getUrl());
+                  if (e.getThumbnail() != null) em.addProperty("thumbnail", e.getThumbnail().getUrl());
+                  
+                  if (e.getAuthor() != null) {
+                      com.google.gson.JsonObject au = new com.google.gson.JsonObject();
+                      if (e.getAuthor().getName() != null) au.addProperty("name", e.getAuthor().getName());
+                      if (e.getAuthor().getIconUrl() != null) au.addProperty("icon", e.getAuthor().getIconUrl());
+                      em.add("author", au);
+                  }
+                  
+                  if (e.getFooter() != null) {
+                      com.google.gson.JsonObject ft = new com.google.gson.JsonObject();
+                      if (e.getFooter().getText() != null) ft.addProperty("text", e.getFooter().getText());
+                      if (e.getFooter().getIconUrl() != null) ft.addProperty("icon", e.getFooter().getIconUrl());
+                      em.add("footer", ft);
+                  }
+                  
+                  com.google.gson.JsonArray fields = new com.google.gson.JsonArray();
+                  for (net.dv8tion.jda.api.entities.MessageEmbed.Field f : e.getFields()) {
+                      com.google.gson.JsonObject fo = new com.google.gson.JsonObject();
+                      if (f.getName() != null) fo.addProperty("name", f.getName());
+                      if (f.getValue() != null) fo.addProperty("value", f.getValue());
+                      fo.addProperty("inline", f.isInline());
+                      fields.add(fo);
+                  }
+                  em.add("fields", fields);
+                  embeds.add(em);
+              }
+              payload.add("embeds", embeds);
+              
+              msg.setContent("JSON:" + payload.toString());
             com.integrafty.opexy.repository.TicketMessageRepository msgRepo = 
                 com.integrafty.opexy.OpexyApplication.getContext().getBean(com.integrafty.opexy.repository.TicketMessageRepository.class);
             msgRepo.save(msg);
