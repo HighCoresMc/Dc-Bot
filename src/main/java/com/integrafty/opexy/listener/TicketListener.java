@@ -694,7 +694,7 @@ public class TicketListener extends ListenerAdapter {
         event.deferReply(true).queue();
         
         ticketRepository.findByChannelId(channel.getId()).ifPresentOrElse(ticket -> {
-            String domain = "https://dc-bot-production-e2d3.up.railway.app";
+            String domain = "https://dc-bot.highcores.com";
             String link = domain + "/view/transcript/" + ticket.getId();
             
             // Send to user ephemerally
