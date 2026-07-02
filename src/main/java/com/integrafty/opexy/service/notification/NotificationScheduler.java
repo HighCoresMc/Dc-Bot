@@ -118,10 +118,6 @@ public class NotificationScheduler {
                     log.info("Ignored Kick stream for {} (Title doesn't match HighCore keywords): {}",
                             entity.getDisplayName(), title);
                 }
-            } else {
-
-                log.info("Kick: {} is LIVE | Stream ongoing (ID: {}) - Already processed/ignored",
-                        entity.getDisplayName(), streamId);
             }
         });
     }
@@ -159,9 +155,6 @@ public class NotificationScheduler {
                     log.info("Ignored Twitch stream for {} (Title doesn't match HighCore keywords): {}",
                             entity.getDisplayName(), title);
                 }
-            } else {
-                log.info("Twitch: {} is LIVE | Stream ongoing (ID: {}) - Already processed/ignored",
-                        entity.getDisplayName(), streamId);
             }
         });
     }
