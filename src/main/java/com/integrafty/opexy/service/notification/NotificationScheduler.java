@@ -72,13 +72,14 @@ public class NotificationScheduler {
 
     private void handleKick(NotificationEntity entity) {
         kickService.getStreamStatus(entity.getChannelId()).ifPresent(livestream -> {
-            String streamId = livestream.get("id").getAsString();
+            String streamId = livestream.has("id") && !livestream.get("id").isJsonNull() ? livestream.get("id").getAsString() : String.valueOf(System.currentTimeMillis());
             String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
             
             if (lastId == null) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), streamId);
+                log.info("Baseline set for Kick {}: {}", entity.getDisplayName(), streamId);
                 return;
             }
             
@@ -88,18 +89,21 @@ public class NotificationScheduler {
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), streamId);
 
-                String title = livestream.get("session_title").getAsString();
+                String title = livestream.has("session_title") && !livestream.get("session_title").isJsonNull() 
+                               ? livestream.get("session_title").getAsString() : "Live on Kick!";
                 
                 if (isHighCoreRelated(title)) {
                     String thumbnail = "";
                     if (livestream.has("thumbnail") && !livestream.get("thumbnail").isJsonNull()) {
-                        String rawUrl = livestream.getAsJsonObject("thumbnail").get("url").getAsString();
-                        if (rawUrl != null && !rawUrl.isEmpty()) {
-                            try {
+                        try {
+                            if (livestream.get("thumbnail").isJsonObject()) {
+                                String rawUrl = livestream.getAsJsonObject("thumbnail").get("url").getAsString();
                                 thumbnail = "https://wsrv.nl/?url=" + java.net.URLEncoder.encode(rawUrl, "UTF-8");
-                            } catch (Exception e) {
-                                thumbnail = rawUrl;
+                            } else {
+                                thumbnail = livestream.get("thumbnail").getAsString();
                             }
+                        } catch (Exception e) {
+                            log.warn("Failed to parse Kick thumbnail for {}", entity.getDisplayName());
                         }
                     }
 
@@ -115,13 +119,14 @@ public class NotificationScheduler {
 
     private void handleTwitch(NotificationEntity entity) {
         twitchService.getStreamStatus(entity.getChannelId()).ifPresent(json -> {
-            String streamId = json.get("id").getAsString();
+            String streamId = json.has("id") && !json.get("id").isJsonNull() ? json.get("id").getAsString() : String.valueOf(System.currentTimeMillis());
             String lastId = localContentCache.getOrDefault(entity.getId(), entity.getLastContentId());
             
             if (lastId == null) {
                 entity.setLastContentId(streamId);
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), streamId);
+                log.info("Baseline set for Twitch {}: {}", entity.getDisplayName(), streamId);
                 return;
             }
             
@@ -130,10 +135,11 @@ public class NotificationScheduler {
                 notificationRepository.save(entity);
                 localContentCache.put(entity.getId(), streamId);
 
-                String title = json.get("title").getAsString();
+                String title = json.has("title") && !json.get("title").isJsonNull() ? json.get("title").getAsString() : "Live on Twitch!";
                 
                 if (isHighCoreRelated(title)) {
-                    String thumbnail = json.get("thumbnail_url").getAsString().replace("{width}", "1280").replace("{height}", "720");
+                    String thumbnail = json.has("thumbnail_url") && !json.get("thumbnail_url").isJsonNull() 
+                                       ? json.get("thumbnail_url").getAsString().replace("{width}", "1280").replace("{height}", "720") : "";
                     String url = "https://twitch.tv/" + entity.getChannelId();
                     sendLiveNotification(entity, streamId, url, title, thumbnail, "TWITCH");
                 } else {
