@@ -149,11 +149,7 @@
             <version>3.5.3</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.pusher</groupId>
-            <artifactId>pusher-java-client</artifactId>
-            <version>2.4.4</version>
-        </dependency>
+
         <dependency>
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
