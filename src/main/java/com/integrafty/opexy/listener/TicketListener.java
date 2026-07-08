@@ -751,15 +751,25 @@ public class TicketListener extends ListenerAdapter {
                 String openerMention = opener != null ? opener.getAsMention() : "<@" + ticket.getUserId() + ">";
                 String openerName = opener != null ? opener.getUser().getName() : "Unknown";
 
-                String logMsg = String.format(
-                    "▶ **TRANSCRIPT • Archive — Case #%d**\n\n" +
+                String claimedBy = ticket.getStaffId() != null ? "<@" + ticket.getStaffId() + ">" : "None";
+
+                String body = String.format(
                     "**User:** %s (%s)\n" +
+                    "**Claimed By:** %s\n" +
                     "**Closed By:** %s\n\n" +
-                    "🔗 [View Transcript](%s)",
-                    ticket.getId(), openerMention, openerName, event.getUser().getAsMention(), link
+                    "🔗 **[View Transcript](%s)**",
+                    openerMention, openerName, claimedBy, event.getUser().getAsMention(), link
                 );
                 
-                logCh.sendMessage(logMsg).queue();
+                Container transcriptPanel = EmbedUtil.containerBranded(
+                    "TRANSCRIPT",
+                    "Archive — Case #" + ticket.getId(),
+                    body,
+                    null
+                );
+                
+                logCh.sendMessage(new MessageCreateBuilder().setComponents(transcriptPanel).useComponentsV2(true).build())
+                     .useComponentsV2(true).queue();
             }
         }, () -> {
             event.getHook().sendMessage("❌ لم يتم العثور على بيانات التذكرة لإصدار الرابط.").setEphemeral(true).queue();
