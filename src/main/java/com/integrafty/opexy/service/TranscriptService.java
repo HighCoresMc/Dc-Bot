@@ -97,6 +97,9 @@ public class TranscriptService {
         sb.append("<div class='hc-stat-card'><div class='hc-stat-label'>Opened By</div><div class='hc-stat-value'>").append(escapeHtml(openerName)).append("</div></div>");
         sb.append("<div class='hc-stat-card'><div class='hc-stat-label'>Opened At</div><div class='hc-stat-value'>").append(formatDate(openedAt)).append("</div></div>");
         sb.append("<div class='hc-stat-card'><div class='hc-stat-label'>Messages</div><div class='hc-stat-value'>").append(messages.size()).append("</div></div>");
+        if (staffName != null && !staffName.equals("Not Handled")) {
+            sb.append("<div class='hc-stat-card'><div class='hc-stat-label'>Handler ID</div><div class='hc-stat-value' id='ticket-handler-id'>").append(escapeHtml(staffName)).append("</div></div>");
+        }
         sb.append("</div></div>");
 
         // Chat Section
