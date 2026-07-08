@@ -25,7 +25,7 @@ public class VoiceCommand implements SlashCommand {
 
     @Override
     public SlashCommandData getCommandData() {
-        return Commands.slash("voice-setup", "إنـــشـــاء بـــنـــل الـــتـــحـــكـــم فـــي الـــرومـــات الـــصـــوتـــيـــة")
+        return Commands.slash("voice-setup", "إنشاء بنل التحكم في الرومات الصوتية")
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR));
     }
 
@@ -36,11 +36,11 @@ public class VoiceCommand implements SlashCommand {
             return;
         }
 
-        String body = "### Voice Room Control Panel\n" +
-                "Manage your temporary voice channel using the options below.\n\n" +
-                "● **Security** — Lock or hide your room\n" +
-                "● **Identity** — Rename or set user limits\n" +
-                "● **Management** — Kick users or transfer ownership";
+        String body = "### لوحة تحكم الرومات الصوتية | VOICE CONTROL\n<divider>\n" +
+                "تحكم في إعدادات رومتك الصوتية المؤقتة بكل سهولة من خلال الخيارات أدناه.\n\n" +
+                "▫️ **الحماية (Security):** قفل أو إخفاء الروم\n" +
+                "▫️ **الهوية (Identity):** تغيير الاسم أو تحديد عدد الأعضاء\n" +
+                "▫️ **الإدارة (Management):** طرد الأعضاء أو نقل الملكية";
  
         ActionRow row1 = ActionRow.of(
             Button.secondary("voice_rename", "Rename"),

@@ -36,8 +36,8 @@ public class WipeUserCommand implements SlashCommand {
 
     @Override
     public SlashCommandData getCommandData() {
-        return Commands.slash("wipe-user", "حـــذف جـــمـــيـــع رســـائـــل عـــضـــو مـــن الـــســـيـــرفـــر")
-                .addOption(OptionType.STRING, "user_id", "أي دي الـــعـــضـــو", true)
+        return Commands.slash("wipe-user", "حذف جميع رسائل عضو من السيرفر")
+                .addOption(OptionType.STRING, "user_id", "أيدي العضو", true)
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER));
     }
 
@@ -71,10 +71,10 @@ public class WipeUserCommand implements SlashCommand {
         if (index >= channels.size()) {
             // All channels processed — send summary
             int count = totalDeleted.get();
-            String body = "### 🗑️ Wipe Complete\n\n" +
-                    "**Target:** `" + targetId + "`\n" +
-                    "**Messages Deleted:** `" + count + "`\n" +
-                    "**Moderator:** " + event.getMember().getAsMention();
+            String body = "### عملية المسح اكتملت | WIPE COMPLETE\n<divider>\n" +
+                    "▫️ **الهدف:** `" + targetId + "`\n" +
+                    "▫️ **الرسائل المحذوفة:** `" + count + "`\n" +
+                    "▫️ **المسؤول:** " + event.getMember().getAsMention();
             Container container = EmbedUtil.containerBranded("MODERATION", "User Wipe Complete", body, EmbedUtil.BANNER_MAIN);
             MessageCreateBuilder builder = new MessageCreateBuilder().setComponents(container).useComponentsV2(true);
             event.getHook().sendMessage(builder.build()).useComponentsV2(true).queue();

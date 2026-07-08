@@ -41,19 +41,25 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
     private final WordFilterRepository wordFilterRepository;
     private final LogManager logManager;
 
-    private static final String ALLOWED_USER_ID = "1350531070222794804";
+    @Value("${opexy.roles.op-staff}")
+    private String opStaffRoleId;
 
-    /*@PostConstruct
-    public void init() {
-        jda.addEventListener(this);
-    }*/
+    /*
+     * @PostConstruct
+     * public void init() {
+     * jda.addEventListener(this);
+     * }
+     */
 
     @Override
-    public String getName() { return "banded-words"; }
+    public String getName() {
+        return "banned-words";
+    }
 
     @Override
     public SlashCommandData getCommandData() {
-        return Commands.slash("banded-words", "إدارة قـــائـــمـــة الـــكـــلـــمـــات الـــمـــحـــظـــورة للمخولين فقط");
+        return Commands.slash("banned-words", "إدارة قـــائـــمـــة الـــكـــلـــمـــات الـــمـــحـــظـــورة")
+                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER));
     }
 
     @Override
@@ -68,7 +74,8 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
         String id = event.getComponentId();
-        if (!hasAccess(event.getMember())) return;
+        if (!hasAccess(event.getMember()))
+            return;
 
         if (id.equals("bw_add")) {
             TextInput word = TextInput.create("word", TextInputStyle.SHORT)
@@ -92,6 +99,7 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
                     .build()).queue();
         }
     }
+
     @Override
     public void onModalInteraction(ModalInteractionEvent event) {
         String id = event.getModalId();
@@ -104,8 +112,9 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
             // LOGGING
             String logDetails = String.format("### ➕ Banned Word Added\n▫️ **Term:** `%s`\n▫️ **Moderator:** %s",
                     word, event.getMember().getAsMention());
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD, 
-                    EmbedUtil.createOldLogEmbed("banned-word-add", logDetails, event.getMember(), null, null, EmbedUtil.SUCCESS));
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD,
+                    EmbedUtil.createOldLogEmbed("banned-word-add", logDetails, event.getMember(), null, null,
+                            EmbedUtil.SUCCESS));
 
         } else if (id.equals("modal_bw_add_strict")) {
             String word = event.getValue("word").getAsString();
@@ -115,8 +124,9 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
             // LOGGING
             String logDetails = String.format("### ➕ Strict Banned Word Added\n▫️ **Term:** `%s`\n▫️ **Moderator:** %s",
                     word, event.getMember().getAsMention());
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD, 
-                    EmbedUtil.createOldLogEmbed("banned-word-add", logDetails, event.getMember(), null, null, EmbedUtil.SUCCESS));
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD,
+                    EmbedUtil.createOldLogEmbed("banned-word-add", logDetails, event.getMember(), null, null,
+                            EmbedUtil.SUCCESS));
 
         } else if (id.equals("modal_bw_remove")) {
             String word = event.getValue("word").getAsString();
@@ -126,8 +136,9 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
             // LOGGING
             String logDetails = String.format("### ➖ Banned Word Removed\n▫️ **Term:** `%s`\n▫️ **Moderator:** %s",
                     word, event.getMember().getAsMention());
-            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD, 
-                    EmbedUtil.createOldLogEmbed("banned-word-remove", logDetails, event.getMember(), null, null, EmbedUtil.DANGER));
+            logManager.logEmbed(event.getGuild(), LogManager.LOG_MODS_CMD,
+                    EmbedUtil.createOldLogEmbed("banned-word-remove", logDetails, event.getMember(), null, null,
+                            EmbedUtil.DANGER));
         }
     }
 
@@ -151,8 +162,10 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
                     hasNormal = true;
                 }
             }
-            if (hasNormal) sb.append(normal).append("\n");
-            if (hasStrict) sb.append(strict).append("\n");
+            if (hasNormal)
+                sb.append(normal).append("\n");
+            if (hasStrict)
+                sb.append(strict).append("\n");
         }
 
         ActionRow row = ActionRow.of(
@@ -175,7 +188,7 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
     }
 
     private boolean hasAccess(net.dv8tion.jda.api.entities.Member member) {
-        return member != null && member.getId().equals(ALLOWED_USER_ID);
+        return member != null && member.getRoles().stream().anyMatch(r -> r.getId().equals(opStaffRoleId));
     }
 
     private void sendEphemeral(SlashCommandInteractionEvent event, Container container) {
