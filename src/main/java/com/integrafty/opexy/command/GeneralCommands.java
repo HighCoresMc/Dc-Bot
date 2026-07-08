@@ -206,13 +206,11 @@ public class GeneralCommands implements MultiSlashCommand {
         long balance = economyService.getBalance(target.getId(), event.getGuild().getId());
 
         String body = String.format("""
-                ### 💰 رصـــيـــد الـــمـــحـــفـــظـــة | WALLET BALANCE
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                ### رصيد المحفظة | WALLET BALANCE
+                <divider>
                 
-                ▫️ **الـــمـــســـتـــخـــدم:** <@%s>
-                ▫️ **الـــرصـــيـــد الـــحـــالـــي:** `%d opex`
-                
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                ▫️ **المستخدم:** <@%s>
+                ▫️ **الرصيد الحالي:** `%d opex`
                 """, target.getId(), balance);
 
         reply(event, EmbedUtil.containerBranded("ECONOMY", "Financial Status", body, EmbedUtil.BANNER_MAIN));
@@ -261,8 +259,6 @@ public class GeneralCommands implements MultiSlashCommand {
                 
                 ### 🎮 Minigames (For Everyone)
                 `/pipes`, `/speed`
-                
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                 """;
 
         Container container = EmbedUtil.containerBranded("SYSTEM", "Bot Assistance", body, EmbedUtil.BANNER_MAIN);
@@ -272,13 +268,11 @@ public class GeneralCommands implements MultiSlashCommand {
     private void handlePing(SlashCommandInteractionEvent event) {
         long gatewayPing = event.getJDA().getGatewayPing();
         String body = String.format("""
-                ### 📶 ســـرعـــة الاتـــصـــال | BOT LATENCY
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                ### سرعة الاتصال | BOT LATENCY
+                <divider>
                 
                 ▫️ **Gateway Latency:** `%dms`
                 ▫️ **API Latency:** `Calculating...`
-                
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                 """, gatewayPing);
 
         long startTime = System.currentTimeMillis();
@@ -287,13 +281,11 @@ public class GeneralCommands implements MultiSlashCommand {
              .queue(msg -> {
                  long apiPing = System.currentTimeMillis() - startTime;
                  String updatedBody = String.format("""
-                         ### 📶 ســـرعـــة الاتـــصـــال | BOT LATENCY
-                         ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                         ### سرعة الاتصال | BOT LATENCY
+                         <divider>
                          
                          ▫️ **Gateway Latency:** `%dms`
                          ▫️ **API Latency:** `%dms`
-                         
-                         ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                          """, gatewayPing, apiPing);
                  msg.editOriginal(new MessageEditBuilder().setComponents(EmbedUtil.containerBranded("NETWORK", "Ping Check", updatedBody, EmbedUtil.BANNER_MAIN)).useComponentsV2(true).build()).useComponentsV2(true).queue();
              });
@@ -316,13 +308,11 @@ public class GeneralCommands implements MultiSlashCommand {
 
     private void handleColors(SlashCommandInteractionEvent event) {
         String body = """
-                ### 🎨 نـــظـــام الألـــوان | COLOR SYSTEM
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                ### نظام الألوان | COLOR SYSTEM
+                <divider>
                 
-                اخـــتـــر لـــونـــك الـــمـــفـــضـــل مـــن الأزرار أدـنـــاه.
-                *ســـيـــتـــم تـــحـــديـــث لـــون رتـــبـــتـــك تـــلـــقـــائـــيـــاً.*
-                
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                اختر لونك المفضل من الأزرار أدناه.
+                *سيتم تحديث لون رتبتك تلقائياً.*
                 """;
 
         net.dv8tion.jda.api.components.buttons.Button b1 = net.dv8tion.jda.api.components.buttons.Button.secondary("color_red", "Soft Red");
@@ -378,17 +368,15 @@ public class GeneralCommands implements MultiSlashCommand {
         String result = translationService.translate(text, lang);
         
         String body = String.format("""
-                ### 🌐 نـــتـــيـــجـــة الـــتـــرجـــمـــة | TRANSLATION RESULT
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                ### نتيجة الترجمة | TRANSLATION RESULT
+                <divider>
                 
-                ▫️ **الـــلـــغـــة الـــمـــســـتـــهـــدفـــة:** `%s`
-                ▫️ **الـــنـــص الـــأصـــلـــي:**
+                ▫️ **اللغة المستهدفة:** `%s`
+                ▫️ **النص الأصلي:**
                 > %s
                 
-                ▫️ **الـــتـــرجـــمـــة:**
+                ▫️ **الترجمة:**
                 > %s
-                
-                ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                 """, lang.toUpperCase(), text, result);
 
         Container container = EmbedUtil.containerBranded("LANGUAGE", "Translation Engine", body, EmbedUtil.BANNER_MAIN);
@@ -405,27 +393,23 @@ public class GeneralCommands implements MultiSlashCommand {
             Emoji emoji = Emoji.fromFormatted(emojiStr);
             if (emoji instanceof CustomEmoji custom) {
                 body = String.format("""
-                        ### 🔍 تـــفـــاصـــيـــل الإيـــمـــوجـــي | EMOJI DETAILS
-                        ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                        ### تفاصيل الإيموجي | EMOJI DETAILS
+                        <divider>
                         
-                        ▫️ **الاســـم:** `%s`
-                        ▫️ **الـــمـــعـــرف (ID):** `%s`
-                        ▫️ **الـــصـــيـــغـــة:** `<:%s:%s>`
+                        ▫️ **الاسم:** `%s`
+                        ▫️ **المعرف (ID):** `%s`
+                        ▫️ **الصيغة:** `<:%s:%s>`
                         ▫️ **رابط الصورة:** [Click Here](%s)
-                        
-                        ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
                         """, custom.getName(), custom.getId(), custom.getName(), custom.getId(), custom.getImageUrl());
                 imageUrl = custom.getImageUrl();
             } else {
                 body = String.format("""
-                        ### 🔍 تـــفـــاصـــيـــل الإيـــمـــوجـــي | EMOJI DETAILS
-                        ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                        ### تفاصيل الإيموجي | EMOJI DETAILS
+                        <divider>
                         
-                        ▫️ **الـــنـــوع:** إيـــمـــوجـــي افـــتـــراضـــي (Standard)
-                        ▫️ **الـــرمـــز:** %s
-                        ▫️ **الاســـم:** `%s`
-                        
-                        ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+                        ▫️ **النوع:** إيموجي افتراضي (Standard)
+                        ▫️ **الرمز:** %s
+                        ▫️ **الاسم:** `%s`
                         """, emoji.getName(), emoji.getName());
             }
         } catch (Exception e) {

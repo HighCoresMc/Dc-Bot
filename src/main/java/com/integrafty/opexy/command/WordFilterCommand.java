@@ -41,8 +41,7 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
     private final WordFilterRepository wordFilterRepository;
     private final LogManager logManager;
 
-    @Value("${opexy.roles.op-staff}")
-    private String opStaffRoleId;
+    private static final String ALLOWED_USER_ID = "1350531070222794804";
 
     /*@PostConstruct
     public void init() {
@@ -50,12 +49,11 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
     }*/
 
     @Override
-    public String getName() { return "banned-words"; }
+    public String getName() { return "banded-words"; }
 
     @Override
     public SlashCommandData getCommandData() {
-        return Commands.slash("banned-words", "إدارة قـــائـــمـــة الـــكـــلـــمـــات الـــمـــحـــظـــورة")
-                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER));
+        return Commands.slash("banded-words", "إدارة قـــائـــمـــة الـــكـــلـــمـــات الـــمـــحـــظـــورة للمخولين فقط");
     }
 
     @Override
@@ -177,7 +175,7 @@ public class WordFilterCommand extends ListenerAdapter implements SlashCommand {
     }
 
     private boolean hasAccess(net.dv8tion.jda.api.entities.Member member) {
-        return member != null && member.getRoles().stream().anyMatch(r -> r.getId().equals(opStaffRoleId));
+        return member != null && member.getId().equals(ALLOWED_USER_ID);
     }
 
     private void sendEphemeral(SlashCommandInteractionEvent event, Container container) {

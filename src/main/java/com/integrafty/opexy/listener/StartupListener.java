@@ -34,13 +34,12 @@ public class StartupListener extends ListenerAdapter {
     );
 
     private static final Map<String, String> PING_ROLES = Map.of(
-        "ping_stream", "1487196786488770610",
         "ping_minecraft", "1487196787142819961",
         "ping_event", "1487196787893731428",
         "ping_mcserver", "1499896841150402692",
         "ping_dcserver", "1499896994003681310",
         "ping_apply", "1499897044897366056",
-        "ping_youtube", "1500269236583399454"
+        "ping_social", "1500269236583399454"
     );
 
 
@@ -62,7 +61,7 @@ public class StartupListener extends ListenerAdapter {
                 showSocials(event);
                 break;
             case "support_direct":
-                event.reply("📍 توجه إلى روم الدعم الفني من هنا: <#1487143271586074624>").setEphemeral(true).queue();
+                event.reply("توجه إلى روم الدعم الفني من هنا: <#1487143271586074624>").setEphemeral(true).queue();
                 break;
             default:
                 if (id.startsWith("color_")) {
@@ -76,15 +75,14 @@ public class StartupListener extends ListenerAdapter {
 
     private void showServerMap(ButtonInteractionEvent event) {
         String mapContent = 
-            "### 🗺️ خـريـطـة الـسـيـرفـر | SERVER MAP\n" +
-            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n" +
+            "### خريطة السيرفر | SERVER MAP\n<divider>\n" +
             "┣ <#1487138386258165820> • استقبل الأعضاء الجدد بحماس\n" +
             "┃\n" +
             "┣ <#1488279212786843850> • وثق حسابك لفتح الرومات\n" +
             "┃\n" +
             "┣ <#1487138587827900486> • قوانين السيرفر والمعلومات الأساسية\n" +
             "┃\n" +
-            "┣ <#14871386591478457> • آخر أخبار وتحديثات السيرفر\n" +
+            "┣ <#1487138659147845724> • آخر أخبار وتحديثات السيرفر\n" +
             "┃\n" +
             "┣ <#1487204004076191946> • أحدث مقاطع اليوتيوب الحصرية\n" +
             "┃\n" +
@@ -92,7 +90,7 @@ public class StartupListener extends ListenerAdapter {
             "┃\n" +
             "┣ <#1487139870433476720> • شرح مفصل للعب بالسيرفر\n" +
             "┃\n" +
-            "┣ <#1487139967296864377> • شاركنا أفكارك لتطوير السيرفر\n" +
+            "┣ <#1487138843378323486> • شاركنا أفكارك لتطوير السيرفر\n" +
             "┃\n" +
             "┣ <#1487139736748425236> • حالة السيرفر التقنية الحالية\n" +
             "┃\n" +
@@ -103,8 +101,6 @@ public class StartupListener extends ListenerAdapter {
             "┣ <#1487140532965867600> • استخدم أوامر البوت هنا\n" +
             "┃\n" +
             "┣ <#1487140589500629034> • شارك صورك ومقاطعك هنا\n" +
-            "┃\n" +
-            "┣ <#1487138843378323486> • اقتراحات تخص قسم الأوبكس\n" +
             "┃\n" +
             "┣ <#1487142537666760735> • جدول فعاليات السيرفر القادمة\n" +
             "┃\n" +
@@ -118,17 +114,16 @@ public class StartupListener extends ListenerAdapter {
             "┃\n" +
             "┣ <#1486872077263835157> • لوحة تحكم إعداداتك الخاصة\n" +
             "┃\n" +
-            "┣ <#1499728555754520667> • أنشئ رومتك الصوتية فوراً\n" +
+            "┣ <#1500190617353851037> • أنشئ رومتك الصوتية فوراً\n" +
             "┃\n" +
-            "┗ <#1487143271586074624> • تواصل مع الإدارة مباشرة\n\n" +
-            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+            "┗ <#1487143271586074624> • تواصل مع الإدارة مباشرة";
 
         Container container = EmbedUtil.containerBranded("MAP", "HighCore Explorer", mapContent, null);
         event.reply(new MessageCreateBuilder().setComponents(container).useComponentsV2(true).build()).setEphemeral(true).useComponentsV2(true).queue();
     }
 
     private void showColors(ButtonInteractionEvent event) {
-        String body = "**🎨 اخـتـر لـونـك الـمـفـضـل (لـون واحـد فـقـط):**";
+        String body = "اختر لونك المفضل (لون واحد فقط):";
         ActionRow row1 = ActionRow.of(
             Button.secondary("color_red", "Soft Red"),
             Button.secondary("color_turquoise", "Turquoise"),
@@ -146,9 +141,9 @@ public class StartupListener extends ListenerAdapter {
     }
 
     private void showPings(ButtonInteractionEvent event) {
-        String body = "**🔔 اخـتـر الأقـسـام الـتـي تـرغـب بـمـتـابـعـتـهـا:**";
+        String body = "اختر الأقسام التي ترغب بمتابعتها:";
         ActionRow row1 = ActionRow.of(
-            Button.secondary("ping_stream", "Stream"),
+            Button.secondary("ping_social", "Social Notify"),
             Button.secondary("ping_minecraft", "Minecraft"),
             Button.secondary("ping_event", "Events"),
             Button.secondary("ping_mcserver", "MC-Server"),
@@ -156,7 +151,6 @@ public class StartupListener extends ListenerAdapter {
         );
         ActionRow row2 = ActionRow.of(
             Button.secondary("ping_apply", "Staff Apply"),
-            Button.secondary("ping_youtube", "YouTube"),
             Button.secondary("support_direct", "Support")
         );
 
@@ -165,7 +159,7 @@ public class StartupListener extends ListenerAdapter {
     }
 
     private void showSocials(ButtonInteractionEvent event) {
-        String body = "**🌐 تـابـعـنـا عـلـى مـنـصـات الـتـواصـل الاجـتـمـاعـي:**";
+        String body = "تابعنا على منصات التواصل الاجتماعي:";
         ActionRow row = ActionRow.of(
             Button.link("https://www.instagram.com/highcoremc", "Instagram"),
             Button.link("https://www.threads.com/@highcoremc", "Threads"),
@@ -195,7 +189,7 @@ public class StartupListener extends ListenerAdapter {
         }
 
         event.getGuild().addRoleToMember(event.getMember(), targetRole).queue(
-            success -> event.getHook().sendMessage("✅ تـم تـحـديـث لـونـك إلـى: **" + targetRole.getName() + "**").queue()
+            success -> event.getHook().sendMessage("تم تحديث لونك إلى: **" + targetRole.getName() + "**").queue()
         );
     }
 
@@ -210,11 +204,11 @@ public class StartupListener extends ListenerAdapter {
 
         if (event.getMember().getRoles().contains(targetRole)) {
             event.getGuild().removeRoleFromMember(event.getMember(), targetRole).queue(
-                success -> event.getHook().sendMessage("🔕 تـم إزالـة تـنـبـيـهات: **" + targetRole.getName() + "**").queue()
+                success -> event.getHook().sendMessage("تم إزالة تنبيهات: **" + targetRole.getName() + "**").queue()
             );
         } else {
             event.getGuild().addRoleToMember(event.getMember(), targetRole).queue(
-                success -> event.getHook().sendMessage("🔔 تـم تـفـعـيـل تـنـبـيـهات: **" + targetRole.getName() + "**").queue()
+                success -> event.getHook().sendMessage("تم تفعيل تنبيهات: **" + targetRole.getName() + "**").queue()
             );
         }
     }

@@ -34,11 +34,9 @@ public class StartupCommand implements SlashCommand {
             return;
         }
 
-        String body = "### 🚀 لوحة التحكم الرئيسية | MAIN DASHBOARD\n" +
-                "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n" +
+        String body = "### لوحة التحكم الرئيسية | MAIN DASHBOARD\n<divider>\n" +
                 "مرحباً بك في سيرفر **HighCore MC**.\n" +
-                "استخدم الأزرار أدناه للوصول السريع إلى خريطة السيرفر، اختيار ألوانك، ضبط التنبيهات، أو متابعة حساباتنا.\n\n" +
-                "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+                "استخدم الأزرار أدناه للوصول السريع إلى خريطة السيرفر، اختيار ألوانك، ضبط التنبيهات، أو متابعة حساباتنا.";
 
         ActionRow row = ActionRow.of(
             Button.secondary("startup_map", "Server Map"),

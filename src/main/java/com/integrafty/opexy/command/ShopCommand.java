@@ -34,45 +34,45 @@ public class ShopCommand extends ListenerAdapter implements SlashCommand {
     @Override
     public void execute(SlashCommandInteractionEvent event) {
         String body = """
-                مرحباً بك في متجر أوبكس التفاعلي! 🛒
+                مرحباً بك في متجر أوبكس التفاعلي
                 هنا يمكنك شراء ميزات خاصة تساعدك في الفعاليات والألعاب.
-                
-                🛡️ **درع المافيا (Mafia Shield)**
+                <divider>
+                **درع المافيا (Mafia Shield)**
                 يحميك من هجوم المافيا لمرة واحدة.
                 **السعر:** 5,000 opex
                 
-                💰 **مضاعف الجوائز (2x Reward)**
+                **مضاعف الجوائز (2x Reward)**
                 يضاعف جائزتك القادمة في أي فعالية تفوز بها.
                 **السعر:** 15,000 opex
-
-                ✌️ **جاوب جوابين (Double Answer)**
+                
+                **جاوب جوابين (Double Answer)**
                 يمنحك محاولة إضافية في جولة.
                 **السعر:** 2,000 opex
-
-                ⛳ **الحفرة (The Pit)**
+                
+                **الحفرة (The Pit)**
                 تخصم نقاط من الفريق الآخر في جولة.
                 **السعر:** 3,500 opex
-
-                🔄 **اعكس الدور (Reverse Turn)**
+                
+                **اعكس الدور (Reverse Turn)**
                 تغيير دور الفريق في جولة.
                 **السعر:** 1,500 opex
-
-                🏆 **السؤال الذهبي (Golden Question)**
+                
+                **السؤال الذهبي (Golden Question)**
                 مضاعفة نقاط السؤال الحالي في جولة.
                 **السعر:** 4,000 opex
                 """;
 
         event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(EmbedUtil.containerBranded("SHOP", "متجر الألعاب — Opexy Shop", body, EmbedUtil.BANNER_MAIN,
+                .setComponents(EmbedUtil.containerBranded("SHOP", "Opexy Shop", body, EmbedUtil.BANNER_MAIN,
                         ActionRow.of(
-                                Button.primary("buy_shield", "درع 🛡️"),
-                                Button.success("buy_double", "مضاعف 💰"),
-                                Button.secondary("buy_j_double", "جوابين ✌️"),
-                                Button.secondary("buy_j_pit", "الحفرة ⛳"),
-                                Button.secondary("buy_j_reverse", "عكس 🔄")
+                                Button.primary("buy_shield", "درع المافيا"),
+                                Button.success("buy_double", "مضاعف الجوائز"),
+                                Button.secondary("buy_j_double", "جاوب جوابين")
                         ),
                         ActionRow.of(
-                                Button.secondary("buy_j_golden", "ذهبي 🏆")
+                                Button.secondary("buy_j_pit", "الحفرة"),
+                                Button.secondary("buy_j_reverse", "عكس الدور"),
+                                Button.secondary("buy_j_golden", "السؤال الذهبي")
                         )))
                 .useComponentsV2(true).build())
                 .useComponentsV2(true).queue();

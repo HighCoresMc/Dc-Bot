@@ -112,17 +112,22 @@ public class EmbedUtil {
             layout.add(MediaGallery.of(MediaGalleryItem.fromUrl(imageUrl)));
         }
 
-        StringBuilder text = new StringBuilder();
         if (sector != null && !sector.isEmpty()) {
-            text.append("### ► ").append(sector.toUpperCase()).append(" ・ ").append(title).append("\n");
+            layout.add(TextDisplay.of("### ► " + sector.toUpperCase() + " ・ " + title));
         } else {
-            text.append("## ").append(title).append("\n");
+            layout.add(TextDisplay.of("## " + title));
         }
 
         if (body != null && !body.isEmpty()) {
-            text.append(body);
+            layout.add(Separator.createDivider(Spacing.SMALL));
+            String[] parts = body.split("<divider>");
+            for (int i = 0; i < parts.length; i++) {
+                if (i > 0) {
+                    layout.add(Separator.createDivider(Spacing.SMALL));
+                }
+                layout.add(TextDisplay.of(parts[i].trim()));
+            }
         }
-        layout.add(TextDisplay.of(text.toString()));
 
         if (rows != null && rows.length > 0) {
             layout.add(Separator.createDivider(Spacing.SMALL));
