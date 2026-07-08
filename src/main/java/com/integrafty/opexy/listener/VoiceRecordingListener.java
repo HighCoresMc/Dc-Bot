@@ -379,18 +379,18 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 recorder.setRecording(true);
                 log.info("[RECORDING] Started session '{}' for guild: {}", name, guild.getName());
                 
-                // Schedule splitting every 30 minutes
+                // Schedule splitting every 10 minutes
                 java.util.concurrent.ScheduledFuture<?> task = scheduler.scheduleAtFixedRate(() -> {
-                    log.info("[VOICE] 30 minutes reached. Splitting recording for session: {}", name);
+                    log.info("[VOICE] 10 minutes reached. Splitting recording for session: {}", name);
                     splitAndRestart(guild);
-                }, 30, 30, java.util.concurrent.TimeUnit.MINUTES);
+                }, 10, 10, java.util.concurrent.TimeUnit.MINUTES);
                 
                 splitTasks.put(guildId, task);
 
                 net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded(
                     "PROTOCOL",
                     "Recording Started",
-                    "✅ Recording session **" + name + "** has been started.\nIt will automatically split every 30 minutes for stability.",
+                    "✅ Recording session **" + name + "** has been started.\nIt will automatically split every 10 minutes for stability.",
                     EmbedUtil.BANNER_MAIN
                 );
                 event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
