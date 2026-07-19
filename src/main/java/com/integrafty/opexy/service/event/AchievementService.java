@@ -69,18 +69,6 @@ public class AchievementService {
         Member member = guild.getMemberById(userId);
         if (member == null) return;
 
-        // Auction Achievements
-        checkAndGrant(member, jinxedBidderId, stats.getFailedBids() >= 5);
-        checkAndGrant(member, goldenGavelId, stats.getSuccessBids() >= 5);
-        checkAndGrant(member, highRollerId, stats.getMaxBid() >= 100000);
-
-        // Mafia Achievements
-        checkAndGrant(member, contractKillerId, stats.getMafiaWins() >= 6);
-        checkAndGrant(member, eternalCivilianId, stats.getCitizenCount() >= 8);
-        checkAndGrant(member, publicEnemyId, stats.getVotesReceived() >= 15);
-        checkAndGrant(member, eagleEyeId, stats.getDetectiveReveals() >= 1);
-        checkAndGrant(member, guardianAngelId, stats.getDoctorSaves() >= 3);
-
         // Minigame Achievements
         checkAndGrant(member, masterPlumberId, stats.getPipeWins() >= 4);
         checkAndGrant(member, sonicFingersId, stats.getSpeedWins() >= 1);

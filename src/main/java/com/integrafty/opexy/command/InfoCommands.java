@@ -89,14 +89,7 @@ public class InfoCommands implements MultiSlashCommand {
 
         String inventory = String.format("""
                 ▫️ **Opex Balance:** `%d` 🪙
-                ▫️ **Mafia Shield:** `%d` 🛡️
-                ▫️ **Double Reward:** `%s` 💰
-                ▫️ **Jawlah (Double):** `%d` ✌️
-                ▫️ **Jawlah (Pit):** `%d` ⛳
-                ▫️ **Jawlah (Reverse):** `%d` 🔄
-                ▫️ **Jawlah (Golden):** `%d` 🏆
-                """, balance, stats.getShieldCount(), stats.isDoubleRewardActive() ? "Active" : "None",
-                stats.getJawlahDoubleAnswer(), stats.getJawlahPit(), stats.getJawlahReverse(), stats.getJawlahGolden());
+                """, balance);
 
         String desc = String.format("""
                 ### 👤 Operative Identity

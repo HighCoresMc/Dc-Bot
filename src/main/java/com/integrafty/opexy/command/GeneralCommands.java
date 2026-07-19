@@ -36,9 +36,6 @@ public class GeneralCommands implements MultiSlashCommand {
     private final TranslationService translationService;
     private final com.integrafty.opexy.service.EconomyService economyService;
     private final com.integrafty.opexy.service.event.EventManager eventManager;
-    private final com.integrafty.opexy.service.event.AuctionManager auctionManager;
-    private final com.integrafty.opexy.service.event.MafiaManager mafiaManager;
-    private final com.integrafty.opexy.service.event.JawlahManager jawlahManager;
 
     @Override
     public List<SlashCommandData> getCommandDataList() {
@@ -82,6 +79,9 @@ public class GeneralCommands implements MultiSlashCommand {
                         .addChoice("الكل (All)", "all"))
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
 
+        list.add(Commands.slash("azkar", "عـــرض قـــائـــمـــة أوامـــر الأذكـــار (خاص بالإدارة)")
+                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
+
         return list;
     }
 
@@ -102,7 +102,31 @@ public class GeneralCommands implements MultiSlashCommand {
             case "take" -> handleTake(event);
             case "transfer" -> handleTransfer(event);
             case "kill" -> handleKill(event);
+            case "azkar" -> handleAzkar(event);
         }
+    }
+
+    private void handleAzkar(SlashCommandInteractionEvent event) {
+        boolean hasAccess = event.getMember() != null && event.getMember().getRoles().stream()
+                .anyMatch(role -> role.getId().equals("1487195816220430406"));
+
+        if (!hasAccess && event.getMember() != null && !event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
+            replyEphemeral(event, EmbedUtil.error("ACCESS DENIED", "هذا الأمر مخصص للإدارة فقط."));
+            return;
+        }
+
+        String body = """
+                **قائمة أوامر الأذكار اليدوية:**
+                `!ص` : سبحان الله وبحمده، سبحان الله العظيم
+                `!س` : أستغفر الله العظيم وأتوب إليه
+                `!ح` : لا حول ولا قوة إلا بالله العلي العظيم
+                `!ت` : لا إله إلا الله وحده لا شريك له
+                `!ع` : الصلاة على النبي ﷺ
+                `!جمعه` : دعاء وأذكار يوم الجمعة (سورة الكهف)
+                `!الصباح` : إرسال لوحة أذكار الصباح
+                `!المساء` : إرسال لوحة أذكار المساء
+                """;
+        replyEphemeral(event, EmbedUtil.containerBranded(null, "أوامر الأذكار (Admin)", body, null));
     }
 
     private void handleKill(SlashCommandInteractionEvent event) {
@@ -115,17 +139,6 @@ public class GeneralCommands implements MultiSlashCommand {
         }
 
         String type = event.getOption("type") != null ? event.getOption("type").getAsString() : "all";
-
-        if (type.equals("auction") || type.equals("all")) {
-            auctionManager.stopAuction();
-        }
-        if (type.equals("mafia") || type.equals("all")) {
-            mafiaManager.stopGame();
-        }
-        
-        if (type.equals("jawlah") || type.equals("all")) {
-            jawlahManager.stopGame(event.getChannel().getIdLong());
-        }
         
         if (type.equals("all")) {
             eventManager.endGroupEvent();

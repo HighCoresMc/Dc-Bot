@@ -98,4 +98,27 @@ public class AzkarScheduler {
             log.error("Failed to send evening azkar panel", e);
         }
     }
+
+    // Friday Task
+    @Scheduled(cron = "0 15 12 * * FRI", zone = "Asia/Riyadh")
+    public void sendFridayPanel() {
+        try {
+            TextChannel channel = jda.getTextChannelById(AZKAR_CHANNEL_ID);
+            if (channel == null) {
+                log.warn("Azkar channel {} not found.", AZKAR_CHANNEL_ID);
+                return;
+            }
+
+            List<ContainerChildComponent> layout = new ArrayList<>();
+            layout.add(TextDisplay.of("### مَنْ قَرَأَ سُورَةَ الْكَهْفِ فِي يَوْمِ الْجُمُعَةِ، أَضَاءَ لَهُ مِنَ النُّورِ مَا بَيْنَ الْجُمُعَتَيْنِ\n\nلا تنسوها في هذا اليوم المبارك، وأكثروا من الصلاة والسلام على نبينا محمد."));
+            layout.add(Separator.createDivider(Spacing.SMALL));
+            layout.add(TextDisplay.of("جعل الله جمعتكم عامرة بالخير والبركة"));
+            Container container = Container.of(layout);
+
+            channel.sendMessageComponents(container).useComponentsV2(true).queue();
+            log.info("Successfully sent Friday azkar.");
+        } catch (Exception e) {
+            log.error("Failed to send Friday azkar", e);
+        }
+    }
 }
