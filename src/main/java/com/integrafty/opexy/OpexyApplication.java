@@ -77,6 +77,7 @@ public class OpexyApplication {
             log.info("Configuring JDA with JDAVE support...");
             
             return JDABuilder.createDefault(token)
+                .setStatus(net.dv8tion.jda.api.OnlineStatus.IDLE)
                 .setAudioModuleConfig(new AudioModuleConfig()
                     .withDaveSessionFactory(new LDJDADaveSessionFactory(new NativeDaveFactory())))
                 .enableIntents(
