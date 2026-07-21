@@ -608,7 +608,7 @@ public class TicketListener extends ListenerAdapter {
                     "📡 You Have Been Added To The Team **" + finalTeamName + "** Ticket " + membersMentionList,
                     null
                 );
-                channel.sendMessage(new MessageCreateBuilder().setContent(membersMentionList.toString()).setComponents(teamNotice).useComponentsV2(true).build())
+                channel.sendMessage(new MessageCreateBuilder().setComponents(teamNotice).useComponentsV2(true).build())
                     .useComponentsV2(true)
                     .queue();
 
