@@ -23,7 +23,9 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import com.integrafty.opexy.utils.EmbedUtil;
 import net.dv8tion.jda.api.components.container.Container;
+import net.dv8tion.jda.api.components.container.ContainerChildComponent;
 import net.dv8tion.jda.api.components.label.Label;
+import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.JDA;
 import com.integrafty.opexy.service.LogManager;
 import org.springframework.stereotype.Component;
@@ -739,9 +741,9 @@ public class TicketListener extends ListenerAdapter {
         if (message == null) return "مرحباً بك <@" + defaultUserId + "> 👋";
         
         java.util.List<String> textContents = new java.util.ArrayList<>();
-        for (net.dv8tion.jda.api.components.LayoutComponent layout : message.getComponents()) {
-            if (layout instanceof Container container) {
-                for (net.dv8tion.jda.api.components.Component comp : container.getComponents()) {
+        for (net.dv8tion.jda.api.components.Component component : message.getComponents()) {
+            if (component instanceof Container container) {
+                for (ContainerChildComponent comp : container.getComponents()) {
                     if (comp instanceof TextDisplay td) {
                         String content = td.getContent();
                         if (content != null && !content.startsWith("### ►") && !content.startsWith("## ")) {
