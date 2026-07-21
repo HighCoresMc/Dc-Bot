@@ -93,7 +93,8 @@ public class TicketListener extends ListenerAdapter {
 
         // Check if it's an administrative button
         if (buttonId.startsWith("ticket_") && !buttonId.equals("ticket_support") && 
-            !buttonId.equals("ticket_complaint") && !buttonId.equals("ticket_hire") && !buttonId.equals("ticket_whitelist")) {
+            !buttonId.equals("ticket_complaint") && !buttonId.equals("ticket_hire") && 
+            !buttonId.equals("ticket_whitelist") && !buttonId.equals("ticket_team")) {
             
             boolean isStaff = event.getMember().getRoles().stream().anyMatch(r -> r.getId().equals(STAFF_ROLE));
             boolean isPrivileged = event.getMember().getRoles().stream().anyMatch(r -> PRIVILEGED_ROLES.contains(r.getId()));
@@ -168,6 +169,14 @@ public class TicketListener extends ListenerAdapter {
                     Label.of("Version", TextInput.create("version", TextInputStyle.SHORT).setPlaceholder("Java/Bedrock").build()),
                     Label.of("Type (كراك/اصليه)", TextInput.create("account_type", TextInputStyle.SHORT).setPlaceholder("Example: اصلية").build())
                 ).build();
+            case "team" -> Modal.create("modal_ticket_team", "الـتـقـديـم عـلـى فـريـق")
+                .addComponents(
+                    Label.of("اسـم الـتـيـم *", TextInput.create("team_name", TextInputStyle.SHORT).setPlaceholder("اكتب اسم التيم هنا").setRequired(true).build()),
+                    Label.of("كـود الـلـون *", TextInput.create("team_color", TextInputStyle.SHORT).setPlaceholder("مثال: #ff0000").setRequired(true).build()),
+                    Label.of("الـعـضـو الأوّل *", TextInput.create("member_1", TextInputStyle.SHORT).setPlaceholder("ID / Mention / Username").setRequired(true).build()),
+                    Label.of("الـعـضـو الـثـانـي *", TextInput.create("member_2", TextInputStyle.SHORT).setPlaceholder("ID / Mention / Username (يمكن كتابة عضو 3 و 4 بعده)").setRequired(true).build()),
+                    Label.of("هـل يـوجـد شـعـار؟ *", TextInput.create("has_logo", TextInputStyle.SHORT).setPlaceholder("نعم / لا").setRequired(true).build())
+                ).build();
             default -> null;
         };
 
@@ -186,6 +195,8 @@ public class TicketListener extends ListenerAdapter {
                 handleRemoveMember(event);
             } else if (modalId.equals("modal_ticket_rename")) {
                 handleRenameTicket(event);
+            } else if (modalId.equals("modal_ticket_team")) {
+                handleTeamTicketCreation(event);
             } else {
                 handleTicketCreationFromModal(event);
             }
@@ -382,6 +393,209 @@ public class TicketListener extends ListenerAdapter {
                 event.reply(new MessageCreateBuilder().setComponents(errorCont).useComponentsV2(true).build())
                     .setEphemeral(true).useComponentsV2(true).queue();
                 log.error("Error creating ticket channel", error);
+            });
+    }
+
+    // Team Ticket Handling
+    private void handleTeamTicketCreation(ModalInteractionEvent event) {
+        String userId = event.getUser().getId();
+        Guild guild = event.getGuild();
+        Member creator = event.getMember();
+
+        boolean isExempt = creator.getRoles().stream().anyMatch(r -> r.getId().equals("1487152572207861870"));
+        if (!isExempt && ticketRepository.existsByUserIdAndStatus(userId, "OPEN")) {
+            event.reply("❌ لـديـك تـذكـرة مـفـتـوحـة بـالـفـعـل! يـرجـى إغـلاقـهـا أولاً.").setEphemeral(true).queue();
+            return;
+        }
+
+        String teamName = event.getValue("team_name").getAsString().trim();
+        String teamColor = event.getValue("team_color").getAsString().trim();
+        String member1Input = event.getValue("member_1").getAsString().trim();
+        String member2Input = event.getValue("member_2").getAsString().trim();
+        String hasLogoInput = event.getValue("has_logo").getAsString().trim();
+
+        java.util.List<Member> targetMembers = new java.util.ArrayList<>();
+        java.util.List<String> rawTokens = new java.util.ArrayList<>();
+
+        String combinedInput = member1Input + " " + member2Input;
+        String[] tokens = combinedInput.split("[,\\s\\n\\r]+");
+        for (String t : tokens) {
+            if (!t.isBlank()) {
+                rawTokens.add(t);
+            }
+        }
+
+        java.util.Set<String> resolvedMemberIds = new java.util.HashSet<>();
+        resolvedMemberIds.add(creator.getId());
+
+        for (String token : rawTokens) {
+            String cleanId = null;
+            if (token.matches("<@!?(\\d{17,20})>")) {
+                cleanId = token.replaceAll("[<@!>]", "");
+            } else if (token.matches("\\d{17,20}")) {
+                cleanId = token;
+            }
+
+            Member foundMember = null;
+            if (cleanId != null) {
+                foundMember = guild.getMemberById(cleanId);
+            } else {
+                java.util.List<Member> byName = guild.getMembersByName(token, true);
+                if (!byName.isEmpty()) {
+                    foundMember = byName.get(0);
+                } else {
+                    java.util.List<Member> byEffective = guild.getMembersByEffectiveName(token, true);
+                    if (!byEffective.isEmpty()) {
+                        foundMember = byEffective.get(0);
+                    }
+                }
+            }
+
+            if (foundMember != null) {
+                if (!resolvedMemberIds.contains(foundMember.getId())) {
+                    resolvedMemberIds.add(foundMember.getId());
+                    targetMembers.add(foundMember);
+                }
+            }
+        }
+
+        java.util.List<String> missingWhitelistMembers = new java.util.ArrayList<>();
+
+        boolean creatorWhitelisted = creator.getRoles().stream().anyMatch(r -> r.getId().equals(WHITELIST_ROLE_ID));
+        if (!creatorWhitelisted) {
+            missingWhitelistMembers.add(creator.getAsMention());
+        }
+
+        for (Member m : targetMembers) {
+            boolean isWhitelisted = m.getRoles().stream().anyMatch(r -> r.getId().equals(WHITELIST_ROLE_ID));
+            if (!isWhitelisted) {
+                missingWhitelistMembers.add(m.getAsMention());
+            }
+        }
+
+        if (!missingWhitelistMembers.isEmpty()) {
+            String missingList = String.join(", ", missingWhitelistMembers);
+            event.reply("❌ العضو " + missingList + " ليس لديه رتبة الوايت ليست! يرجى توجيهه لفتح تكت وايت ليست من الأعلى أولاً.").setEphemeral(true).queue();
+            return;
+        }
+
+        Integer lastNum = ticketRepository.findMaxTicketNumberByCategory("team");
+        int nextNum = (lastNum == null) ? 1 : lastNum + 1;
+        String formattedNum = String.format("%03d", nextNum);
+
+        String channelName = "team-" + teamName.toLowerCase().replaceAll("[^a-z0-9\\u0600-\\u06FF_-]", "-");
+        if (channelName.length() > 30) {
+            channelName = channelName.substring(0, 30);
+        }
+
+        final int finalNextNum = nextNum;
+        final String finalTeamName = teamName;
+        final String finalTeamColor = teamColor;
+        final String finalHasLogo = hasLogoInput;
+        final java.util.List<Member> finalTeamMembers = targetMembers;
+
+        guild.createTextChannel(channelName)
+            .setParent(guild.getCategoryById(TICKET_CATEGORY_ID))
+            .addPermissionOverride(guild.getPublicRole(), null, EnumSet.of(Permission.VIEW_CHANNEL))
+            .addPermissionOverride(creator, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null)
+            .addPermissionOverride(guild.getRoleById(STAFF_ROLE), EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null)
+            .queue(channel -> {
+                for (String roleId : PRIVILEGED_ROLES) {
+                    net.dv8tion.jda.api.entities.Role role = guild.getRoleById(roleId);
+                    if (role != null) {
+                        channel.getManager().putRolePermissionOverride(role.getIdLong(), EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null).queue();
+                    }
+                }
+
+                for (Member m : finalTeamMembers) {
+                    channel.getManager().putMemberPermissionOverride(m.getIdLong(), EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null).queue();
+                }
+
+                TicketEntity ticket = new TicketEntity();
+                ticket.setUserId(userId);
+                ticket.setChannelId(channel.getId());
+                ticket.setCategory("team");
+                ticket.setTicketNumber(finalNextNum);
+                ticketRepository.save(ticket);
+
+                StringBuilder membersMentionList = new StringBuilder(creator.getAsMention());
+                for (Member m : finalTeamMembers) {
+                    membersMentionList.append(" ").append(m.getAsMention());
+                }
+
+                StringBuilder ticketBody = new StringBuilder("Welcome " + creator.getAsMention() + " 👋\n\n");
+                ticketBody.append("**Team Name:** ").append(finalTeamName).append("\n");
+                ticketBody.append("**Team Color:** ").append(finalTeamColor).append("\n");
+                ticketBody.append("**Team Members:** ").append(membersMentionList).append("\n\n");
+                ticketBody.append("A staff member will be with you shortly — please Make Sure That All Of The Team Members In The Game.");
+
+                Container welcomeContainer = EmbedUtil.containerBranded(
+                    "TEAM APPLICATION",
+                    "Case #TEAM-" + formattedNum,
+                    ticketBody.toString(),
+                    EmbedUtil.BANNER_SUPPORT,
+                    ActionRow.of(
+                        net.dv8tion.jda.api.components.selections.StringSelectMenu.create("ticket_manage_menu")
+                            .setPlaceholder("إدارة الـتـذكـرة...")
+                            .addOption("تـغـيـيـر اسـم الـتـذكـرة", "ticket_manage_rename")
+                            .addOption("إضـافـة عـضـو", "ticket_manage_add")
+                            .addOption("إزالـة عـضـو", "ticket_manage_remove")
+                            .build()
+                    ),
+                    ActionRow.of(
+                        Button.secondary("ticket_claim", "اسـتـلام الـتـذكـرة"),
+                        Button.secondary("ticket_close", "إغـلاق الـتـذكـرة")
+                    )
+                );
+
+                String ping = "<@&1487152917763981574> " + membersMentionList;
+                channel.sendMessage(ping).queue();
+
+                channel.sendMessage(new MessageCreateBuilder().setComponents(welcomeContainer).useComponentsV2(true).build())
+                    .useComponentsV2(true)
+                    .queue();
+
+                Container teamNotice = EmbedUtil.containerBranded(
+                    "NOTICE",
+                    "Team Members",
+                    "📡 تمت اضافتكم في تكت انشاء تيم **" + finalTeamName + "**",
+                    null
+                );
+                channel.sendMessage(new MessageCreateBuilder().setComponents(teamNotice).useComponentsV2(true).build())
+                    .useComponentsV2(true)
+                    .queue();
+
+                String lowerLogo = finalHasLogo.toLowerCase();
+                boolean hasLogo = lowerLogo.contains("نعم") || lowerLogo.contains("اي") || lowerLogo.contains("ايوا") || lowerLogo.contains("yes") || lowerLogo.contains("y") || lowerLogo.contains("true");
+                if (hasLogo) {
+                    Container logoNotice = EmbedUtil.containerBranded(
+                        "NOTICE",
+                        "Team Logo",
+                        "📡 Please Sent Your Logo Here Until Staff Team Review Your Order",
+                        null
+                    );
+                    channel.sendMessage(new MessageCreateBuilder().setComponents(logoNotice).useComponentsV2(true).build())
+                        .useComponentsV2(true)
+                        .queue();
+                }
+
+                String logDetails = "### 🎫 Team Ticket Created\n" +
+                        "▫️ **User:** " + creator.getAsMention() + " (`" + creator.getId() + "`)\n" +
+                        "▫️ **Team:** `" + finalTeamName + "`\n" +
+                        "▫️ **Channel:** " + channel.getAsMention();
+                logManager.logEmbed(guild, LogManager.LOG_TICKETS,
+                        EmbedUtil.createOldLogEmbed("ticket-create", logDetails, creator, null, null, EmbedUtil.SUCCESS));
+
+                Container successCont = EmbedUtil.success("الإنـشـاء", "تـم إنـشـاء تـذكـرة الـتـيـم بـنـجـاح: " + channel.getAsMention());
+                event.reply(new MessageCreateBuilder().setComponents(successCont).useComponentsV2(true).build())
+                    .setEphemeral(true)
+                    .useComponentsV2(true)
+                    .queue();
+            }, error -> {
+                Container errorCont = EmbedUtil.error("ERROR", "حدث خطأ أثناء إنشاء الغرفة، يرجى التأكد من صلاحيات البوت.");
+                event.reply(new MessageCreateBuilder().setComponents(errorCont).useComponentsV2(true).build())
+                    .setEphemeral(true).useComponentsV2(true).queue();
+                log.error("Error creating team ticket channel", error);
             });
     }
 

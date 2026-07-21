@@ -53,7 +53,8 @@ public class TicketCommand implements SlashCommand {
             Button.secondary("ticket_support", "الدعم الفني"),
             Button.secondary("ticket_complaint", "الشكاوى"),
             Button.secondary("ticket_hire", "التقديم على الإدارة"),
-            Button.secondary("ticket_whitelist", "الوايت ليست")
+            Button.secondary("ticket_whitelist", "الوايت ليست"),
+            Button.secondary("ticket_team", "التقديم على فريق")
         );
 
         Container container = EmbedUtil.containerBranded(
