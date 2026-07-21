@@ -465,13 +465,15 @@ public class TicketListener extends ListenerAdapter {
 
     // Team Ticket Handling
     private void handleTeamTicketCreation(ModalInteractionEvent event) {
+        event.deferReply(true).queue();
+
         String userId = event.getUser().getId();
         Guild guild = event.getGuild();
         Member creator = event.getMember();
 
         boolean isExempt = creator.getRoles().stream().anyMatch(r -> r.getId().equals("1487152572207861870"));
         if (!isExempt && ticketRepository.existsByUserIdAndStatus(userId, "OPEN")) {
-            event.reply("❌ لـديـك تـذكـرة مـفـتـوحـة بـالـفـعـل! يـرجـى إغـلاقـهـا أولاً.").setEphemeral(true).queue();
+            event.getHook().sendMessage("❌ لـديـك تـذكـرة مـفـتـوحـة بـالـفـعـل! يـرجـى إغـلاقـهـا أولاً.").setEphemeral(true).queue();
             return;
         }
 
@@ -488,7 +490,7 @@ public class TicketListener extends ListenerAdapter {
 
         Member member2 = resolveMemberInput(guild, member2Input);
         if (member2 == null) {
-            event.reply("❌ لم يتم العثور على العضو الثاني (`" + member2Input + "`) في السيرفر.").setEphemeral(true).queue();
+            event.getHook().sendMessage("❌ لم يتم العثور على العضو الثاني (`" + member2Input + "`) في السيرفر.").setEphemeral(true).queue();
             return;
         }
 
@@ -496,7 +498,7 @@ public class TicketListener extends ListenerAdapter {
         if (!member3Input.isBlank()) {
             member3 = resolveMemberInput(guild, member3Input);
             if (member3 == null) {
-                event.reply("❌ لم يتم العثور على العضو الثالث (`" + member3Input + "`) في السيرفر.").setEphemeral(true).queue();
+                event.getHook().sendMessage("❌ لم يتم العثور على العضو الثالث (`" + member3Input + "`) في السيرفر.").setEphemeral(true).queue();
                 return;
             }
         }
@@ -520,7 +522,7 @@ public class TicketListener extends ListenerAdapter {
 
         if (!missingWhitelist.isEmpty()) {
             String details = String.join("، ", missingWhitelist);
-            event.reply("❌ " + details + " ليس لديه رتبة الوايت ليست!\nيرجى إبلاغه بفتح تكت وايت ليست من اللوحة بالأعلى أولاً.").setEphemeral(true).queue();
+            event.getHook().sendMessage("❌ " + details + " ليس لديه رتبة الوايت ليست!\nيرجى إبلاغه بفتح تكت وايت ليست من اللوحة بالأعلى أولاً.").setEphemeral(true).queue();
             return;
         }
 
@@ -603,15 +605,15 @@ public class TicketListener extends ListenerAdapter {
                 Container teamNotice = EmbedUtil.containerBranded(
                     "NOTICE",
                     "Team Members",
-                    "📡 تمت اضافتكم في تكت انشاء تيم **" + finalTeamName + "** " + membersMentionList,
+                    "📡 You Have Been Added To The Team **" + finalTeamName + "** Ticket " + membersMentionList,
                     null
                 );
                 channel.sendMessage(new MessageCreateBuilder().setContent(membersMentionList.toString()).setComponents(teamNotice).useComponentsV2(true).build())
                     .useComponentsV2(true)
                     .queue();
 
-                String lowerLogo = finalHasLogo.toLowerCase();
-                boolean hasLogo = lowerLogo.contains("نعم") || lowerLogo.contains("اي") || lowerLogo.contains("ايوا") || lowerLogo.contains("yes") || lowerLogo.contains("y") || lowerLogo.contains("true");
+                String lowerLogo = finalHasLogo.toLowerCase().trim();
+                boolean hasLogo = !lowerLogo.isBlank() && !lowerLogo.equals("لا") && !lowerLogo.equalsIgnoreCase("no") && !lowerLogo.equalsIgnoreCase("false");
                 if (hasLogo) {
                     Container logoNotice = EmbedUtil.containerBranded(
                         "NOTICE",
@@ -632,13 +634,13 @@ public class TicketListener extends ListenerAdapter {
                         EmbedUtil.createOldLogEmbed("ticket-create", logDetails, creator, null, null, EmbedUtil.SUCCESS));
 
                 Container successCont = EmbedUtil.success("الإنـشـاء", "تـم إنـشـاء تـذكـرة الـتـيـم بـنـجـاح: " + channel.getAsMention());
-                event.reply(new MessageCreateBuilder().setComponents(successCont).useComponentsV2(true).build())
+                event.getHook().sendMessage(new MessageCreateBuilder().setComponents(successCont).useComponentsV2(true).build())
                     .setEphemeral(true)
                     .useComponentsV2(true)
                     .queue();
             }, error -> {
                 Container errorCont = EmbedUtil.error("ERROR", "حدث خطأ أثناء إنشاء الغرفة، يرجى التأكد من صلاحيات البوت.");
-                event.reply(new MessageCreateBuilder().setComponents(errorCont).useComponentsV2(true).build())
+                event.getHook().sendMessage(new MessageCreateBuilder().setComponents(errorCont).useComponentsV2(true).build())
                     .setEphemeral(true).useComponentsV2(true).queue();
                 log.error("Error creating team ticket channel", error);
             });
