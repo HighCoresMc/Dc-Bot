@@ -199,12 +199,12 @@ public class TicketListener extends ListenerAdapter {
                             Label.of("الـعـضـو الـثـانـي *",
                                     TextInput.create("member_2", TextInputStyle.SHORT)
                                             .setPlaceholder("ID / Mention / Username").setRequired(true).build()),
-                            Label.of("الـعـضـو الـثـالـث",
+                            Label.of("الـعـضـو الـثـالـث والـرّابـع",
                                     TextInput.create("member_3", TextInputStyle.SHORT)
-                                            .setPlaceholder("ID / Mention / Username (اختياري)").setRequired(false).build()),
-                            Label.of("الـعـضـو الـرّابـع",
-                                    TextInput.create("member_4", TextInputStyle.SHORT)
-                                            .setPlaceholder("ID / Mention / Username (اختياري)").setRequired(false).build()))
+                                            .setPlaceholder("ID / Mention / Username لعضو 3 وعضو 4 (اختياري)").setRequired(false).build()),
+                            Label.of("هـل يـوجـد شـعـار؟ *",
+                                    TextInput.create("has_logo", TextInputStyle.SHORT)
+                                            .setPlaceholder("نعم / لا").setRequired(true).build()))
                     .build();
             default -> null;
         };
@@ -735,12 +735,41 @@ public class TicketListener extends ListenerAdapter {
         });
     }
 
+    private String extractMessageBody(net.dv8tion.jda.api.entities.Message message, String defaultUserId) {
+        if (message == null) return "مرحباً بك <@" + defaultUserId + "> 👋";
+        
+        java.util.List<String> textContents = new java.util.ArrayList<>();
+        for (net.dv8tion.jda.api.components.LayoutComponent layout : message.getComponents()) {
+            if (layout instanceof Container container) {
+                for (net.dv8tion.jda.api.components.Component comp : container.getComponents()) {
+                    if (comp instanceof TextDisplay td) {
+                        String content = td.getContent();
+                        if (content != null && !content.startsWith("### ►") && !content.startsWith("## ")) {
+                            textContents.add(content);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!textContents.isEmpty()) {
+            return String.join("\n\n", textContents);
+        }
+        
+        if (!message.getEmbeds().isEmpty() && message.getEmbeds().get(0).getDescription() != null) {
+            return message.getEmbeds().get(0).getDescription();
+        }
+        
+        return "مرحباً بك <@" + defaultUserId + "> 👋";
+    }
+
     private void handleClaim(ButtonInteractionEvent event) {
-        event.deferEdit().queue();
         if (!event.getMember().hasPermission(Permission.MANAGE_CHANNEL)) {
-            event.getHook().sendMessage("❌ لا تـمـلـك صـلاحـيـة لاسـتـلام الـتـذاكـر.").setEphemeral(true).queue();
+            event.reply("❌ لا تـمـلـك صـلاحـيـة لاسـتـلام الـتـذاكـر.").setEphemeral(true).queue();
             return;
         }
+
+        event.deferEdit().queue();
 
         TextChannel channel = event.getChannel().asTextChannel();
         Optional<TicketEntity> ticketOpt = ticketRepository.findByChannelId(channel.getId());
@@ -750,18 +779,19 @@ public class TicketListener extends ListenerAdapter {
             ticket.setStaffId(event.getUser().getId());
             ticketRepository.save(ticket);
 
-            // 1. Rename channel to category-staffname
             String category = channel.getName().split("-")[0];
             String staffName = event.getMember().getEffectiveName().toLowerCase().replace(" ", "");
             channel.getManager().setName(category + "-" + staffName).queue();
 
-            // 2. Update original message buttons
-            String ticketBody = "**تـم اسـتـلام الـتـذكـرة بـواسـطـة:** " + event.getMember().getAsMention();
+            String existingBody = extractMessageBody(event.getMessage(), ticket.getUserId());
+            if (!existingBody.contains("📌 **تـم اسـتـلام الـتـذكـرة بـواسـطـة:**")) {
+                existingBody = existingBody + "\n\n📌 **تـم اسـتـلام الـتـذكـرة بـواسـطـة:** " + event.getMember().getAsMention();
+            }
 
             Container claimedContainer = EmbedUtil.containerBranded(
                     "نـظام الـتـذاكـر",
                     "تـم الاسـتـلام",
-                    ticketBody,
+                    existingBody,
                     EmbedUtil.BANNER_SUPPORT,
                     ActionRow.of(
                             net.dv8tion.jda.api.components.selections.StringSelectMenu.create("ticket_manage_menu")
@@ -779,14 +809,12 @@ public class TicketListener extends ListenerAdapter {
                     .useComponentsV2(true)
                     .build()).queue();
 
-            // 3. Send the specific claim notice
             Container notice = EmbedUtil.containerBranded(
                     "NOTICE",
                     "Claimed",
                     "📡 Ticket Handled By: " + event.getMember().getAsMention(),
                     null);
 
-            // 4. Update Permissions: Staff role can't write, claimer can write.
             net.dv8tion.jda.api.entities.Role staffRole = event.getGuild().getRoleById(STAFF_ROLE);
             if (staffRole != null) {
                 channel.getManager().putRolePermissionOverride(staffRole.getIdLong(),
@@ -797,7 +825,6 @@ public class TicketListener extends ListenerAdapter {
                     EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND),
                     null).queue();
 
-            // LOGGING
             String logDetails = "### 📌 Ticket Claimed\n" +
                     "▫️ **Operator:** " + event.getMember().getAsMention() + "\n" +
                     "▫️ **Channel:** " + channel.getAsMention();
@@ -811,30 +838,32 @@ public class TicketListener extends ListenerAdapter {
     }
 
     private void handleUnclaim(ButtonInteractionEvent event) {
-        event.deferEdit().queue();
         TextChannel channel = event.getChannel().asTextChannel();
         Optional<TicketEntity> ticketOpt = ticketRepository.findByChannelId(channel.getId());
 
         if (ticketOpt.isPresent()) {
             TicketEntity ticket = ticketOpt.get();
-            if (!event.getUser().getId().equals(ticket.getStaffId())
-                    && !event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
-                event.getHook().sendMessage("❌ لا يـمـكـنـك إلـغـاء اسـتـلام تـذكـرة مـسـتـلـمـة مـن قـبـل شـخـص آخـر.")
-                        .setEphemeral(true).queue();
+
+            if (ticket.getStaffId() == null || !event.getUser().getId().equals(ticket.getStaffId())) {
+                event.reply("❌ لا يـمـكـنـك إلـغـاء اسـتـلام تـذكـرة مـسـتـلـمـة مـن قـبـل شـخـص آخـر.").setEphemeral(true).queue();
                 return;
             }
+
+            event.deferEdit().queue();
 
             ticket.setStaffId(null);
             ticketRepository.save(ticket);
 
-            // Restore original welcome container look
-            String ticketBody = "مرحباً بك <@" + ticket.getUserId()
-                    + ">.\n\nتذكرتك متاحة الآن للاستلام من قبل فريق الدعم.";
+            String existingBody = extractMessageBody(event.getMessage(), ticket.getUserId());
+            if (existingBody.contains("\n\n📌 **تـم اسـتـلام الـتـذكـرة بـواسـطـة:**")) {
+                int idx = existingBody.indexOf("\n\n📌 **تـم اسـتـلام الـتـذكـرة بـواسـطـة:**");
+                existingBody = existingBody.substring(0, idx);
+            }
 
             Container restoredContainer = EmbedUtil.containerBranded(
                     "نـظام الـتـذاكـر",
                     "بـانـتـظـار الـرد",
-                    ticketBody,
+                    existingBody,
                     EmbedUtil.BANNER_SUPPORT,
                     ActionRow.of(
                             net.dv8tion.jda.api.components.selections.StringSelectMenu.create("ticket_manage_menu")
