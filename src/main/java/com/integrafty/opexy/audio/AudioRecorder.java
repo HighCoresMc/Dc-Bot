@@ -20,6 +20,7 @@ public class AudioRecorder implements AudioReceiveHandler {
     private final BlockingQueue<byte[]> queue = new LinkedBlockingQueue<>();
     private final Thread writerThread;
     private volatile boolean running = true;
+    private final Object fileLock = new Object();
 
     public AudioRecorder() throws IOException {
         this.tempFile = File.createTempFile("opexy_rec_", ".raw");
@@ -30,7 +31,7 @@ public class AudioRecorder implements AudioReceiveHandler {
                 try {
                     byte[] data = queue.poll(50, TimeUnit.MILLISECONDS);
                     if (data != null) {
-                        synchronized (this) {
+                        synchronized (fileLock) {
                             os.write(data);
                             totalBytes += data.length;
                         }
@@ -42,7 +43,7 @@ public class AudioRecorder implements AudioReceiveHandler {
                 }
             }
             try {
-                synchronized (this) {
+                synchronized (fileLock) {
                     os.flush();
                     os.close();
                 }
@@ -71,15 +72,17 @@ public class AudioRecorder implements AudioReceiveHandler {
         if (!recording) return;
         byte[] data = combinedAudio.getAudioData(1.0);
         if (data != null && data.length > 0) {
-            queue.offer(data);
+            queue.offer(data.clone());
         }
     }
 
-    public synchronized File getTempFile() {
-        return tempFile;
+    public File getTempFile() {
+        synchronized (fileLock) {
+            return tempFile;
+        }
     }
 
-    public synchronized long getTotalBytes() {
+    public long getTotalBytes() {
         while (!queue.isEmpty()) {
             try {
                 Thread.sleep(10);
@@ -87,7 +90,9 @@ public class AudioRecorder implements AudioReceiveHandler {
                 Thread.currentThread().interrupt();
             }
         }
-        return totalBytes;
+        synchronized (fileLock) {
+            return totalBytes;
+        }
     }
 
     public static class SplitResult {
@@ -99,7 +104,7 @@ public class AudioRecorder implements AudioReceiveHandler {
         }
     }
 
-    public synchronized SplitResult split() throws IOException {
+    public SplitResult split() throws IOException {
         while (!queue.isEmpty()) {
             try {
                 Thread.sleep(10);
@@ -108,17 +113,19 @@ public class AudioRecorder implements AudioReceiveHandler {
             }
         }
         
-        os.flush();
-        os.close();
-        
-        File oldTemp = this.tempFile;
-        long oldBytes = this.totalBytes;
-        
-        this.tempFile = File.createTempFile("opexy_rec_", ".raw");
-        this.os = new BufferedOutputStream(new FileOutputStream(this.tempFile), 65536);
-        this.totalBytes = 0;
-        
-        return new SplitResult(oldTemp, oldBytes);
+        synchronized (fileLock) {
+            os.flush();
+            os.close();
+            
+            File oldTemp = this.tempFile;
+            long oldBytes = this.totalBytes;
+            
+            this.tempFile = File.createTempFile("opexy_rec_", ".raw");
+            this.os = new BufferedOutputStream(new FileOutputStream(this.tempFile), 65536);
+            this.totalBytes = 0;
+            
+            return new SplitResult(oldTemp, oldBytes);
+        }
     }
 
     public void stop() {
