@@ -476,8 +476,8 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                                     );
                         }
                     }
-                } catch (IOException e) {
-                    log.error("[RECORDING] Failed to save split WAV file", e);
+                } catch (Exception e) {
+                    log.error("[RECORDING] Failed to save/process split file", e);
                 } finally {
                     AudioRecorder.cleanup(splitResult.tempFile);
                 }
@@ -595,8 +595,8 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         }
                         log.info("[RECORDING] Saved recording persistently to: {}", sendFile.getAbsolutePath());
                     }
-                } catch (IOException e) {
-                    log.error("[RECORDING] Failed to save WAV file", e);
+                } catch (Exception e) {
+                    log.error("[RECORDING] Failed to save/process file", e);
                 } finally {
                     AudioRecorder.cleanup(tempFile);
                 }
