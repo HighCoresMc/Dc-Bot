@@ -424,15 +424,14 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 if (!recordingsDir.exists()) {
                     recordingsDir.mkdirs();
                 }
-                File wavFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".wav");
+                File m4aFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".m4a");
                 try {
-                    log.info("[UPLOAD] Saving split WAV file: {}", wavFile.getName());
-                    AudioRecorder.saveAsWav(splitResult.tempFile, splitResult.totalBytes, wavFile);
+                    log.info("[UPLOAD] Mastering split raw audio to M4A: {}", m4aFile.getName());
+                    final File sendFile = convertRawToM4a(splitResult.tempFile, m4aFile);
 
-                    if (wavFile.exists() && wavFile.length() > 100) {
+                    if (sendFile != null && sendFile.exists() && sendFile.length() > 100) {
                         log.info("[UPLOAD] Split file saved. Sending Part {} of session '{}'", part, sessionName);
-                        final File sendFile = convertWavToM4a(wavFile);
-                        final boolean isM4a = sendFile.getName().endsWith(".m4a");
+                        final boolean isM4a = true;
 
                         final TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
                         
@@ -541,15 +540,14 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 if (!recordingsDir.exists()) {
                     recordingsDir.mkdirs();
                 }
-                File wavFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".wav");
+                File m4aFile = new File(recordingsDir, "opexy_rec_" + guild.getId() + "_" + timestamp + "_part" + part + ".m4a");
                 try {
-                    log.info("[UPLOAD] Saving WAV file: {}", wavFile.getName());
-                    AudioRecorder.saveAsWav(tempFile, totalBytes, wavFile);
+                    log.info("[UPLOAD] Mastering raw audio to M4A: {}", m4aFile.getName());
+                    final File sendFile = convertRawToM4a(tempFile, m4aFile);
 
-                    if (wavFile.exists() && wavFile.length() > 100) {
+                    if (sendFile != null && sendFile.exists() && sendFile.length() > 100) {
                         log.info("[UPLOAD] File saved. Sending Part {} of session '{}'", part, sessionName);
-                        final File sendFile = convertWavToM4a(wavFile);
-                        final boolean isM4a = sendFile.getName().endsWith(".m4a");
+                        final boolean isM4a = true;
 
                         final TextChannel logChannel = guild.getJDA().getTextChannelById(LOG_CHANNEL_ID);
                         
@@ -606,38 +604,54 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
         }
     }
 
-    private File convertWavToM4a(File wavFile) {
-        String baseName = wavFile.getAbsolutePath();
-        String m4aPath = baseName.substring(0, baseName.lastIndexOf('.')) + ".m4a";
-        File m4aFile = new File(m4aPath);
+    private File convertRawToM4a(File rawFile, File outputFile) {
         try {
             ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y",
-                "-i", wavFile.getAbsolutePath(),
-                "-af", "highpass=f=80,equalizer=f=3000:width_type=h:width=1500:g=3",
+                "-f", "s16be",
+                "-ar", "48000",
+                "-ac", "2",
+                "-i", rawFile.getAbsolutePath(),
+                "-af", "highpass=f=80,afftdn=nr=10:nf=-45,dynaudnorm=f=150:g=15:m=10.0:r=0.9,alimiter=level_in=1:level_out=0.95:limit=0.99,equalizer=f=3000:width_type=h:width=1500:g=2.5",
                 "-c:a", "aac",
                 "-b:a", "256k",
-                m4aFile.getAbsolutePath()
+                outputFile.getAbsolutePath()
             );
             pb.redirectErrorStream(true);
             Process process = pb.start();
             try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                }
+                while (reader.readLine() != null) {}
             }
             int exitCode = process.waitFor();
-            if (exitCode == 0 && m4aFile.exists() && m4aFile.length() > 0) {
-                log.info("[CONVERSION] Successfully converted WAV to M4A: {} (Size: {} bytes)", m4aFile.getName(), m4aFile.length());
-                wavFile.delete();
-                return m4aFile;
+            if (exitCode == 0 && outputFile.exists() && outputFile.length() > 0) {
+                log.info("[CONVERSION] Successfully mastered RAW to M4A: {} (Size: {} bytes)", outputFile.getName(), outputFile.length());
+                return outputFile;
             } else {
-                log.error("[CONVERSION] ffmpeg failed with exit code: {}", exitCode);
+                log.warn("[CONVERSION] Primary studio mastering chain failed (exit code {}). Retrying fallback chain...", exitCode);
+                ProcessBuilder pbFallback = new ProcessBuilder(
+                    "ffmpeg", "-y",
+                    "-f", "s16be",
+                    "-ar", "48000",
+                    "-ac", "2",
+                    "-i", rawFile.getAbsolutePath(),
+                    "-af", "highpass=f=80,equalizer=f=3000:width_type=h:width=1500:g=2.5",
+                    "-c:a", "aac",
+                    "-b:a", "256k",
+                    outputFile.getAbsolutePath()
+                );
+                pbFallback.redirectErrorStream(true);
+                Process process2 = pbFallback.start();
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process2.getInputStream()))) {
+                    while (reader.readLine() != null) {}
+                }
+                if (process2.waitFor() == 0 && outputFile.exists() && outputFile.length() > 0) {
+                    return outputFile;
+                }
             }
         } catch (Exception e) {
-            log.error("[CONVERSION] Failed to convert WAV to M4A using ffmpeg", e);
+            log.error("[CONVERSION] Failed to convert RAW to M4A using ffmpeg", e);
         }
-        return wavFile;
+        return null;
     }
 
     private static class SilenceSendHandler implements net.dv8tion.jda.api.audio.AudioSendHandler {

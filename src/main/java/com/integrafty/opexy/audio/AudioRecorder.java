@@ -70,7 +70,7 @@ public class AudioRecorder implements AudioReceiveHandler {
     @Override
     public void handleCombinedAudio(CombinedAudio combinedAudio) {
         if (!recording) return;
-        byte[] data = combinedAudio.getAudioData(0.8);
+        byte[] data = combinedAudio.getAudioData(1.0);
         if (data != null && data.length > 0) {
             queue.offer(data.clone());
         }
