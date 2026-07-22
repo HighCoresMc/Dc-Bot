@@ -614,6 +614,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
             ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y",
                 "-i", wavFile.getAbsolutePath(),
+                "-af", "highpass=f=80,equalizer=f=3000:width_type=h:width=1500:g=3",
                 "-c:a", "aac",
                 "-b:a", "256k",
                 m4aFile.getAbsolutePath()
