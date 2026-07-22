@@ -21,6 +21,7 @@ public class AudioRecorder implements AudioReceiveHandler {
     private final Thread writerThread;
     private volatile boolean running = true;
     private final Object fileLock = new Object();
+    private volatile long lastFrameTime = 0;
 
     public AudioRecorder() throws IOException {
         this.tempFile = File.createTempFile("opexy_rec_", ".raw");
@@ -70,8 +71,21 @@ public class AudioRecorder implements AudioReceiveHandler {
     @Override
     public void handleCombinedAudio(CombinedAudio combinedAudio) {
         if (!recording) return;
+        
+        long now = System.currentTimeMillis();
         byte[] data = combinedAudio.getAudioData(1.0);
         if (data != null && data.length > 0) {
+            if (lastFrameTime > 0) {
+                long elapsed = now - lastFrameTime;
+                if (elapsed >= 30) {
+                    long missingFrames = elapsed / 20;
+                    long silenceFrames = Math.min(missingFrames, 1500); // Cap at 30 seconds of silence per gap
+                    for (int i = 0; i < silenceFrames; i++) {
+                        queue.offer(new byte[3840]); // Write silent frame to fill gap
+                    }
+                }
+            }
+            lastFrameTime = now;
             queue.offer(data.clone());
         }
     }
@@ -123,6 +137,7 @@ public class AudioRecorder implements AudioReceiveHandler {
             this.tempFile = File.createTempFile("opexy_rec_", ".raw");
             this.os = new BufferedOutputStream(new FileOutputStream(this.tempFile), 65536);
             this.totalBytes = 0;
+            this.lastFrameTime = 0;
             
             return new SplitResult(oldTemp, oldBytes);
         }
