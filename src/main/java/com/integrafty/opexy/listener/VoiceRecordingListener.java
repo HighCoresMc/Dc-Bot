@@ -48,7 +48,8 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
     
     private final List<Long> ALLOWED_VOICE_CHANNELS = List.of(
         1508535566893977793L,
-        1487147689098481774L
+        1487147689098481774L,
+        1509919896862195712L
     );
 
     public boolean isRecordingActive(long guildId) {
