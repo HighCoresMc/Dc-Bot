@@ -445,7 +445,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         AudioChannel lastChannel = guild.getAudioManager().getConnectedChannel();
                         eb.addField("Channel", "`" + (lastChannel != null ? lastChannel.getName() : "Unknown") + "`", true);
                         eb.addField("Time", "`" + timeStr + "`", true);
-                        eb.addField("Quality", isM4a ? "`64kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
+                        eb.addField("Quality", isM4a ? "`256kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
                         eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
                         eb.setTimestamp(java.time.Instant.now());
 
@@ -560,7 +560,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         eb.setImage(EmbedUtil.BANNER_MAIN);
                         eb.addField("Channel", "`" + (fallbackChannel != null ? fallbackChannel.getName() : "Unknown") + "`", true);
                         eb.addField("Time", "`" + timeStr + "`", true);
-                        eb.addField("Quality", isM4a ? "`64kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
+                        eb.addField("Quality", isM4a ? "`256kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
                         eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
                         eb.setTimestamp(java.time.Instant.now());
 
@@ -615,7 +615,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 "ffmpeg", "-y",
                 "-i", wavFile.getAbsolutePath(),
                 "-c:a", "aac",
-                "-b:a", "64k",
+                "-b:a", "256k",
                 m4aFile.getAbsolutePath()
             );
             pb.redirectErrorStream(true);

@@ -31,6 +31,9 @@ public class YouTubeAudioService {
         this.playerManager = new DefaultAudioPlayerManager();
         
         log.info("[YOUTUBE] Initializing YouTube Audio Service...");
+        playerManager.setFrameBufferDuration(15000);
+        playerManager.getConfiguration().setResamplingQuality(com.sedmelluq.discord.lavaplayer.player.AudioConfiguration.ResamplingQuality.HIGH);
+        playerManager.getConfiguration().setOpusEncodingQuality(10);
         com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers.registerRemoteSources(playerManager);
         this.musicManagers = new ConcurrentHashMap<>();
     }

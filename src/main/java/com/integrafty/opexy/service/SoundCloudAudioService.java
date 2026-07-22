@@ -34,6 +34,8 @@ public class SoundCloudAudioService {
         log.info("[SOUNDCLOUD] Initializing SoundCloud Audio Service...");
         
         playerManager.setFrameBufferDuration(15000);
+        playerManager.getConfiguration().setResamplingQuality(com.sedmelluq.discord.lavaplayer.player.AudioConfiguration.ResamplingQuality.HIGH);
+        playerManager.getConfiguration().setOpusEncodingQuality(10);
         playerManager.registerSourceManager(com.sedmelluq.discord.lavaplayer.source.soundcloud.SoundCloudAudioSourceManager.createDefault());
         this.musicManagers = new ConcurrentHashMap<>();
     }
