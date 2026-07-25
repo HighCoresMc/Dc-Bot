@@ -2,6 +2,7 @@ package com.integrafty.opexy.listener;
 
 import com.integrafty.opexy.service.LogManager;
 import com.integrafty.opexy.utils.EmbedUtil;
+import com.integrafty.opexy.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,7 @@ public class ServerLogListener extends ListenerAdapter {
 
     private final JDA jda;
     private final LogManager logManager;
+    private final UserRepository userRepository;
 
     private static class CachedMessage {
         String authorId;
@@ -104,6 +106,12 @@ public class ServerLogListener extends ListenerAdapter {
 
     @Override
     public void onGuildUnban(@NotNull GuildUnbanEvent event) {
+        userRepository.findByUserIdAndGuildId(event.getUser().getId(), event.getGuild().getId())
+                .ifPresent(user -> {
+                    user.setWarningCount(0);
+                    userRepository.save(user);
+                });
+
         String details = "### ✅ Blacklist Revoked\n" +
                 "▫️ **Target:** " + event.getUser().getAsMention() + " (`" + event.getUser().getId() + "`)\n" +
                 "▫️ **Status:** `REINSTATED`";
