@@ -200,7 +200,7 @@ public class ImageModerationService {
 
                     log.info("[Image Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit,
                             nsfwLogit, probNsfw);
-                    boolean isNsfw = probNsfw > 0.85;
+                    boolean isNsfw = probNsfw > 0.97;
                     log.info("[Image Filter] Final result: {}", isNsfw);
                     return isNsfw ? "NSFW" : null;
                 }

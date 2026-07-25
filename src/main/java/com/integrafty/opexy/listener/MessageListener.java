@@ -14,6 +14,8 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.integrafty.opexy.service.LogManager;
+import com.integrafty.opexy.entity.UserEntity;
+import com.integrafty.opexy.repository.UserRepository;
 
 @Component
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class MessageListener extends ListenerAdapter {
     private final AutoReplyService autoReplyService;
     private final WordFilterService wordFilterService;
     private final com.integrafty.opexy.service.ImageModerationService imageModerationService;
+    private final UserRepository userRepository;
 
     @Value("${opexy.roles.op-staff}")
     private String staffRoleId;
@@ -70,25 +73,13 @@ public class MessageListener extends ListenerAdapter {
             boolean isStrict = wordFilterService.isStrict(forbidden);
             boolean timedOut = false;
             boolean banned = false;
+            int timeoutMinutes = 0;
 
-            if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
-                int offenses = strictWordOffenses.getOrDefault(event.getAuthor().getIdLong(), 0);
-                if (offenses >= 1) {
-                    try {
-                        event.getMember().ban(0, java.util.concurrent.TimeUnit.DAYS)
-                                .reason("Repeated restricted word filter offenses (Strict Match)")
-                                .queue();
-                        banned = true;
-                    } catch (Exception ignored) {}
-                } else {
-                    try {
-                        event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
-                                .reason("Restricted word filter (Strict Match): " + forbidden)
-                                .queue();
-                        timedOut = true;
-                        strictWordOffenses.put(event.getAuthor().getIdLong(), offenses + 1);
-                    } catch (Exception ignored) {}
-                }
+            if (isStrict) {
+                PunishmentResult res = applyRestrictedPunishment(event.getMember(), event.getAuthor(), event.getGuild(), true, forbidden);
+                timedOut = res.isTimedOut();
+                banned = res.isBanned();
+                timeoutMinutes = res.getTimeoutMinutes();
             }
 
             // 2. Alert user (auto-delete after 5s)
@@ -99,7 +90,7 @@ public class MessageListener extends ListenerAdapter {
                         + "> has been banned for repeated use of restricted words.";
             } else if (timedOut) {
                 alertMessage = "⚠️ <@" + event.getAuthor().getId()
-                        + ">, your message was removed and you have been timed out for **3 minutes** for using a restricted word.";
+                        + ">, your message was removed and you have been timed out for **" + timeoutMinutes + " minutes** for using a restricted word.";
             }
 
             event.getChannel()
@@ -115,7 +106,7 @@ public class MessageListener extends ListenerAdapter {
                     "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                     "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                     "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
-                    "▫️ **Action:** " + (banned ? "Banned" : (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted")) + "\n" +
+                    "▫️ **Action:** " + (banned ? "Banned" : (timedOut ? "Muted (Timeout " + timeoutMinutes + " Minutes)" : "Message Deleted")) + "\n" +
                     "▫️ **Original content:** ```" + content + "```";
 
             logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
@@ -138,24 +129,13 @@ public class MessageListener extends ListenerAdapter {
                     boolean isStrict = wordFilterService.isStrict(forbidden);
                     boolean timedOut = false;
                     boolean banned = false;
-                    if (isStrict && event.getMember() != null && event.getGuild().getSelfMember().canInteract(event.getMember())) {
-                        int offenses = strictWordOffenses.getOrDefault(event.getAuthor().getIdLong(), 0);
-                        if (offenses >= 1) {
-                            try {
-                                event.getMember().ban(0, java.util.concurrent.TimeUnit.DAYS)
-                                        .reason("Repeated restricted word filter offenses (Strict Match) in forwarded message")
-                                        .queue();
-                                banned = true;
-                            } catch (Exception ignored) {}
-                        } else {
-                            try {
-                                event.getMember().timeoutFor(java.time.Duration.ofMinutes(3))
-                                        .reason("Restricted word filter (Strict Match) in forwarded message: " + forbidden)
-                                        .queue();
-                                timedOut = true;
-                                strictWordOffenses.put(event.getAuthor().getIdLong(), offenses + 1);
-                            } catch (Exception ignored) {}
-                        }
+                    int timeoutMinutes = 0;
+
+                    if (isStrict) {
+                        PunishmentResult res = applyRestrictedPunishment(event.getMember(), event.getAuthor(), event.getGuild(), true, forbidden);
+                        timedOut = res.isTimedOut();
+                        banned = res.isBanned();
+                        timeoutMinutes = res.getTimeoutMinutes();
                     }
 
                     String alertMessage = "⚠️ <@" + event.getAuthor().getId()
@@ -165,7 +145,7 @@ public class MessageListener extends ListenerAdapter {
                                 + "> has been banned for repeated use of restricted words.";
                     } else if (timedOut) {
                         alertMessage = "⚠️ <@" + event.getAuthor().getId()
-                                + ">, your message was removed and you have been timed out for **3 minutes** for using a restricted word.";
+                                + ">, your message was removed and you have been timed out for **" + timeoutMinutes + " minutes** for using a restricted word.";
                     }
 
                     event.getChannel()
@@ -179,7 +159,7 @@ public class MessageListener extends ListenerAdapter {
                             "▫️ **Channel:** " + event.getChannel().getAsMention() + "\n" +
                             "▫️ **Forbidden term:** `" + forbidden + "`\n" +
                             "▫️ **Severity:** " + (isStrict ? "🔴 STRIKE/STRICT" : "🟡 CONTEXT") + "\n" +
-                            "▫️ **Action:** " + (banned ? "Banned" : (timedOut ? "Muted (Timeout 3 Minutes)" : "Message Deleted")) + "\n" +
+                            "▫️ **Action:** " + (banned ? "Banned" : (timedOut ? "Muted (Timeout " + timeoutMinutes + " Minutes)" : "Message Deleted")) + "\n" +
                             "▫️ **Original content:** ```" + content + "```";
 
                     logManager.logEmbed(event.getGuild(), LogManager.LOG_BLOCKED_WORDS,
@@ -385,8 +365,14 @@ public class MessageListener extends ListenerAdapter {
             String reasonMsg = "restricted media (NSFW/Pornographic content)";
             boolean timedOut = false;
             boolean banned = false;
+            int timeoutMinutes = 0;
 
-            if (blockReason.equals("SCAM_QR")) {
+            if (blockReason.equals("NSFW")) {
+                PunishmentResult result = applyRestrictedPunishment(member, author, guild, false, offendingUrl);
+                timedOut = result.isTimedOut();
+                banned = result.isBanned();
+                timeoutMinutes = result.getTimeoutMinutes();
+            } else if (blockReason.equals("SCAM_QR")) {
                 reasonMsg = "malicious trade/scam links";
             } else if (blockReason.equals("SCAM_CRYPTO")) {
                 reasonMsg = "crypto scams/fake promotions";
@@ -412,12 +398,16 @@ public class MessageListener extends ListenerAdapter {
                 }
             }
 
-            String actionTaken = banned ? "Banned" : (timedOut ? "Muted (Timeout 1 Day)" : "Message Deleted");
+            String actionTaken = banned ? "Banned" : (timedOut ? "Muted (Timeout " + (blockReason.equals("NSFW") ? timeoutMinutes + " Minutes" : "1 Day") + ")" : "Message Deleted");
             String alertMessage = "⚠️ <@" + author.getId() + ">, your message was removed for containing " + reasonMsg + ".";
             if (banned) {
                 alertMessage = "⚠️ <@" + author.getId() + "> has been banned for repeated " + reasonMsg + ".";
             } else if (timedOut) {
-                alertMessage = "⚠️ <@" + author.getId() + ">, your message was removed and you have been timed out for **1 Day** for posting " + reasonMsg + ".";
+                if (blockReason.equals("NSFW")) {
+                    alertMessage = "⚠️ <@" + author.getId() + ">, your message was removed and you have been timed out for **" + timeoutMinutes + " minutes** for posting " + reasonMsg + ".";
+                } else {
+                    alertMessage = "⚠️ <@" + author.getId() + ">, your message was removed and you have been timed out for **1 Day** for posting " + reasonMsg + ".";
+                }
             }
 
             channel.sendMessage(alertMessage)
@@ -456,5 +446,131 @@ public class MessageListener extends ListenerAdapter {
             return false;
         }
         return true;
+    }
+
+    private static class PunishmentResult {
+        private final boolean timedOut;
+        private final boolean banned;
+        private final int timeoutMinutes;
+
+        public PunishmentResult(boolean timedOut, boolean banned, int timeoutMinutes) {
+            this.timedOut = timedOut;
+            this.banned = banned;
+            this.timeoutMinutes = timeoutMinutes;
+        }
+
+        public boolean isTimedOut() { return timedOut; }
+        public boolean isBanned() { return banned; }
+        public int getTimeoutMinutes() { return timeoutMinutes; }
+    }
+
+    private PunishmentResult applyRestrictedPunishment(net.dv8tion.jda.api.entities.Member member, net.dv8tion.jda.api.entities.User author, net.dv8tion.jda.api.entities.Guild guild, boolean isWord, String content) {
+        UserEntity user = userRepository.findByUserIdAndGuildId(author.getId(), guild.getId())
+                .orElse(new UserEntity(author.getId(), guild.getId(), 0, 0, false, null, null, 0, 0));
+        
+        user.setWarningCount(user.getWarningCount() + 1);
+        userRepository.save(user);
+        int count = user.getWarningCount();
+
+        String roleId = switch (count) {
+            case 1 -> "1487196789399490711";
+            case 2 -> "1487196790892794067";
+            case 3 -> "1487196791144190143";
+            default -> count > 3 ? "1487196791144190143" : null;
+        };
+
+        if (roleId != null && member != null && guild.getSelfMember().canInteract(member)) {
+            net.dv8tion.jda.api.entities.Role r = guild.getRoleById(roleId);
+            if (r != null) {
+                guild.addRoleToMember(member, r).queue();
+            }
+        }
+
+        boolean timedOut = false;
+        boolean banned = false;
+        int timeoutMinutes = 0;
+
+        if (member != null && guild.getSelfMember().canInteract(member)) {
+            if (count == 1) {
+                try {
+                    member.timeoutFor(java.time.Duration.ofMinutes(2))
+                            .reason(isWord ? "Restricted word: " + content : "Restricted image")
+                            .queue();
+                    timedOut = true;
+                    timeoutMinutes = 2;
+                } catch (Exception ignored) {}
+            } else if (count == 2) {
+                try {
+                    member.timeoutFor(java.time.Duration.ofMinutes(10))
+                            .reason(isWord ? "Restricted word: " + content : "Restricted image")
+                            .queue();
+                    timedOut = true;
+                    timeoutMinutes = 10;
+                } catch (Exception ignored) {}
+            } else {
+                try {
+                    member.ban(0, java.util.concurrent.TimeUnit.DAYS)
+                            .reason(isWord ? "Repeated restricted word filter offenses: " + content : "Repeated restricted image filter offenses")
+                            .queue();
+                    banned = true;
+                } catch (Exception ignored) {}
+            }
+        } else {
+            if (count == 1) {
+                timedOut = true;
+                timeoutMinutes = 2;
+            } else if (count == 2) {
+                timedOut = true;
+                timeoutMinutes = 10;
+            } else {
+                banned = true;
+            }
+        }
+
+        String reason = isWord ? "إرسال كلمة غير لائقة" : "إرسال صورة غير لائقة";
+        
+        String dmBody;
+        if (count == 1) {
+            dmBody = String.format("""
+                    ### ⚠️ إشـــعـــار تـــحـــذيـــر | WARN NOTIFICATION
+                    
+                    تـــم تـــحـــذيـــرك فـــي ســـيـــرفـــر: **%s**
+                    بـــســـبـــب: `%s`
+                    
+                    ▫️ **رقـــم الـــتـــحـــذيـــر:** `%d`
+                    
+                    *يـــرجـــى الالـــتـــزام بـــالـــقـــوانـــيـــن لـــتـــجـــنـــب الـــحـــظـــر.*
+                    """, guild.getName(), reason, count);
+        } else if (count == 2) {
+            dmBody = String.format("""
+                    ### ⚠️ إشـــعـــار تـــحـــذيـــر | WARN NOTIFICATION
+                    
+                    تـــم تـــحـــذيـــرك فـــي ســـيـــرفـــر: **%s**
+                    بـــســـبـــب: `%s`
+                    
+                    ▫️ **رقـــم الـــتـــحـــذيـــر:** `%d`
+                    
+                    *هاذا التحذير الثاني تبقى لك تحذير واحد في مثل هذه المسأله*
+                    *يـــرجـــى الالـــتـــزام بـــالـــقـــوانـــيـــن لـــتـــجـــنـــب الـــحـــظـــر.*
+                    """, guild.getName(), reason, count);
+        } else {
+            dmBody = String.format("""
+                    ### ⚠️ إشـــعـــار حـــظـــر | BAN NOTIFICATION
+                    
+                    تـــم حـــظـــرك فـــي ســـيـــرفـــر: **%s**
+                    بـــســـبـــب: `%s`
+                    
+                    ▫️ **رقـــم الـــتـــحـــذيـــر:** `%d`
+                    
+                    *لقد تم حظرك من السيرفر لهذا السبب.*
+                    """, guild.getName(), reason, count);
+        }
+
+        author.openPrivateChannel().queue(pc -> {
+            net.dv8tion.jda.api.components.container.Container dmEmbed = EmbedUtil.containerBranded("MODERATION", "Warn Protocol", dmBody, EmbedUtil.BANNER_MAIN);
+            pc.sendMessage(new MessageCreateBuilder().setComponents(dmEmbed).useComponentsV2(true).build()).useComponentsV2(true).queue(null, e -> {});
+        }, err -> {});
+
+        return new PunishmentResult(timedOut, banned, timeoutMinutes);
     }
 }
