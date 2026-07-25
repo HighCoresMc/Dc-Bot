@@ -444,7 +444,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         AudioChannel lastChannel = guild.getAudioManager().getConnectedChannel();
                         eb.addField("Channel", "`" + (lastChannel != null ? lastChannel.getName() : "Unknown") + "`", true);
                         eb.addField("Time", "`" + timeStr + "`", true);
-                        eb.addField("Quality", isM4a ? "`256kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
+                        eb.addField("Quality", isM4a ? "`96kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
                         eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
                         eb.setTimestamp(java.time.Instant.now());
 
@@ -558,7 +558,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         eb.setImage(EmbedUtil.BANNER_MAIN);
                         eb.addField("Channel", "`" + (fallbackChannel != null ? fallbackChannel.getName() : "Unknown") + "`", true);
                         eb.addField("Time", "`" + timeStr + "`", true);
-                        eb.addField("Quality", isM4a ? "`256kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
+                        eb.addField("Quality", isM4a ? "`96kbps AAC Stereo`" : "`48kHz / 16-bit Stereo`", false);
                         eb.setFooter("▪ UNIFIED TERMINAL v1.2.0 ▪ HIGHCORE AGENCY ▪", null);
                         eb.setTimestamp(java.time.Instant.now());
 
@@ -614,7 +614,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 "-i", rawFile.getAbsolutePath(),
                 "-af", "highpass=f=80,afftdn=nr=10:nf=-45,dynaudnorm=f=150:g=15:m=10.0:r=0.9,alimiter=level_in=1:level_out=0.95:limit=0.99,equalizer=f=3000:width_type=h:width=1500:g=2.5",
                 "-c:a", "aac",
-                "-b:a", "256k",
+                "-b:a", "96k",
                 outputFile.getAbsolutePath()
             );
             pb.redirectErrorStream(true);
@@ -636,7 +636,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                     "-i", rawFile.getAbsolutePath(),
                     "-af", "highpass=f=80,equalizer=f=3000:width_type=h:width=1500:g=2.5",
                     "-c:a", "aac",
-                    "-b:a", "256k",
+                    "-b:a", "96k",
                     outputFile.getAbsolutePath()
                 );
                 pbFallback.redirectErrorStream(true);
