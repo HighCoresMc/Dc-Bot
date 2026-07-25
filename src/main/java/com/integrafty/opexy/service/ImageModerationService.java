@@ -191,16 +191,38 @@ public class ImageModerationService {
                 try (OrtSession.Result results = session
                         .run(java.util.Collections.singletonMap("pixel_values", inputTensor))) {
                     float[][] logits = (float[][]) results.get(0).getValue();
-                    float normalLogit = logits[0][0];
-                    float nsfwLogit = logits[0][1];
+                    float drawingsLogit = logits[0][0];
+                    float hentaiLogit = logits[0][1];
+                    float neutralLogit = logits[0][2];
+                    float pornLogit = logits[0][3];
+                    float sexyLogit = logits[0][4];
 
-                    double expNormal = Math.exp(normalLogit);
-                    double expNsfw = Math.exp(nsfwLogit);
-                    double probNsfw = expNsfw / (expNormal + expNsfw);
+                    float max = drawingsLogit;
+                    if (hentaiLogit > max) max = hentaiLogit;
+                    if (neutralLogit > max) max = neutralLogit;
+                    if (pornLogit > max) max = pornLogit;
+                    if (sexyLogit > max) max = sexyLogit;
 
-                    log.info("[Image Filter] Local AI normal logit: {}, nsfw logit: {}, nsfw prob: {}", normalLogit,
-                            nsfwLogit, probNsfw);
-                    boolean isNsfw = probNsfw > 0.97;
+                    double expDrawings = Math.exp(drawingsLogit - max);
+                    double expHentai = Math.exp(hentaiLogit - max);
+                    double expNeutral = Math.exp(neutralLogit - max);
+                    double expPorn = Math.exp(pornLogit - max);
+                    double expSexy = Math.exp(sexyLogit - max);
+
+                    double sum = expDrawings + expHentai + expNeutral + expPorn + expSexy;
+
+                    double probHentai = expHentai / sum;
+                    double probPorn = expPorn / sum;
+                    double probSexy = expSexy / sum;
+
+                    double probNsfw = probHentai + probPorn + probSexy;
+
+                    log.info("[Image Filter] Local AI logits - drawings: {}, hentai: {}, neutral: {}, porn: {}, sexy: {}", 
+                             drawingsLogit, hentaiLogit, neutralLogit, pornLogit, sexyLogit);
+                    log.info("[Image Filter] Local AI probabilities - hentai: {}, porn: {}, sexy: {}, total nsfw prob: {}", 
+                             probHentai, probPorn, probSexy, probNsfw);
+
+                    boolean isNsfw = probNsfw > 0.80;
                     log.info("[Image Filter] Final result: {}", isNsfw);
                     return isNsfw ? "NSFW" : null;
                 }
