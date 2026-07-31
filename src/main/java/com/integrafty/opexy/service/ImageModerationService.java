@@ -28,8 +28,7 @@ import com.google.zxing.common.HybridBinarizer;
 public class ImageModerationService {
 
     private static final java.util.Set<String> WHITELISTED_MD5 = java.util.Set.of(
-            "341009d93961815ff749e6dad57b9fcf"
-    );
+            "341009d93961815ff749e6dad57b9fcf");
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -127,7 +126,8 @@ public class ImageModerationService {
                     sb.append(String.format("%02x", b));
                 }
                 md5 = sb.toString();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
 
             log.info("[Image Filter] Fetched image MD5: {}", md5);
             if (WHITELISTED_MD5.contains(md5.toLowerCase())) {
@@ -165,34 +165,41 @@ public class ImageModerationService {
                 }
                 String ocrResult = tesseract.doOCR(original).toLowerCase();
                 boolean isScam = false;
-                
-                boolean hasCrypto = ocrResult.contains("crypto") || ocrResult.contains("usdt") || ocrResult.contains("btc") || ocrResult.contains("eth") || ocrResult.contains("tether");
-                boolean hasBonus = ocrResult.contains("bonus") || ocrResult.contains("promo code") || ocrResult.contains("giveaway") || ocrResult.contains("reward");
-                boolean hasAction = ocrResult.contains("deposit") || ocrResult.contains("claim") || ocrResult.contains("register") || ocrResult.contains("withdrawal");
+
+                boolean hasCrypto = ocrResult.contains("crypto") || ocrResult.contains("usdt")
+                        || ocrResult.contains("btc") || ocrResult.contains("eth") || ocrResult.contains("tether");
+                boolean hasBonus = ocrResult.contains("bonus") || ocrResult.contains("promo code")
+                        || ocrResult.contains("giveaway") || ocrResult.contains("reward");
+                boolean hasAction = ocrResult.contains("deposit") || ocrResult.contains("claim")
+                        || ocrResult.contains("register") || ocrResult.contains("withdrawal");
                 boolean hasFakePlatform = ocrResult.contains("exchange") || ocrResult.contains("wallet");
                 boolean hasSuccess = ocrResult.contains("withdrawal success") || ocrResult.contains("successfully");
 
                 // Very strict rules to prevent false positives
                 if (hasCrypto && hasBonus && hasAction && (ocrResult.contains("code:") || ocrResult.contains("link"))) {
                     isScam = true;
-                } else if (hasCrypto && hasSuccess && (ocrResult.contains("balance") || ocrResult.contains("received"))) {
+                } else if (hasCrypto && hasSuccess
+                        && (ocrResult.contains("balance") || ocrResult.contains("received"))) {
                     isScam = true;
-                } else if (ocrResult.contains("promo code") && ocrResult.contains("bonus") && hasCrypto && ocrResult.contains("deposit")) {
+                } else if (ocrResult.contains("promo code") && ocrResult.contains("bonus") && hasCrypto
+                        && ocrResult.contains("deposit")) {
                     isScam = true;
-                } else if (ocrResult.contains("giveaway") && hasCrypto && ocrResult.contains("claim") && ocrResult.contains("free")) {
+                } else if (ocrResult.contains("giveaway") && hasCrypto && ocrResult.contains("claim")
+                        && ocrResult.contains("free")) {
                     isScam = true;
                 }
 
                 if (isScam) {
-                    log.info("[Image Filter] Scam crypto image detected via OCR. Original text: {}", ocrResult.substring(0, Math.min(ocrResult.length(), 200)));
+                    log.info("[Image Filter] Scam crypto image detected via OCR. Original text: {}",
+                            ocrResult.substring(0, Math.min(ocrResult.length(), 200)));
                     return "SCAM_CRYPTO";
                 }
-            } catch (Throwable e) {
+            } catch (Throwable E) {
                 log.warn("[Image Filter] OCR failed or not configured: {}", e.getMessage());
             }
 
             BufferedImage resized = new BufferedImage(224, 224, BufferedImage.TYPE_INT_RGB);
-            Graphics2D g = resized.createGraphics();
+            Graphics2D G = resized.createGraphics();
             g.drawImage(original, 0, 0, 224, 224, null);
             g.dispose();
 
@@ -200,11 +207,11 @@ public class ImageModerationService {
             int[] rgbValues = new int[224 * 224];
             resized.getRGB(0, 0, 224, 224, rgbValues, 0, 224);
 
-            for (int i = 0; i < rgbValues.length; i++) {
+            for (int I = 0; I < rgbValues.length; i++) {
                 int rgb = rgbValues[i];
-                float r = ((rgb >> 16) & 0xFF) / 255.0f;
+                float R = ((rgb >> 16) & 0xFF) / 255.0f;
                 float gVal = ((rgb >> 8) & 0xFF) / 255.0f;
-                float b = (rgb & 0xFF) / 255.0f;
+                float B = (rgb & 0xFF) / 255.0f;
 
                 floatValues[i] = (r - 0.5f) / 0.5f;
                 floatValues[224 * 224 + i] = (gVal - 0.5f) / 0.5f;
@@ -224,10 +231,14 @@ public class ImageModerationService {
                     float sexyLogit = logits[0][4];
 
                     float max = drawingsLogit;
-                    if (hentaiLogit > max) max = hentaiLogit;
-                    if (neutralLogit > max) max = neutralLogit;
-                    if (pornLogit > max) max = pornLogit;
-                    if (sexyLogit > max) max = sexyLogit;
+                    if (hentaiLogit > max)
+                        max = hentaiLogit;
+                    if (neutralLogit > max)
+                        max = neutralLogit;
+                    if (pornLogit > max)
+                        max = pornLogit;
+                    if (sexyLogit > max)
+                        max = sexyLogit;
 
                     double expDrawings = Math.exp(drawingsLogit - max);
                     double expHentai = Math.exp(hentaiLogit - max);
@@ -243,17 +254,19 @@ public class ImageModerationService {
 
                     double probNsfw = probHentai + probPorn + probSexy;
 
-                    log.info("[Image Filter] Local AI logits - drawings: {}, hentai: {}, neutral: {}, porn: {}, sexy: {}", 
-                             drawingsLogit, hentaiLogit, neutralLogit, pornLogit, sexyLogit);
-                    log.info("[Image Filter] Local AI probabilities - hentai: {}, porn: {}, sexy: {}, total nsfw prob: {}", 
-                             probHentai, probPorn, probSexy, probNsfw);
+                    log.info(
+                            "[Image Filter] Local AI logits - drawings: {}, hentai: {}, neutral: {}, porn: {}, sexy: {}",
+                            drawingsLogit, hentaiLogit, neutralLogit, pornLogit, sexyLogit);
+                    log.info(
+                            "[Image Filter] Local AI probabilities - hentai: {}, porn: {}, sexy: {}, total nsfw prob: {}",
+                            probHentai, probPorn, probSexy, probNsfw);
 
-                    boolean isNsfw = probNsfw > 0.80;
+                    boolean isNsfw = probNsfw > 0.95;
                     log.info("[Image Filter] Final result: {}", isNsfw);
                     return isNsfw ? "NSFW" : null;
                 }
             }
-        } catch (Exception e) {
+        } catch (Exception E) {
             log.warn("[Image Filter] Failed to moderate image URL {}: {}", imageUrl, e.getMessage());
         }
         return null;
