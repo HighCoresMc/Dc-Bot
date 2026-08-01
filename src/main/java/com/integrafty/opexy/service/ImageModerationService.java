@@ -252,16 +252,18 @@ public class ImageModerationService {
                     double probPorn = expPorn / sum;
                     double probSexy = expSexy / sum;
 
-                    double probNsfw = probHentai + probPorn + probSexy;
+                    // Explicit content (porn/hentai) detected at high confidence
+                    boolean isExplicit = (probPorn > 0.65) || (probHentai > 0.65);
+                    // Or all three combined are overwhelmingly NSFW (very high bar)
+                    boolean isNsfw = isExplicit || ((probHentai + probPorn + probSexy) > 0.97);
 
                     log.info(
                             "[Image Filter] Local AI logits - drawings: {}, hentai: {}, neutral: {}, porn: {}, sexy: {}",
                             drawingsLogit, hentaiLogit, neutralLogit, pornLogit, sexyLogit);
                     log.info(
-                            "[Image Filter] Local AI probabilities - hentai: {}, porn: {}, sexy: {}, total nsfw prob: {}",
-                            probHentai, probPorn, probSexy, probNsfw);
+                            "[Image Filter] Local AI probabilities - hentai: {}, porn: {}, sexy: {}, explicit: {}, total_nsfw: {}",
+                            probHentai, probPorn, probSexy, isExplicit, (probHentai + probPorn + probSexy));
 
-                    boolean isNsfw = probNsfw > 0.95;
                     log.info("[Image Filter] Final result: {}", isNsfw);
                     return isNsfw ? "NSFW" : null;
                 }
