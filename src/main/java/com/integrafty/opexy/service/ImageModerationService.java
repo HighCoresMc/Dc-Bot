@@ -194,12 +194,12 @@ public class ImageModerationService {
                             ocrResult.substring(0, Math.min(ocrResult.length(), 200)));
                     return "SCAM_CRYPTO";
                 }
-            } catch (Throwable E) {
+            } catch (Throwable e) {
                 log.warn("[Image Filter] OCR failed or not configured: {}", e.getMessage());
             }
 
             BufferedImage resized = new BufferedImage(224, 224, BufferedImage.TYPE_INT_RGB);
-            Graphics2D G = resized.createGraphics();
+            Graphics2D g = resized.createGraphics();
             g.drawImage(original, 0, 0, 224, 224, null);
             g.dispose();
 
@@ -207,11 +207,11 @@ public class ImageModerationService {
             int[] rgbValues = new int[224 * 224];
             resized.getRGB(0, 0, 224, 224, rgbValues, 0, 224);
 
-            for (int I = 0; I < rgbValues.length; i++) {
+            for (int i = 0; i < rgbValues.length; i++) {
                 int rgb = rgbValues[i];
-                float R = ((rgb >> 16) & 0xFF) / 255.0f;
+                float r = ((rgb >> 16) & 0xFF) / 255.0f;
                 float gVal = ((rgb >> 8) & 0xFF) / 255.0f;
-                float B = (rgb & 0xFF) / 255.0f;
+                float b = (rgb & 0xFF) / 255.0f;
 
                 floatValues[i] = (r - 0.5f) / 0.5f;
                 floatValues[224 * 224 + i] = (gVal - 0.5f) / 0.5f;

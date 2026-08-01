@@ -177,8 +177,8 @@ public class WordFilterService {
         }
         String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
         StringBuilder sb = new StringBuilder();
-        for (int I = 0; I < normalized.length(); i++) {
-            char C = normalized.charAt(i);
+        for (int i = 0; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
             if (c >= 0x064B && c <= 0x065F) {
                 continue;
             }
@@ -212,8 +212,8 @@ public class WordFilterService {
             regexStr = "(?:(?:ال|لل|بال|وال|فال|كال|ل|ب|و|ف)?ع[\\s_\\-\\+\\.\\*\\u0640]*ب[\\s_\\-\\+\\.\\*\\u0640]*(?:ي|و)?[\\s_\\-\\+\\.\\*\\u0640]*د(?:ين|ون|ات|ية|يه|ة|ه|ا|ان)?|(?:abd|abed|abeed|abood|abid)s?)";
         } else {
             StringBuilder regexWithSpaces = new StringBuilder();
-            for (int I = 0; i < sanitized.length(); i++) {
-                char C = sanitized.charAt(i);
+            for (int i = 0; i < sanitized.length(); i++) {
+                char c = sanitized.charAt(i);
                 String quoted = Pattern.quote(String.valueOf(c));
                 regexWithSpaces.append(quoted);
                 if (i < sanitized.length() - 1) {
