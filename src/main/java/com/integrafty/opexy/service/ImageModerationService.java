@@ -41,8 +41,9 @@ public class ImageModerationService {
     @org.springframework.context.event.EventListener(org.springframework.context.event.ContextRefreshedEvent.class)
     public void onStartup() {
         try {
-            File modelFile = new File("nsfw_model.onnx");
+            File modelFile = new File("nsfw_model_v2.onnx");
             if (!modelFile.exists()) {
+                new File("nsfw_model.onnx").delete();
                 log.info("[NSFW Filter] Local model file not found. Downloading...");
                 downloadModel(modelFile);
             }
@@ -58,7 +59,7 @@ public class ImageModerationService {
     private void downloadModel(File target) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(
-                        "https://huggingface.co/onnx-community/nsfw-image-detector-ONNX/resolve/main/onnx/model_quantized.onnx"))
+                        "https://huggingface.co/onnx-community/vit-base-nsfw-detector-ONNX/resolve/main/onnx/model_quantized.onnx"))
                 .GET()
                 .build();
         HttpResponse<java.io.InputStream> response = httpClient.send(request,
@@ -198,14 +199,15 @@ public class ImageModerationService {
                 log.warn("[Image Filter] OCR failed or not configured: {}", e.getMessage());
             }
 
-            BufferedImage resized = new BufferedImage(224, 224, BufferedImage.TYPE_INT_RGB);
+            int imgSize = 384;
+            BufferedImage resized = new BufferedImage(imgSize, imgSize, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = resized.createGraphics();
-            g.drawImage(original, 0, 0, 224, 224, null);
+            g.drawImage(original, 0, 0, imgSize, imgSize, null);
             g.dispose();
 
-            float[] floatValues = new float[3 * 224 * 224];
-            int[] rgbValues = new int[224 * 224];
-            resized.getRGB(0, 0, 224, 224, rgbValues, 0, 224);
+            float[] floatValues = new float[3 * imgSize * imgSize];
+            int[] rgbValues = new int[imgSize * imgSize];
+            resized.getRGB(0, 0, imgSize, imgSize, rgbValues, 0, imgSize);
 
             for (int i = 0; i < rgbValues.length; i++) {
                 int rgb = rgbValues[i];
@@ -214,56 +216,30 @@ public class ImageModerationService {
                 float b = (rgb & 0xFF) / 255.0f;
 
                 floatValues[i] = (r - 0.5f) / 0.5f;
-                floatValues[224 * 224 + i] = (gVal - 0.5f) / 0.5f;
-                floatValues[2 * 224 * 224 + i] = (b - 0.5f) / 0.5f;
+                floatValues[imgSize * imgSize + i] = (gVal - 0.5f) / 0.5f;
+                floatValues[2 * imgSize * imgSize + i] = (b - 0.5f) / 0.5f;
             }
 
-            long[] shape = new long[] { 1, 3, 224, 224 };
+            long[] shape = new long[] { 1, 3, imgSize, imgSize };
             java.nio.FloatBuffer buffer = java.nio.FloatBuffer.wrap(floatValues);
             try (OnnxTensor inputTensor = OnnxTensor.createTensor(env, buffer, shape)) {
                 try (OrtSession.Result results = session
                         .run(java.util.Collections.singletonMap("pixel_values", inputTensor))) {
                     float[][] logits = (float[][]) results.get(0).getValue();
-                    float drawingsLogit = logits[0][0];
-                    float hentaiLogit = logits[0][1];
-                    float neutralLogit = logits[0][2];
-                    float pornLogit = logits[0][3];
-                    float sexyLogit = logits[0][4];
 
-                    float max = drawingsLogit;
-                    if (hentaiLogit > max)
-                        max = hentaiLogit;
-                    if (neutralLogit > max)
-                        max = neutralLogit;
-                    if (pornLogit > max)
-                        max = pornLogit;
-                    if (sexyLogit > max)
-                        max = sexyLogit;
+                    // Binary model: index 0 = sfw, index 1 = nsfw
+                    float sfwLogit = logits[0][0];
+                    float nsfwLogit = logits[0][1];
 
-                    double expDrawings = Math.exp(drawingsLogit - max);
-                    double expHentai = Math.exp(hentaiLogit - max);
-                    double expNeutral = Math.exp(neutralLogit - max);
-                    double expPorn = Math.exp(pornLogit - max);
-                    double expSexy = Math.exp(sexyLogit - max);
+                    float maxLogit = Math.max(sfwLogit, nsfwLogit);
+                    double expSfw = Math.exp(sfwLogit - maxLogit);
+                    double expNsfw = Math.exp(nsfwLogit - maxLogit);
+                    double probNsfw = expNsfw / (expSfw + expNsfw);
 
-                    double sum = expDrawings + expHentai + expNeutral + expPorn + expSexy;
+                    log.info("[Image Filter] Local AI logits - sfw: {}, nsfw: {}", sfwLogit, nsfwLogit);
+                    log.info("[Image Filter] Local AI probabilities - nsfw: {}", probNsfw);
 
-                    double probHentai = expHentai / sum;
-                    double probPorn = expPorn / sum;
-                    double probSexy = expSexy / sum;
-
-                    // Explicit content (porn/hentai) detected at high confidence
-                    boolean isExplicit = (probPorn > 0.65) || (probHentai > 0.65);
-                    // Or all three combined are overwhelmingly NSFW (very high bar)
-                    boolean isNsfw = isExplicit || ((probHentai + probPorn + probSexy) > 0.97);
-
-                    log.info(
-                            "[Image Filter] Local AI logits - drawings: {}, hentai: {}, neutral: {}, porn: {}, sexy: {}",
-                            drawingsLogit, hentaiLogit, neutralLogit, pornLogit, sexyLogit);
-                    log.info(
-                            "[Image Filter] Local AI probabilities - hentai: {}, porn: {}, sexy: {}, explicit: {}, total_nsfw: {}",
-                            probHentai, probPorn, probSexy, isExplicit, (probHentai + probPorn + probSexy));
-
+                    boolean isNsfw = probNsfw > 0.90;
                     log.info("[Image Filter] Final result: {}", isNsfw);
                     return isNsfw ? "NSFW" : null;
                 }
