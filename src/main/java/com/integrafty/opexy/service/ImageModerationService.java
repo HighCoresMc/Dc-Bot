@@ -266,7 +266,7 @@ public class ImageModerationService {
                     return isNsfw ? "NSFW" : null;
                 }
             }
-        } catch (Exception E) {
+        } catch (Exception e) {
             log.warn("[Image Filter] Failed to moderate image URL {}: {}", imageUrl, e.getMessage());
         }
         return null;
