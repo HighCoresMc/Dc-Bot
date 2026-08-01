@@ -176,6 +176,7 @@ public class WordFilterService {
             return "";
         }
         String normalized = Normalizer.normalize(text, Normalizer.Form.NFKC);
+        normalized = normalized.replaceAll("[\\u200B\\u200C\\u200D\\u200E\\u200F\\uFEFF]", "");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < normalized.length(); i++) {
             char c = normalized.charAt(i);
@@ -209,7 +210,7 @@ public class WordFilterService {
         }
         String regexStr;
         if (sanitized.equals("عبد") || sanitized.equals("عبيد") || originalWord.equalsIgnoreCase("abd") || originalWord.equalsIgnoreCase("abed")) {
-            regexStr = "(?:(?:ال|لل|بال|وال|فال|كال|ل|ب|و|ف)?ع[\\s_\\-\\+\\.\\*\\u0640]*ب[\\s_\\-\\+\\.\\*\\u0640]*(?:ي|و)?[\\s_\\-\\+\\.\\*\\u0640]*د(?:ين|ون|ات|ية|يه|ة|ه|ا|ان)?|(?:abd|abed|abeed|abood|abid)s?)";
+            regexStr = "(?:(?:ال|لل|بال|وال|فال|كال|ل|ب|و|ف)?ع[\\s_\\-\\+\\.\\*\\u0640]*ب[\\s_\\-\\+\\.\\*\\u0640]*(?:ي)?[\\s_\\-\\+\\.\\*\\u0640]*د(?:ين|ون|ات|ية|يه|ة|ه|ا|ان)?|(?:abd|abeed|abid)s?)";
         } else {
             StringBuilder regexWithSpaces = new StringBuilder();
             for (int i = 0; i < sanitized.length(); i++) {
