@@ -81,6 +81,8 @@ public class GeneralCommands implements MultiSlashCommand {
                         .addChoice("الكل (All)", "all"))
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
 
+        list.add(Commands.slash("line", "إرسال خط فاصل متحرك"));
+
         return list;
     }
 
@@ -101,7 +103,12 @@ public class GeneralCommands implements MultiSlashCommand {
             case "take" -> handleTake(event);
             case "transfer" -> handleTransfer(event);
             case "kill" -> handleKill(event);
+            case "line" -> handleLine(event);
         }
+    }
+
+    private void handleLine(SlashCommandInteractionEvent event) {
+        reply(event, EmbedUtil.lineEmbed());
     }
 
     private void handleKill(SlashCommandInteractionEvent event) {

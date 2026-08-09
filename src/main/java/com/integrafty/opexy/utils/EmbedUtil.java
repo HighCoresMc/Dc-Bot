@@ -67,6 +67,7 @@ public class EmbedUtil {
     public static final String BANNER_SPEED_START = "attachment://speed_7_sec.png";
     public static final String BANNER_SUCCESS = "attachment://success.png";
     public static final String BANNER_FAILURE = "attachment://failure.png";
+    public static final String BANNER_LINE = "attachment://line.gif";
 
     public static net.dv8tion.jda.api.utils.FileUpload getAttachment(String filename) {
         try (java.io.InputStream is = EmbedUtil.class.getResourceAsStream("/images/" + filename)) {
@@ -140,6 +141,10 @@ public class EmbedUtil {
         builder.setComponents(components);
         builder.useComponentsV2(true);
         return builder;
+    }
+
+    public static Container lineEmbed() {
+        return Container.of(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl(BANNER_LINE)));
     }
 
     public static net.dv8tion.jda.api.utils.messages.MessageEditBuilder createBrandedEditMessage(java.util.Collection<? extends net.dv8tion.jda.api.components.actionrow.ActionRow> components) {
