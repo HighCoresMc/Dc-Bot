@@ -368,7 +368,7 @@ public class CraftManager extends ListenerAdapter {
                                 layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
                                 layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of(timerFormat + "\n\n" + body));
                                 layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
-                                layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl("attachment://crafting_grid.png")));
+                                layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl("attachment://crafting_grid.jpg")));
                                 
                                 net.dv8tion.jda.api.components.container.Container container = net.dv8tion.jda.api.components.container.Container.of(layout);
                                 MessageEditBuilder builder = new MessageEditBuilder().setComponents(container).useComponentsV2(true);
@@ -430,15 +430,31 @@ public class CraftManager extends ListenerAdapter {
                         int y2 = coords[idx][3];
                         int w = x2 - x1;
                         int h = y2 - y1;
-                        g.drawImage(itemImg, x1, y1, w, h, null);
+                        int cx = x1 + w / 2;
+                        int cy = y1 + h / 2;
+                        
+                        // Draw the item as a fixed-size square (e.g. 100x100) centered in the cell
+                        // This prevents the items from being squashed/stretched by the irregular perspective coords
+                        int itemSize = 100; 
+                        int drawX = cx - (itemSize / 2);
+                        int drawY = cy - (itemSize / 2);
+                        
+                        g.drawImage(itemImg, drawX, drawY, itemSize, itemSize, null);
                     }
                 }
                 idx++;
             }
         }
         g.dispose();
+        
+        // Convert to RGB before saving as JPG to reduce file size from ~5MB to ~200KB for much faster upload
+        BufferedImage rgbImage = new BufferedImage(background.getWidth(), background.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D gRGB = rgbImage.createGraphics();
+        gRGB.drawImage(background, 0, 0, null);
+        gRGB.dispose();
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(background, "png", baos);
+        ImageIO.write(rgbImage, "jpg", baos);
         return baos.toByteArray();
     }
 
