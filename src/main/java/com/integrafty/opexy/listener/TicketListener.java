@@ -429,16 +429,21 @@ public class TicketListener extends ListenerAdapter {
                                 event.getValue("version").getAsString(),
                                 event.getValue("account_type").getAsString());
 
-                        // Send detailed steps as a separate message
-                        String steps = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n" +
-                                "### 📋 خـطـوات الـتـفـعـيـل الـنـهـائـيـة\n\n" +
-                                "**1.** تـم تـسـجـيـل بـيـانـاتـك فـي قـاعـدة بـيـانـات الـسـيـرفـر بـنـجـاح.\n" +
-                                "**2.** تـوجـه الآن إلـى روم الـتـفـعـيـل: <#1488279212786843850>.\n" +
-                                "**3.** قـم بـالـضـغـط عـلـى إيـمـوجـي 🟢 ريـأكـشـن لـتـفـعـيـل حـسـابـك آلياً.\n\n" +
-                                "**مـلاحـظـة:** سـيـتـم تـفـعـيـلـك فـور وضـع الـريـأكـشـن، مـرحـبـاً بـك فـي الـسـيـرفـر!\n"
-                                +
-                                "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
-                        channel.sendMessage(steps).queue();
+                        // Send detailed steps as a separate message using a container with dividers
+                        Container stepsContainer = Container.of(
+                                net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL),
+                                net.dv8tion.jda.api.components.textdisplay.TextDisplay.of(
+                                        "### 📋 خـطـوات الـتـفـعـيـل الـنـهـائـيـة\n\n" +
+                                        "**1.** تـم تـسـجـيـل بـيـانـاتـك فـي قـاعـدة بـيـانـات الـسـيـرفـر بـنـجـاح.\n" +
+                                        "**2.** تـوجـه الآن إلـى روم الـتـفـعـيـل: <#1488279212786843850>.\n" +
+                                        "**3.** قـم بـالـضـغـط عـلـى إيـمـوجـي 🟢 ريـأكـشـن لـتـفـعـيـل حـسـابـك آلياً.\n\n" +
+                                        "**مـلاحـظـة:** سـيـتـم تـفـعـيـلـك فـور وضـع الـريـأكـشـن، مـرحـبـاً بـك فـي الـسـيـرفـر!"
+                                ),
+                                net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL)
+                        );
+                        channel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder().setComponents(stepsContainer).build())
+                                .useComponentsV2(true)
+                                .queue();
                     }
 
                     Container successCont = EmbedUtil.success("الإنـشـاء",
@@ -592,7 +597,7 @@ public class TicketListener extends ListenerAdapter {
                     "TEAM APPLICATION",
                     "Case #TEAM-" + formattedNum,
                     ticketBody.toString(),
-                    EmbedUtil.BANNER_SUPPORT,
+                    EmbedUtil.BANNER_TEAM,
                     ActionRow.of(
                         net.dv8tion.jda.api.components.selections.StringSelectMenu.create("ticket_manage_menu")
                             .setPlaceholder("إدارة الـتـذكـرة...")

@@ -97,12 +97,18 @@ public class CraftManager extends ListenerAdapter {
                         Map.entry("J", "<:feather:1500880285431238807>")
         );
 
-        @RequiredArgsConstructor
         private static class Recipe {
                 final String[][] grid;
                 final List<String> possibleNames;
                 final String displayName;
                 final Difficulty difficulty;
+
+                public Recipe(String[][] grid, List<String> possibleNames, String displayName, Difficulty difficulty) {
+                        this.grid = grid;
+                        this.possibleNames = possibleNames;
+                        this.displayName = displayName;
+                        this.difficulty = difficulty;
+                }
         }
 
         private static final List<Recipe> RECIPES = List.of(
