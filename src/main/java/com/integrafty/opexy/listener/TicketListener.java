@@ -441,7 +441,7 @@ public class TicketListener extends ListenerAdapter {
                                 ),
                                 net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL)
                         );
-                        channel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder().useComponentsV2(true).setComponents(stepsContainer).build())
+                        channel.sendMessageComponents(stepsContainer)
                                 .useComponentsV2(true)
                                 .queue();
                     }
