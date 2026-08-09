@@ -62,7 +62,7 @@ public class CraftCommand implements MultiSlashCommand {
         net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded("CRAFTING", "🛠️ ماذا نصنع؟", description, EmbedUtil.BANNER_MAIN);
         // Add the image to the message directly
         net.dv8tion.jda.api.utils.messages.MessageCreateBuilder builder = EmbedUtil.createBrandedMessage(container);
-        builder.setFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(imgData, "crafting_grid.png"));
+        builder.addFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(imgData, "crafting_grid.png"));
         // Modify the embed to use the attached image instead of the banner!
         if (!builder.getEmbeds().isEmpty()) {
             net.dv8tion.jda.api.EmbedBuilder embedBuilder = new net.dv8tion.jda.api.EmbedBuilder(builder.getEmbeds().get(0));
