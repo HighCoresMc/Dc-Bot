@@ -108,7 +108,8 @@ public class GeneralCommands implements MultiSlashCommand {
     }
 
     private void handleLine(SlashCommandInteractionEvent event) {
-        reply(event, EmbedUtil.lineEmbed());
+        event.getChannel().sendMessage(EmbedUtil.createBrandedMessage(EmbedUtil.lineEmbed()).build()).useComponentsV2(true).queue();
+        event.reply("✅ تم إرسال الخط بنجاح.").setEphemeral(true).queue();
     }
 
     private void handleKill(SlashCommandInteractionEvent event) {
