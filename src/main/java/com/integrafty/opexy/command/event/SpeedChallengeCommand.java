@@ -158,7 +158,7 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                             finished.set(true);
                             msgEvent.getMessage().reply(EmbedUtil.createBrandedMessage(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "فائز بالتحدي!", 
                                             "مبروك <@" + msgEvent.getAuthor().getId() + ">! لقد كتبت الكلمة بسرعة خارقة وربحت **" + reward + " opex**!\n\nالوقت: **" + (timeTaken / 1000.0) + " ثانية**", 
-                                            com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN)).build())
+                                            com.integrafty.opexy.utils.EmbedUtil.BANNER_SUCCESS)).build())
                                     .useComponentsV2(true).queue();
                             
                             achievementService.updateStats(msgEvent.getAuthor().getIdLong(), event.getGuild(), stats -> {
@@ -184,7 +184,7 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                 if (!finished.get()) {
                     event.getChannel().sendMessage(EmbedUtil.createBrandedMessage(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "انتهى الوقت!", 
                                     "للأسف، لم يتمكن أحد من كتابة الكلمة في الوقت المحدد. حظاً أوفر في المرة القادمة!", 
-                                    com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN)).build())
+                                    com.integrafty.opexy.utils.EmbedUtil.BANNER_FAILURE)).build())
                             .useComponentsV2(true).queue();
 
                     String logTimeout = String.format("### ⚡ تحدي السرعة: انتهى الوقت\n▫️ **الكلمة:** %s\n▫️ لم يفز أحد.", word);

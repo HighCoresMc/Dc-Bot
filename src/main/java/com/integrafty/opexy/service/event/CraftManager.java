@@ -494,16 +494,15 @@ public class CraftManager extends ListenerAdapter {
                                                 event.getAuthor().getAsMention(), itemName, reward);
 
                                 if (hook != null) {
-                                        hook.editOriginal(EmbedUtil.createBrandedEditMessage(EmbedUtil.success("CRAFTING SUCCESS",
+                                        hook.editOriginal(EmbedUtil.createBrandedEditMessage(EmbedUtil.gameSuccess("CRAFTING SUCCESS",
                                                                         successMsg))
                                                         .useComponentsV2(true)
                                                         .build())
-                                                        .useComponentsV2(true)
                                                         .queue();
                                         event.getMessage().delete().queue(null, e -> {
                                         });
                                 } else {
-                                        event.getChannel().sendMessage(EmbedUtil.createBrandedMessage(EmbedUtil.success("CRAFTING MASTER", successMsg))
+                                        event.getChannel().sendMessage(EmbedUtil.createBrandedMessage(EmbedUtil.gameSuccess("CRAFTING MASTER", successMsg))
                                                         .useComponentsV2(true)
                                                         .build())
                                                         .useComponentsV2(true)
