@@ -54,9 +54,6 @@ public class CraftCommand implements MultiSlashCommand {
                 "📊 الصعوبة: **" + difficulty.displayName + "**\n\n" +
                 "💡 اكتب الإجابة مباشرة في الشات!";
 
-        event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(EmbedUtil.containerBranded("CRAFTING", "🛠️ ماذا نصنع؟", description, EmbedUtil.BANNER_MAIN))
-                .useComponentsV2(true)
-                .build()).queue(hook -> craftManager.initTimer(sessionId, difficulty, event));
+        event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("CRAFTING", "🛠️ ماذا نصنع؟", description, EmbedUtil.BANNER_MAIN)).build()).queue(hook -> craftManager.initTimer(sessionId, difficulty, event));
     }
 }

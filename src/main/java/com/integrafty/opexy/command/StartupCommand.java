@@ -47,11 +47,7 @@ public class StartupCommand implements SlashCommand {
 
         Container container = EmbedUtil.containerBranded("STARTUP", "HighCore MC • Welcome", body, EmbedUtil.BANNER_MAIN, row);
 
-        MessageCreateBuilder builder = new MessageCreateBuilder();
-        builder.setComponents(container);
-        builder.useComponentsV2(true);
-
-        event.getChannel().sendMessage(builder.build()).useComponentsV2(true).queue();
+        event.getChannel().sendMessage(EmbedUtil.createBrandedMessage(container).build()).useComponentsV2(true).queue();
         event.reply("✅ تم إرسال لوحة التحكم الرئيسية بنجاح.").setEphemeral(true).queue();
     }
 }

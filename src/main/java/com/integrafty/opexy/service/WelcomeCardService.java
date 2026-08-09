@@ -80,12 +80,33 @@ public class WelcomeCardService {
         }
 
         // --- THE DESIGNER'S BLUEPRINT ---
-        int avatarX = 761; 
-        int avatarY = 61;
-        int avatarW = 1152 - 761;
-        int avatarH = 455 - 61;
+        int avatarX = 755; 
+        int avatarY = 59;
+        int avatarW = 403;
+        int avatarH = 401;
 
-        g.drawImage(avatar, avatarX, avatarY, avatarW, avatarH, null);
+        // Apply pixelated mask to avatar
+        try {
+            BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
+            BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D sg = scaledAvatar.createGraphics();
+            sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
+            sg.dispose();
+
+            for (int y = 0; y < avatarH; y++) {
+                for (int x = 0; x < avatarW; x++) {
+                    int maskPixel = mask.getRGB(x, y);
+                    if ((maskPixel & 0xFFFFFF) == 0) { // If mask is black (not yellow originally)
+                        scaledAvatar.setRGB(x, y, 0x00000000); // Make transparent
+                    }
+                }
+            }
+            g.drawImage(scaledAvatar, avatarX, avatarY, null);
+        } catch (Exception e) {
+            log.warn("Failed to apply avatar mask", e);
+            g.drawImage(avatar, avatarX, avatarY, avatarW, avatarH, null);
+        }
 
         // 2. Member Identity Engine
         String name = member.getEffectiveName();
@@ -94,7 +115,7 @@ public class WelcomeCardService {
         int fontSize = 47; 
         Font pixelFont = new Font("SansSerif", Font.BOLD, fontSize);
         try {
-            pixelFont = Font.createFont(Font.TRUETYPE_FONT, new File("src/main/resources/minecraft_arabic.ttf")).deriveFont((float)fontSize);
+            pixelFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont((float)fontSize);
         } catch (Exception e) {
             log.warn("Failed to load minecraft_arabic.ttf");
         }

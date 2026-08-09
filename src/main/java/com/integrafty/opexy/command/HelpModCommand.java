@@ -34,7 +34,7 @@ public class HelpModCommand extends ListenerAdapter implements MultiSlashCommand
                 .anyMatch(r -> r.getId().equals("1487195816220430406"));
 
         if (!hasRole) {
-            event.reply(new MessageCreateBuilder().setComponents(EmbedUtil.accessDenied()).useComponentsV2(true).build())
+            event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.accessDenied()).build())
                     .setEphemeral(true).useComponentsV2(true).queue();
             return;
         }
@@ -50,9 +50,7 @@ public class HelpModCommand extends ListenerAdapter implements MultiSlashCommand
                       "مـرحـبـاً بـك فـي قـائـمـة مـسـاعـدة الإدارة والـفـعـالـيـات.\n" +
                       "يـرجـى اخـتـيـار الـقـسـم الـذي تـود تـصـفـحـه مـن الـقـائـمـة الـمـنـسـدلـة بـالأسـفـل.";
 
-        event.reply(new MessageCreateBuilder()
-                .setComponents(EmbedUtil.containerBranded("HELP", "Help & Guidance", body, EmbedUtil.BANNER_MAIN, ActionRow.of(menu)))
-                .useComponentsV2(true).build())
+        event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("HELP", "Help & Guidance", body, EmbedUtil.BANNER_MAIN, ActionRow.of(menu))).build())
                 .setEphemeral(true).useComponentsV2(true).queue();
     }
 

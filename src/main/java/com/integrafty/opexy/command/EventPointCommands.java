@@ -73,9 +73,7 @@ public class EventPointCommands implements MultiSlashCommand {
         String body = String.format("### ✅ تـــم إضـــافـــة نـــقـــاط\n▫️ **الـــعـــضـــو:** %s\n▫️ **الـــمـــبـــلـــغ:** `%d` نـــقـــطـــة\n▫️ **الـــرصـــيـــد الـــحـــالـــي:** `%d`",
                 target.getAsMention(), amount, user.getEventPoints());
         
-        event.reply(new MessageCreateBuilder()
-                .setComponents(EmbedUtil.containerBranded("EVENTS", "Points Update", body, EmbedUtil.BANNER_MAIN))
-                .useComponentsV2(true).build()).queue();
+        event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("EVENTS", "Points Update", body, EmbedUtil.BANNER_MAIN)).build()).queue();
     }
 
     private void handleRemovePoint(SlashCommandInteractionEvent event) {
@@ -90,9 +88,7 @@ public class EventPointCommands implements MultiSlashCommand {
         String body = String.format("### ❌ تـــم ســـحـــب نـــقـــاط\n▫️ **الـــعـــضـــو:** %s\n▫️ **الـــمـــبـــلـــغ:** `%d` نـــقـــطـــة\n▫️ **الـــرصـــيـــد الـــحـــالـــي:** `%d`",
                 target.getAsMention(), amount, user.getEventPoints());
         
-        event.reply(new MessageCreateBuilder()
-                .setComponents(EmbedUtil.containerBranded("EVENTS", "Points Update", body, EmbedUtil.BANNER_MAIN))
-                .useComponentsV2(true).build()).queue();
+        event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("EVENTS", "Points Update", body, EmbedUtil.BANNER_MAIN)).build()).queue();
     }
 
     private void handlePoints(SlashCommandInteractionEvent event) {
@@ -118,9 +114,7 @@ public class EventPointCommands implements MultiSlashCommand {
                 sb.append("*لا يـــوجـــد أعـــضـــاء لـــديـــهـــم نـــقـــاط حـــالـــيـــاً.*");
             }
 
-            event.reply(new MessageCreateBuilder()
-                    .setComponents(EmbedUtil.containerBranded("EVENTS", "Leaderboard", sb.toString(), EmbedUtil.BANNER_MAIN))
-                    .useComponentsV2(true).build()).queue();
+            event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("EVENTS", "Leaderboard", sb.toString(), EmbedUtil.BANNER_MAIN)).build()).queue();
         } else {
             // Show specific user
             Member target = userOpt.getAsMember();
@@ -131,9 +125,7 @@ public class EventPointCommands implements MultiSlashCommand {
             String body = String.format("### 📊 نـــقـــاط الـــفـــعـــالـــيـــات\n▫️ **الـــعـــضـــو:** %s\n▫️ **الـــنـــقـــاط الـــحـــالـــيـــة:** `%d`",
                     target.getAsMention(), user.getEventPoints());
 
-            event.reply(new MessageCreateBuilder()
-                    .setComponents(EmbedUtil.containerBranded("EVENTS", "Points Status", body, EmbedUtil.BANNER_MAIN))
-                    .useComponentsV2(true).build()).queue();
+            event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("EVENTS", "Points Status", body, EmbedUtil.BANNER_MAIN)).build()).queue();
         }
     }
 
@@ -143,9 +135,7 @@ public class EventPointCommands implements MultiSlashCommand {
         if (userOpt == null) {
             // Reset Everyone
             userRepository.resetAllEventPointsByGuildId(event.getGuild().getId());
-            event.reply(new MessageCreateBuilder()
-                    .setComponents(EmbedUtil.success("EVENTS RESET", "✅ تـــم تـــصـــفـــيـــر نـــقـــاط الـــفـــعـــالـــيـــات لـــجـــمـــيـــع الأعـــضـــاء بـــنـــجـــاح!"))
-                    .useComponentsV2(true).build()).queue();
+            event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.success("EVENTS RESET", "✅ تـــم تـــصـــفـــيـــر نـــقـــاط الـــفـــعـــالـــيـــات لـــجـــمـــيـــع الأعـــضـــاء بـــنـــجـــاح!")).build()).queue();
         } else {
             // Reset specific user
             Member target = userOpt.getAsMember();
@@ -155,9 +145,7 @@ public class EventPointCommands implements MultiSlashCommand {
             user.setEventPoints(0);
             userRepository.save(user);
 
-            event.reply(new MessageCreateBuilder()
-                    .setComponents(EmbedUtil.success("POINTS RESET", "✅ تـــم تـــصـــفـــيـــر نـــقـــاط الـــعـــضـــو " + target.getAsMention() + " بـــنـــجـــاح!"))
-                    .useComponentsV2(true).build()).queue();
+            event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.success("POINTS RESET", "✅ تـــم تـــصـــفـــيـــر نـــقـــاط الـــعـــضـــو " + target.getAsMention() + " بـــنـــجـــاح!")).build()).queue();
         }
     }
 

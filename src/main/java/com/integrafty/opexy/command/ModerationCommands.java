@@ -240,7 +240,7 @@ public class ModerationCommands implements MultiSlashCommand {
                     *إذا كـــنـــت تـــعـــتـــقـــد أن هـــذا الـــحـــظـــر خـــطـــأ، يـــرجـــى الـــتـــواصـــل مـــع الإدارة.*
                     """, event.getGuild().getName(), reason);
             Container dmEmbed = EmbedUtil.containerBranded("SECURITY", "Ban Protocol", body, EmbedUtil.BANNER_MAIN);
-            pc.sendMessage(new MessageCreateBuilder().setComponents(dmEmbed).useComponentsV2(true).build()).useComponentsV2(true).queue(null, e -> {});
+            pc.sendMessage(EmbedUtil.createBrandedMessage(dmEmbed).build()).useComponentsV2(true).queue(null, e -> {});
         });
 
         event.getGuild().ban(u, 7, TimeUnit.DAYS).reason(reason).queue(v -> {
@@ -284,7 +284,7 @@ public class ModerationCommands implements MultiSlashCommand {
                     *يـــمـــكـــنـــك الـــعـــودة لـــلـــســـيـــرفـــر مـــرة أخـــرى.*
                     """, event.getGuild().getName(), reason);
             Container dmEmbed = EmbedUtil.containerBranded("SECURITY", "Kick Protocol", body, EmbedUtil.BANNER_MAIN);
-            pc.sendMessage(new MessageCreateBuilder().setComponents(dmEmbed).useComponentsV2(true).build()).useComponentsV2(true).queue(null, e -> {});
+            pc.sendMessage(EmbedUtil.createBrandedMessage(dmEmbed).build()).useComponentsV2(true).queue(null, e -> {});
         });
 
         m.kick().reason(reason).queue(v -> {
@@ -398,14 +398,10 @@ public class ModerationCommands implements MultiSlashCommand {
                     else if (chunk.size() == 1) chunk.get(0).delete().queue(null, e -> {});
                 }
                 for (net.dv8tion.jda.api.entities.Message oldM : oldMessages) oldM.delete().queue(null, e -> {});
-                event.getHook().sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                        .setComponents(EmbedUtil.success("Purge Complete", msgs.size() + " messages purged successfully."))
-                        .useComponentsV2(true).build()).queue();
+                event.getHook().sendMessage(EmbedUtil.createBrandedMessage(EmbedUtil.success("Purge Complete", msgs.size() + " messages purged successfully.")).build()).queue();
                 logModAction(event, "clear", "Intelligence Wipe: " + msgs.size() + " units in " + event.getChannel().getAsMention(), null, EmbedUtil.DANGER);
             } catch (Exception e) {
-                event.getHook().sendMessage(new MessageCreateBuilder()
-                        .setComponents(EmbedUtil.error("SYSTEM ERROR", e.getMessage()))
-                        .useComponentsV2(true).build()).queue();
+                event.getHook().sendMessage(EmbedUtil.createBrandedMessage(EmbedUtil.error("SYSTEM ERROR", e.getMessage())).build()).queue();
             }
         });
     }
@@ -505,7 +501,7 @@ public class ModerationCommands implements MultiSlashCommand {
                     *يـــرجـــى الالـــتـــزام بـــالـــقـــوانـــيـــن لـــتـــجـــنـــب الـــحـــظـــر.*
                     """, event.getGuild().getName(), reason, count);
             Container dmEmbed = EmbedUtil.containerBranded("MODERATION", "Warn Protocol", body, EmbedUtil.BANNER_MAIN);
-            pc.sendMessage(new MessageCreateBuilder().setComponents(dmEmbed).useComponentsV2(true).build()).useComponentsV2(true).queue(null, e -> {});
+            pc.sendMessage(EmbedUtil.createBrandedMessage(dmEmbed).build()).useComponentsV2(true).queue(null, e -> {});
         });
 
         reply(event, EmbedUtil.success("Warning Protocol", "تـــم تـــحـــذيـــر الـــعـــضـــو " + target.getAsMention() + " بـــنـــجـــاح.\nالـــتـــحـــذيـــر رقـــم: **" + count + "**"));
@@ -648,13 +644,13 @@ public class ModerationCommands implements MultiSlashCommand {
     }
 
     private void reply(SlashCommandInteractionEvent e, Container c) {
-        var msg = new MessageCreateBuilder().setComponents(c).useComponentsV2(true).build();
+        var msg = EmbedUtil.createBrandedMessage(c).build();
         if (e.isAcknowledged()) e.getHook().sendMessage(msg).useComponentsV2(true).queue();
         else e.reply(msg).useComponentsV2(true).queue();
     }
 
     private void replyEphemeral(SlashCommandInteractionEvent e, Container c) {
-        var msg = new MessageCreateBuilder().setComponents(c).useComponentsV2(true).build();
+        var msg = EmbedUtil.createBrandedMessage(c).build();
         e.reply(msg).setEphemeral(true).useComponentsV2(true).queue();
     }
 

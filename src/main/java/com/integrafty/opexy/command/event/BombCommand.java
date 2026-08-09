@@ -59,8 +59,7 @@ public class BombCommand implements MultiSlashCommand {
                 String timerFormat = String.format("`=----------------%02d:%02d----------------=`", 0, difficulty.seconds);
                 String fullBody = timerFormat + "\n\n" + body;
 
-                event.reply(new MessageCreateBuilder()
-                                .setComponents(EmbedUtil.containerBranded("DEFUSAL", "⚠️ قنبلة الوقت!", fullBody,
+                event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("DEFUSAL", "⚠️ قنبلة الوقت!", fullBody,
                                                 EmbedUtil.BANNER_MAIN,
                                                 ActionRow.of(
                                                                 Button.danger("wire_red_" + sessionId, "السلك الأحمر")
@@ -74,8 +73,6 @@ public class BombCommand implements MultiSlashCommand {
                                                                                 .withEmoji(Emoji.fromUnicode("🟡")),
                                                                 Button.secondary("wire_purple_" + sessionId,
                                                                                 "السلك البنفسجي")
-                                                                                .withEmoji(Emoji.fromUnicode("🟣")))))
-                                .useComponentsV2(true)
-                                .build()).queue(hook -> bombManager.initTimer(sessionId, difficulty, event));
+                                                                                .withEmoji(Emoji.fromUnicode("🟣"))))).build()).queue(hook -> bombManager.initTimer(sessionId, difficulty, event));
         }
 }
