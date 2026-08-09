@@ -109,7 +109,7 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
         int reward = difficulty.equals("easy") ? 35 : difficulty.equals("medium") ? 55 : 70;
 
         String word = MINECRAFT_WORDS.get(random.nextInt(MINECRAFT_WORDS.size()));
-        String body = "أسرع شخص يكتب الكلمة التالية يربح **" + reward + " opex**!\n\nالكلمة هي:\n**" + word + "**";
+        String body = "أسرع شخص يكتب الكلمة التالية يربح **" + reward + " opex**!";
 
         // LOGGING
         String logDetails = String.format("### ⚡ تحدي السرعة: بدء التحدي\n▫️ **المنظم:** %s\n▫️ **الكلمة:** %s\n▫️ **الجائزة:** %d opex", 
