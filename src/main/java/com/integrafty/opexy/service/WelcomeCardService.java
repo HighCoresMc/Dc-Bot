@@ -10,6 +10,7 @@ import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.net.URL;
 
 @Service
@@ -20,7 +21,7 @@ public class WelcomeCardService {
         BufferedImage background = null;
         try {
             log.info("Loading background from classpath resources...");
-            java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcome.png");
+            java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcom.png");
             
             if (is != null) {
                 background = ImageIO.read(is);
@@ -79,52 +80,37 @@ public class WelcomeCardService {
         }
 
         // --- THE DESIGNER'S BLUEPRINT ---
-        int avatarSize = 642; 
-        int avatarX = 409; 
-        int avatarY = 198;
+        int avatarX = 761; 
+        int avatarY = 61;
+        int avatarW = 1152 - 761;
+        int avatarH = 455 - 61;
 
-        g.setClip(new Ellipse2D.Float(avatarX, avatarY, avatarSize, avatarSize));
-        g.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize, null);
-        g.setClip(null);
+        g.drawImage(avatar, avatarX, avatarY, avatarW, avatarH, null);
 
         // 2. Member Identity Engine
-        String name = member.getEffectiveName().toUpperCase(); 
+        String name = member.getEffectiveName();
         if (name.length() > 25) name = name.substring(0, 23) + "..";
 
-        int fontSize = 60; 
-        g.setFont(new Font("SansSerif", Font.BOLD, fontSize));
-        
-        java.util.Map<java.awt.font.TextAttribute, Object> attributes = new java.util.HashMap<>();
-        attributes.put(java.awt.font.TextAttribute.TRACKING, 0.1);
-        g.setFont(g.getFont().deriveFont(attributes));
+        int fontSize = 47; 
+        Font pixelFont = new Font("SansSerif", Font.BOLD, fontSize);
+        try {
+            pixelFont = Font.createFont(Font.TRUETYPE_FONT, new File("src/main/resources/minecraft_arabic.ttf")).deriveFont((float)fontSize);
+        } catch (Exception e) {
+            log.warn("Failed to load minecraft_arabic.ttf");
+        }
+        g.setFont(pixelFont);
 
         FontMetrics metrics = g.getFontMetrics();
         int nameWidth = metrics.stringWidth(name);
-        int nameBoxWidth = 2045 - 1204;
-        int nameX = 1204 + (nameBoxWidth - nameWidth) / 2; 
-        int nameY = 652 + ((725 - 652) / 2) + (metrics.getAscent() / 2) - 5;
+        int boxW = 1797 - 1348;
+        int boxH = 47;
+        int nameX = 1348 + (boxW - nameWidth) / 2; 
+        int nameY = 234 + (boxH - metrics.getHeight()) / 2 + metrics.getAscent();
 
-        // A. Drop Shadow
-        g.setColor(new Color(0, 0, 0, 180));
-        g.drawString(name, nameX + 3, nameY + 3);
-
-        // B. Master Golden Gradient
-        GradientPaint gp = new GradientPaint(
-            nameX, nameY - fontSize, new Color(197, 160, 89), 
-            nameX, nameY, new Color(142, 115, 65) 
-        );
-        g.setPaint(gp);
+        g.setColor(new Color(5, 18, 59));
         g.drawString(name, nameX, nameY);
 
-        // C. Specular Highlight
-        g.setColor(new Color(255, 255, 255, 60));
-        g.drawString(name, nameX, nameY - 1);
-
-        // D. Subtle Highlight
-        g.setColor(new Color(240, 230, 140, 100));
-        g.drawString(name, nameX, nameY - 1); 
-
-        g.dispose();
+        
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(combined, "png", baos);

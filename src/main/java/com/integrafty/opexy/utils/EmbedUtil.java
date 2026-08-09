@@ -1,5 +1,7 @@
 package com.integrafty.opexy.utils;
 
+import com.integrafty.opexy.utils.EmbedUtil;
+
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -33,19 +35,18 @@ public class EmbedUtil {
     public static final Color ACCENT_TEAL = Color.decode("#14b8a6");
     public static final Color PRIMARY = Color.decode("#35423E");
 
-    // User requested to migrate to Imgur to avoid Discord CDN expiry links.
-    // Replace the "PLACEHOLDER" parts below with real Imgur IDs.
-    public static final String BANNER_MAIN = "https://i.imgur.com/RDb9nSh.png";
-    public static final String BANNER_WELCOME = "https://i.imgur.com/QF8QFQm.png";
-    public static final String BANNER_STARTUP_HEADER = "https://i.imgur.com/RDb9nSh.png";
+    // Local attachment configuration
+    public static final String BANNER_MAIN = "attachment://main.png";
+    public static final String BANNER_WELCOME = "attachment://welcome.png";
+    public static final String BANNER_STARTUP_HEADER = "attachment://startup.png";
     public static final String BANNER_PARTNERS = "https://i.imgur.com/owRgdCD.png";
     public static final String BANNER_ORDER = "https://i.imgur.com/llP8itV.png";
     public static final String BANNER_GIVEAWAY = "https://i.imgur.com/iKKg1BG.png";
 
     // Support category banners
-    public static final String BANNER_SUPPORT = "https://i.imgur.com/MBU5wvl.png";
-    public static final String BANNER_COMPLAINT = "https://i.imgur.com/t7Prrsr.png";
-    public static final String BANNER_TICKETS_MENU = "https://i.imgur.com/wllO63d.png";
+    public static final String BANNER_SUPPORT = "attachment://support.png";
+    public static final String BANNER_COMPLAINT = "attachment://complaint.png";
+    public static final String BANNER_TICKETS_MENU = "attachment://tickets.png";
     public static final String BANNER_ORDER_TICKET = "https://i.imgur.com/llP8itV.png";
     public static final String BANNER_INVOICE = "https://i.imgur.com/OHF6qJB.png";
 
@@ -54,6 +55,103 @@ public class EmbedUtil {
     public static final String BANNER_DEVELOPER = "https://i.imgur.com/rX2oXzt.png";
     public static final String BANNER_MINECRAFT = "https://i.imgur.com/1TKfy9i.png";
     public static final String BANNER_EDITOR = "https://i.imgur.com/R4126YU.png";
+
+    // Specific category local banners
+    public static final String BANNER_HIRING = "attachment://hiring.png";
+    public static final String BANNER_TEAM = "attachment://team.png";
+    public static final String BANNER_WHITELIST = "attachment://whitelist.png";
+    public static final String BANNER_VOICE_CONTROL = "attachment://room_control.png";
+    public static final String BANNER_STREAM = "attachment://stream.png";
+    public static final String BANNER_YOUTUBE = "attachment://youtube.png";
+    public static final String BANNER_PIPE = "attachment://pipe.png";
+    public static final String BANNER_SPEED_START = "attachment://speed_7_sec.png";
+    public static final String BANNER_SUCCESS = "attachment://success.png";
+    public static final String BANNER_FAILURE = "attachment://failure.png";
+
+    public static net.dv8tion.jda.api.utils.FileUpload getAttachment(String filename) {
+        try (java.io.InputStream is = EmbedUtil.class.getResourceAsStream("/images/" + filename)) {
+            if (is != null) {
+                return net.dv8tion.jda.api.utils.FileUpload.fromData(is.readAllBytes(), filename);
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return null;
+    }
+
+    public static net.dv8tion.jda.api.utils.messages.MessageCreateBuilder createBrandedMessage(net.dv8tion.jda.api.components.actionrow.ActionRow... components) {
+        net.dv8tion.jda.api.utils.messages.MessageCreateBuilder builder = new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder();
+        builder.setComponents(components);
+        builder.useComponentsV2(true);
+        return builder;
+    }
+
+    public static net.dv8tion.jda.api.utils.messages.MessageCreateBuilder createBrandedMessage(Container container) {
+        net.dv8tion.jda.api.utils.messages.MessageCreateBuilder builder = new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder();
+        builder.setComponents(container);
+        builder.useComponentsV2(true);
+        
+        java.util.Set<String> attached = new java.util.HashSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("attachment://([^\"]+)").matcher(builder.build().toData().toString());
+        while (m.find()) {
+            String name = m.group(1);
+            if (attached.add(name)) {
+                net.dv8tion.jda.api.utils.FileUpload att = getAttachment(name);
+                if (att != null) builder.addFiles(att);
+            }
+        }
+        return builder;
+    }
+
+    public static net.dv8tion.jda.api.utils.messages.MessageEditBuilder createBrandedEditMessage(net.dv8tion.jda.api.components.actionrow.ActionRow... components) {
+        net.dv8tion.jda.api.utils.messages.MessageEditBuilder builder = new net.dv8tion.jda.api.utils.messages.MessageEditBuilder();
+        builder.setComponents(components);
+        builder.useComponentsV2(true);
+        return builder;
+    }
+
+    public static net.dv8tion.jda.api.utils.messages.MessageEditBuilder createBrandedEditMessage(Container container) {
+        net.dv8tion.jda.api.utils.messages.MessageEditBuilder builder = new net.dv8tion.jda.api.utils.messages.MessageEditBuilder();
+        builder.setComponents(container);
+        builder.useComponentsV2(true);
+        java.util.List<net.dv8tion.jda.api.utils.FileUpload> files = new java.util.ArrayList<>();
+        java.util.Set<String> attached = new java.util.HashSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("attachment://([^\"]+)").matcher(builder.build().toData().toString());
+        while (m.find()) {
+            String name = m.group(1);
+            if (attached.add(name)) {
+                net.dv8tion.jda.api.utils.FileUpload att = getAttachment(name);
+                if (att != null) files.add(att);
+            }
+        }
+        if (!files.isEmpty()) {
+            builder.setFiles(files);
+        }
+        return builder;
+    }
+
+    public static Container gameSuccess(String title, String description) {
+        return containerBranded("SUCCESS", title, description, BANNER_SUCCESS);
+    }
+
+    
+    public static net.dv8tion.jda.api.utils.messages.MessageCreateBuilder createBrandedMessage(java.util.Collection<? extends net.dv8tion.jda.api.components.actionrow.ActionRow> components) {
+        net.dv8tion.jda.api.utils.messages.MessageCreateBuilder builder = new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder();
+        builder.setComponents(components);
+        builder.useComponentsV2(true);
+        return builder;
+    }
+
+    public static net.dv8tion.jda.api.utils.messages.MessageEditBuilder createBrandedEditMessage(java.util.Collection<? extends net.dv8tion.jda.api.components.actionrow.ActionRow> components) {
+        net.dv8tion.jda.api.utils.messages.MessageEditBuilder builder = new net.dv8tion.jda.api.utils.messages.MessageEditBuilder();
+        builder.setComponents(components);
+        builder.useComponentsV2(true);
+        return builder;
+    }
+
+    public static Container gameFailure(String title, String description) {
+        return containerBranded("FAILURE", title, description, BANNER_FAILURE);
+    }
 
     public static String getCategoryBanner(String cat) {
         if (cat == null)
@@ -243,8 +341,16 @@ public class EmbedUtil {
                 .build();
     }
 
+    public static Container success(String description) {
+        return success("نـجـاح", description);
+    }
+
     public static Container success(String title, String description) {
         return containerBranded("نجاح", title, "✅ " + description, BANNER_MAIN);
+    }
+
+    public static Container error(String description) {
+        return error("خـطـأ", description);
     }
 
     public static Container error(String title, String description) {

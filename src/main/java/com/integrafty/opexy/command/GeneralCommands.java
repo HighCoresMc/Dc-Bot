@@ -36,6 +36,8 @@ public class GeneralCommands implements MultiSlashCommand {
     private final TranslationService translationService;
     private final com.integrafty.opexy.service.EconomyService economyService;
     private final com.integrafty.opexy.service.event.EventManager eventManager;
+    private final com.integrafty.opexy.service.event.AuctionManager auctionManager;
+
 
     @Override
     public List<SlashCommandData> getCommandDataList() {
@@ -79,9 +81,6 @@ public class GeneralCommands implements MultiSlashCommand {
                         .addChoice("الكل (All)", "all"))
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
 
-        list.add(Commands.slash("azkar", "عـــرض قـــائـــمـــة أوامـــر الأذكـــار (خاص بالإدارة)")
-                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
-
         return list;
     }
 
@@ -102,31 +101,7 @@ public class GeneralCommands implements MultiSlashCommand {
             case "take" -> handleTake(event);
             case "transfer" -> handleTransfer(event);
             case "kill" -> handleKill(event);
-            case "azkar" -> handleAzkar(event);
         }
-    }
-
-    private void handleAzkar(SlashCommandInteractionEvent event) {
-        boolean hasAccess = event.getMember() != null && event.getMember().getRoles().stream()
-                .anyMatch(role -> role.getId().equals("1487195816220430406"));
-
-        if (!hasAccess && event.getMember() != null && !event.getMember().hasPermission(Permission.ADMINISTRATOR)) {
-            replyEphemeral(event, EmbedUtil.error("ACCESS DENIED", "هذا الأمر مخصص للإدارة فقط."));
-            return;
-        }
-
-        String body = """
-                **قائمة أوامر الأذكار اليدوية:**
-                `!ص` : سبحان الله وبحمده، سبحان الله العظيم
-                `!س` : أستغفر الله العظيم وأتوب إليه
-                `!ح` : لا حول ولا قوة إلا بالله العلي العظيم
-                `!ت` : لا إله إلا الله وحده لا شريك له
-                `!ع` : الصلاة على النبي ﷺ
-                `!جمعه` : دعاء وأذكار يوم الجمعة (سورة الكهف)
-                `!الصباح` : إرسال لوحة أذكار الصباح
-                `!المساء` : إرسال لوحة أذكار المساء
-                """;
-        replyEphemeral(event, EmbedUtil.containerBranded(null, "أوامر الأذكار (Admin)", body, null));
     }
 
     private void handleKill(SlashCommandInteractionEvent event) {
@@ -139,6 +114,11 @@ public class GeneralCommands implements MultiSlashCommand {
         }
 
         String type = event.getOption("type") != null ? event.getOption("type").getAsString() : "all";
+
+        if (type.equals("auction") || type.equals("all")) {
+            auctionManager.stopAuction();
+        }
+
         
         if (type.equals("all")) {
             eventManager.endGroupEvent();
@@ -289,7 +269,8 @@ public class GeneralCommands implements MultiSlashCommand {
                 """, gatewayPing);
 
         long startTime = System.currentTimeMillis();
-        event.reply(new MessageCreateBuilder().setComponents(EmbedUtil.containerBranded("NETWORK", "Ping Check", body, EmbedUtil.BANNER_MAIN)).useComponentsV2(true).build())
+        event.reply(EmbedUtil.createBrandedMessage(
+                EmbedUtil.containerBranded("NETWORK", "Ping Check", body, EmbedUtil.BANNER_MAIN)).build())
              .useComponentsV2(true)
              .queue(msg -> {
                  long apiPing = System.currentTimeMillis() - startTime;
@@ -300,7 +281,8 @@ public class GeneralCommands implements MultiSlashCommand {
                          ▫️ **Gateway Latency:** `%dms`
                          ▫️ **API Latency:** `%dms`
                          """, gatewayPing, apiPing);
-                 msg.editOriginal(new MessageEditBuilder().setComponents(EmbedUtil.containerBranded("NETWORK", "Ping Check", updatedBody, EmbedUtil.BANNER_MAIN)).useComponentsV2(true).build()).useComponentsV2(true).queue();
+                 msg.editOriginal(EmbedUtil.createBrandedEditMessage(
+                         EmbedUtil.containerBranded("NETWORK", "Ping Check", updatedBody, EmbedUtil.BANNER_MAIN)).build()).useComponentsV2(true).queue();
              });
     }
 
@@ -393,7 +375,7 @@ public class GeneralCommands implements MultiSlashCommand {
                 """, lang.toUpperCase(), text, result);
 
         Container container = EmbedUtil.containerBranded("LANGUAGE", "Translation Engine", body, EmbedUtil.BANNER_MAIN);
-        event.getHook().sendMessage(new MessageCreateBuilder().setComponents(container).useComponentsV2(true).build()).useComponentsV2(true).queue();
+        event.getHook().sendMessage(EmbedUtil.createBrandedMessage(container).useComponentsV2(true).build()).useComponentsV2(true).queue();
     }
 
     private void handleGetEmojis(SlashCommandInteractionEvent event) {
@@ -433,17 +415,14 @@ public class GeneralCommands implements MultiSlashCommand {
     }
 
     private void reply(SlashCommandInteractionEvent e, Container c) {
-        var msg = new MessageCreateBuilder()
-                .setComponents(c)
+        var msg = EmbedUtil.createBrandedMessage(c)
                 .setAllowedMentions(java.util.Collections.emptyList())
-                .useComponentsV2(true)
                 .build();
         e.reply(msg).useComponentsV2(true).queue();
     }
 
     private void replyEphemeral(SlashCommandInteractionEvent e, Container c) {
-        var msg = new MessageCreateBuilder()
-                .setComponents(c)
+        var msg = EmbedUtil.createBrandedMessage(c)
                 .setAllowedMentions(java.util.Collections.emptyList())
                 .useComponentsV2(true)
                 .build();

@@ -38,6 +38,18 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class TicketListener extends ListenerAdapter {
+    private String getBannerForCategory(String category) {
+        if (category == null) return EmbedUtil.BANNER_MAIN;
+        return switch (category.toLowerCase()) {
+            case "support" -> EmbedUtil.BANNER_SUPPORT;
+            case "complaint" -> EmbedUtil.BANNER_COMPLAINT;
+            case "hire" -> EmbedUtil.BANNER_HIRING;
+            case "team" -> EmbedUtil.BANNER_TEAM;
+            case "whitelist", "modal_ticket_whitelist" -> EmbedUtil.BANNER_WHITELIST;
+            default -> EmbedUtil.BANNER_MAIN;
+        };
+    }
+
 
     private final JDA jda;
     private final TicketRepository ticketRepository;
@@ -372,13 +384,13 @@ public class TicketListener extends ListenerAdapter {
                                 sector,
                                 "Case #" + finalCategoryName.toUpperCase() + "-" + formattedNum,
                                 ticketBody.toString(),
-                                EmbedUtil.BANNER_SUPPORT);
+                                getBannerForCategory(finalCategoryId));
                     } else {
                         welcomeContainer = EmbedUtil.containerBranded(
                                 sector,
                                 "Case #" + finalCategoryName.toUpperCase() + "-" + formattedNum,
                                 ticketBody.toString(),
-                                EmbedUtil.BANNER_SUPPORT,
+                                getBannerForCategory(finalCategoryId),
                                 ActionRow.of(
                                         net.dv8tion.jda.api.components.selections.StringSelectMenu
                                                 .create("ticket_manage_menu")
@@ -651,7 +663,7 @@ public class TicketListener extends ListenerAdapter {
                 "تـأكـيـد الإغـلاق",
                 "هـل أنـت مـتـأكـد؟",
                 "### هـل أنـت مـتـأكـد مـن رغـبـتـك فـي إغـلاق هـذه الـتـذكـرة؟",
-                EmbedUtil.BANNER_SUPPORT,
+                getBannerForCategory(ticketRepository.findByChannelId(event.getChannel().getId()).map(TicketEntity::getCategory).orElse("support")),
                 ActionRow.of(
                         Button.secondary("ticket_close_final", "تـأكـيـد الإغـلاق"),
                         Button.secondary("ticket_close_cancel", "تـراجـع")));
@@ -704,7 +716,7 @@ public class TicketListener extends ListenerAdapter {
                             "لـوحـة الـتـحـكـم",
                             "### تـم إغـلاق الـتـذكـرة\nبـواسـطـة الـعـضـو **" + member.getEffectiveName()
                                     + "**.\n\nاخـتـر إجـراء مـن الأسـفـل.",
-                            EmbedUtil.BANNER_SUPPORT,
+                            getBannerForCategory(ticket.getCategory()),
                             ActionRow.of(
                                     Button.secondary("ticket_reopen", "إعـادة فـتـح"),
                                     Button.secondary("ticket_transcript", "تـــران ســـــكـــربـــت"),
@@ -739,6 +751,7 @@ public class TicketListener extends ListenerAdapter {
         });
     }
 
+    
     private String extractMessageBody(net.dv8tion.jda.api.entities.Message message, String defaultUserId) {
         if (message == null) return "مرحباً بك <@" + defaultUserId + "> 👋";
         
@@ -755,17 +768,55 @@ public class TicketListener extends ListenerAdapter {
                 }
             }
         }
-        
         if (!textContents.isEmpty()) {
-            return String.join("\n\n", textContents);
+            return String.join("\\n\\n", textContents);
         }
-        
         if (!message.getEmbeds().isEmpty() && message.getEmbeds().get(0).getDescription() != null) {
             return message.getEmbeds().get(0).getDescription();
         }
-        
         return "مرحباً بك <@" + defaultUserId + "> 👋";
     }
+
+    private String extractMessageSector(net.dv8tion.jda.api.entities.Message message) {
+        if (message == null) return "نـظام الـتـذاكـر";
+        for (net.dv8tion.jda.api.components.Component component : message.getComponents()) {
+            if (component instanceof Container container) {
+                for (ContainerChildComponent comp : container.getComponents()) {
+                    if (comp instanceof TextDisplay td) {
+                        String content = td.getContent();
+                        if (content != null && content.startsWith("### ►")) {
+                            return content.replace("### ►", "").trim();
+                        }
+                    }
+                }
+            }
+        }
+        if (!message.getEmbeds().isEmpty() && message.getEmbeds().get(0).getAuthor() != null) {
+            return message.getEmbeds().get(0).getAuthor().getName();
+        }
+        return "نـظام الـتـذاكـر";
+    }
+
+    private String extractMessageSubject(net.dv8tion.jda.api.entities.Message message) {
+        if (message == null) return "تـذكـرة دَعـم";
+        for (net.dv8tion.jda.api.components.Component component : message.getComponents()) {
+            if (component instanceof Container container) {
+                for (ContainerChildComponent comp : container.getComponents()) {
+                    if (comp instanceof TextDisplay td) {
+                        String content = td.getContent();
+                        if (content != null && content.startsWith("## ")) {
+                            return content.replace("## ", "").trim();
+                        }
+                    }
+                }
+            }
+        }
+        if (!message.getEmbeds().isEmpty() && message.getEmbeds().get(0).getTitle() != null) {
+            return message.getEmbeds().get(0).getTitle();
+        }
+        return "تـذكـرة دَعـم";
+    }
+
 
     private void handleClaim(ButtonInteractionEvent event) {
         if (!event.getMember().hasPermission(Permission.MANAGE_CHANNEL)) {
@@ -792,11 +843,13 @@ public class TicketListener extends ListenerAdapter {
                 existingBody = existingBody + "\n\n📌 **تـم اسـتـلام الـتـذكـرة بـواسـطـة:** " + event.getMember().getAsMention();
             }
 
+            String sector = extractMessageSector(event.getMessage());
+            String subject = extractMessageSubject(event.getMessage());
             Container claimedContainer = EmbedUtil.containerBranded(
-                    "نـظام الـتـذاكـر",
-                    "تـم الاسـتـلام",
+                    sector,
+                    subject,
                     existingBody,
-                    EmbedUtil.BANNER_SUPPORT,
+                    getBannerForCategory(ticket.getCategory()),
                     ActionRow.of(
                             net.dv8tion.jda.api.components.selections.StringSelectMenu.create("ticket_manage_menu")
                                     .setPlaceholder("إدارة الـتـذكـرة...")
@@ -1079,7 +1132,7 @@ public class TicketListener extends ListenerAdapter {
                 "تـحـذيـر",
                 "حـذف الـقـنـاة",
                 "### هـل أنـت مـتـأكـد مـن حـذف الـتـذكـرة نـهـائـيـاً؟\nهـذا الإجـراء لا يـمـكـن الـتـراجـع عـنـه.",
-                EmbedUtil.BANNER_SUPPORT,
+                getBannerForCategory(ticketRepository.findByChannelId(event.getChannel().getId()).map(TicketEntity::getCategory).orElse("support")),
                 ActionRow.of(
                         Button.secondary("ticket_delete_final", "تـأكـيـد الـحـذف"),
                         Button.secondary("ticket_delete_cancel", "تـراجـع")));

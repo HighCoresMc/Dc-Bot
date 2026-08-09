@@ -17,6 +17,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import javax.imageio.ImageIO;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +66,41 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
                 .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
     }
 
-    @Override
+    private byte[] generateSpeedImage(String text) throws Exception {
+        BufferedImage bg = ImageIO.read(new File("src/main/resources/type.png"));
+        Graphics2D g = bg.createGraphics();
+        
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        
+        Font pixelFont;
+        try {
+            pixelFont = Font.createFont(Font.TRUETYPE_FONT, new File("src/main/resources/minecraft_arabic.ttf")).deriveFont(60f);
+        } catch (Exception e) {
+            pixelFont = new Font("Arial", Font.BOLD, 60);
+        }
+        g.setFont(pixelFont);
+        g.setColor(new Color(5, 18, 59)); // Deep dark blue as requested in welcome card, or default black/white depending on image. Let's use #05123B
+        
+        java.awt.FontMetrics fm = g.getFontMetrics();
+        int textWidth = fm.stringWidth(text);
+        int textHeight = fm.getHeight();
+        
+        int boxX = 946;
+        int boxY = 513;
+        int boxW = 1532 - 946;
+        int boxH = 641 - 513;
+        
+        int x = boxX + (boxW - textWidth) / 2;
+        int y = boxY + ((boxH - textHeight) / 2) + fm.getAscent();
+        
+        g.drawString(text, x, y);
+        g.dispose();
+        
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(bg, "png", baos);
+        return baos.toByteArray();
+    }
+
     public void execute(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("speed")) return;
 
@@ -72,10 +116,33 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
         logManager.logEmbed(event.getGuild(), LogManager.LOG_GAMES, 
                 EmbedUtil.createOldLogEmbed("speed", logDetails, event.getMember(), null, null, EmbedUtil.INFO));
 
-        event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                .setComponents(com.integrafty.opexy.utils.EmbedUtil.containerBranded("SPEED", "تحدي الـ 7 ثواني!", body, com.integrafty.opexy.utils.EmbedUtil.BANNER_MAIN))
-                .useComponentsV2(true).build())
-                .useComponentsV2(true).queue(hook -> {
+        
+        byte[] imgBytes = null;
+        try {
+            imgBytes = generateSpeedImage(word);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        MessageCreateBuilder builder = new MessageCreateBuilder();
+        builder.setEmbeds(
+            new EmbedBuilder().setImage("attachment://speed_7_sec.png").build(),
+            new EmbedBuilder()
+                .setTitle("SPEED")
+                .setDescription("تحدي الـ 7 ثواني!\n\n" + body)
+                .setColor(EmbedUtil.INFO)
+                .setImage("attachment://type.png")
+                .build()
+        );
+        if (imgBytes != null) {
+            builder.setFiles(
+                FileUpload.fromData(new File("src/main/resources/images/speed_7_sec.png"), "speed_7_sec.png"),
+                FileUpload.fromData(imgBytes, "type.png")
+            );
+        }
+
+        event.reply(builder.build()).queue(hook -> {
+
             
             long startTime = System.currentTimeMillis();
             java.util.concurrent.atomic.AtomicBoolean finished = new java.util.concurrent.atomic.AtomicBoolean(false);

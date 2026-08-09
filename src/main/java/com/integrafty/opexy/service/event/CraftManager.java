@@ -13,6 +13,16 @@ import net.dv8tion.jda.api.JDA;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
+
 import java.util.*;
 
 @Service
@@ -84,7 +94,8 @@ public class CraftManager extends ListenerAdapter {
                         Map.entry("M", "<:emraled_ingot:1500879037868806237>"),
                         Map.entry("Y", "<:hay_bale:1500880117302562856>"),
                         Map.entry("WH", "<:wheat_minecraft_itemsremovebgpre:1500879408032911492>"),
-                        Map.entry("J", "<:feather:1500880285431238807>"));
+                        Map.entry("J", "<:feather:1500880285431238807>")
+        );
 
         @RequiredArgsConstructor
         private static class Recipe {
@@ -155,7 +166,7 @@ public class CraftManager extends ListenerAdapter {
                                         "خوذة حديد", Difficulty.MEDIUM),
                         new Recipe(new String[][] { { "E", "I", "E" }, { "I", "R", "I" }, { "E", "I", "E" } },
                                         List.of("بوصلة", "compass", "البوصلة", "بوصله", "كمباس", "كومباس", "مؤشر",
-                                                        "كومباس"),
+                                                        "كومپاس"),
                                         "بوصلة", Difficulty.MEDIUM),
                         new Recipe(new String[][] { { "E", "G", "E" }, { "G", "R", "G" }, { "E", "G", "E" } },
                                         List.of("ساعة", "clock", "ساعه", "الساعة", "كلوك", "ساعة وقت"), "ساعة",
@@ -229,7 +240,11 @@ public class CraftManager extends ListenerAdapter {
                                                         "محراث دايموند", "فأس زراعه دايموند"),
                                         "فأس زراعة دايموند", Difficulty.MEDIUM),
 
-                        new Recipe(new String[][] { { "D", "D", "E" }, { "D", "E", "D" }, { "D", "E", "D" } },
+                        new Recipe(new String[][] { { "D", "E", "D" }, { "D", "E", "D" }, { "E", "E", "E" } },
+                                        List.of("حذاء دايموند", "diamond boots", "بوت", "حذاء", "بوتس دايموند",
+                                                        "دايموند بوت", "دايموند بوتس", "شوز دايموند", "حذاء الماس"),
+                                        "حذاء دايموند", Difficulty.EASY),
+                        new Recipe(new String[][] { { "D", "D", "D" }, { "D", "E", "D" }, { "D", "E", "D" } },
                                         List.of("سروال دايموند", "diamond leggings", "بنطلون", "سروال", "لقينز دايموند",
                                                         "دايموند لقينز", "لغينز دايموند", "دايموند لغينز",
                                                         "بنطلون دايموند", "سروال الماس"),
@@ -237,6 +252,18 @@ public class CraftManager extends ListenerAdapter {
 
                         new Recipe(new String[][] { { "I", "E", "E" }, { "E", "I", "E" }, { "E", "E", "E" } },
                                         List.of("مقص", "shears", "المقص", "شيرز", "شير", "مقص خرفان"), "مقص",
+                                        Difficulty.EASY),
+                        new Recipe(new String[][] { { "I", "E", "I" }, { "E", "I", "E" }, { "E", "E", "E" } },
+                                        List.of("سطل", "bucket", "سطل حديد", "جردل", "بوكيت", "بكت", "سطل فاضي"),
+                                        "سطل حديد", Difficulty.MEDIUM),
+                        new Recipe(new String[][] { { "W", "E", "W" }, { "E", "W", "E" }, { "E", "E", "E" } },
+                                        List.of("وعاء", "bowl", "صحن", "بادية", "بول", "صحن خشب", "وعاء خشب"),
+                                        "وعاء خشبي", Difficulty.EASY),
+                        new Recipe(new String[][] { { "P", "P", "P" }, { "E", "E", "E" }, { "E", "E", "E" } },
+                                        List.of("ورق", "paper", "ورقة", "اوراق", "ورقه", "بيبر"), "ورق",
+                                        Difficulty.EASY),
+                        new Recipe(new String[][] { { "WH", "WH", "WH" }, { "E", "E", "E" }, { "E", "E", "E" } },
+                                        List.of("خبز", "bread", "الخبز", "خبزة", "خبزه", "بريد"), "خبز",
                                         Difficulty.EASY),
                         new Recipe(new String[][] { { "WH", "WH", "WH" }, { "WH", "WH", "WH" }, { "WH", "WH", "WH" } },
                                         List.of("بلوك قش", "hay bale", "بلوك القش", "قش", "هيبيل", "هي بيل", "بلوكة قش",
@@ -254,23 +281,11 @@ public class CraftManager extends ListenerAdapter {
                                         List.of("بوابة سياج", "fence gate", "بوابة", "بوابه", "فينس قيت", "فينس جيت",
                                                         "باب سياج", "بوابة سور"),
                                         "بوابة سياج", Difficulty.MEDIUM),
-                        new Recipe(new String[][] { { "I", "E", "I" }, { "E", "I", "E" }, { "E", "E", "E" } },
-                                        List.of("سطل", "bucket", "سطل حديد", "جردل", "بوكيت", "بكت", "سطل فاضي"),
-                                        "سطل حديد", Difficulty.MEDIUM),
-                        new Recipe(new String[][] { { "W", "E", "W" }, { "E", "W", "E" }, { "E", "E", "E" } },
-                                        List.of("وعاء", "bowl", "صحن", "بادية", "بول", "صحن خشب", "وعاء خشب"),
-                                        "وعاء خشبي", Difficulty.EASY),
-                        new Recipe(new String[][] { { "P", "P", "P" }, { "E", "E", "E" }, { "E", "E", "E" } },
-                                        List.of("ورق", "paper", "ورقة", "اوراق", "ورقه", "بيبر"), "ورق",
-                                        Difficulty.EASY),
-                        new Recipe(new String[][] { { "WH", "WH", "WH" }, { "E", "E", "E" }, { "E", "E", "E" } },
-                                        List.of("خبز", "bread", "الخبز", "خبزة", "خبزه", "بريد"), "خبز",
-                                        Difficulty.EASY),
                         new Recipe(new String[][] { { "B", "B", "B" }, { "B", "L", "B" }, { "B", "R", "B" } },
-                                        List.of("ديسبنسر", "dispenser", "موزع", "ديسبنسر", "رامي"), "ديسبنسر",
+                                        List.of("ديسبنسر", "dispenser", "موزع", "دسبنسر", "رامي"), "ديسبنسر",
                                         Difficulty.HARD),
                         new Recipe(new String[][] { { "X", "X", "X" }, { "Q", "Q", "Q" }, { "W", "W", "W" } },
-                                        List.of("حساس ضوء", "daylight sensor", "ديلايت سنسر", "سنسر", "حساس شمس",
+                                        List.of("حساس ضوء", "daylight sensor", "ديلايت سنسر", "سنسور", "حساس شمس",
                                                         "حساس ضوئي"),
                                         "حساس ضوء الشمس", Difficulty.HARD),
                         new Recipe(new String[][] { { "I", "I", "I" }, { "I", "I", "I" }, { "I", "I", "I" } },
@@ -303,17 +318,18 @@ public class CraftManager extends ListenerAdapter {
 
                 StringBuilder sb = new StringBuilder();
                 sb.append("      **1**            **2**            **3**\n");
-                sb.append("<divider>\n");
+                sb.append("▬▬▬▬▬▬▬▬▬▬▬▬\n");
                 for (int i = 0; i < 3; i++) {
                         sb.append("**").append(i + 1).append("**  ");
                         for (int j = 0; j < 3; j++) {
                                 String item = ITEMS.get(recipe.grid[i][j]);
 
+
                                 sb.append("   ").append(item).append("   ");
                         }
                         sb.append("\n\n");
                 }
-                sb.append("<divider>");
+                sb.append("▬▬▬▬▬▬▬▬▬▬▬▬");
 
                 sessionGrids.put(sessionId, sb.toString());
 
@@ -349,29 +365,39 @@ public class CraftManager extends ListenerAdapter {
                                                                 "**انتهى الوقت!** لم تنجح في تخمين الشيء المطلوب.\nالشيء الصحيح هو: **%s**\nحظاً أوفر في المرة القادمة.",
                                                                 activeRecipe.displayName);
                                                 event.getHook().editOriginal(
-                                                                new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
-                                                                                .setComponents(EmbedUtil.error(
-                                                                                                "CRAFTING TIMEOUT",
-                                                                                                "`=---------------- 00:00 ----------------=`\n\n"
-                                                                                                                + failMsg))
-                                                                                .useComponentsV2(true)
-                                                                                .build())
+                                                                
+new MessageEditBuilder().setEmbeds(
+                                        new net.dv8tion.jda.api.EmbedBuilder()
+                                                .setTitle("CRAFTING TIMEOUT")
+                                                .setDescription("`=---------------- 00:00 ----------------=`\n\n" + failMsg)
+                                                .setColor(EmbedUtil.DANGER)
+                                                .setImage("attachment://failure.png")
+                                                .build()
+                                ).setFiles(FileUpload.fromData(new File("src/main/resources/images/failure.png"), "failure.png")).build())
                                                                 .queue();
                                         }
                                         stopTimer(sessionId);
                                         return;
                                 }
 
-                                String body = getCraftBody(sessionMentions.get(sessionId), grid, difficulty.reward,
-                                                timeLeft[0]);
+                                
+                                String body = String.format("أمامك طاولة كرافتنق خاصة بك يا %s... خمن ما هو الشيء الذي يتم صنعه؟\n\nالجائزة: **%d opex**\n\nاكتب الإجابة مباشرة في الشات!", sessionMentions.get(sessionId), difficulty.reward);
+                                String timerFormat = String.format("`=----------------%02d:%02d----------------=`", 0, timeLeft[0]);
                                 net.dv8tion.jda.api.interactions.InteractionHook hook = event.getHook();
 
-                                hook.editOriginal(new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
-                                                .setComponents(
-                                                                EmbedUtil.containerBranded("CRAFTING", "ماذا نصنع؟",
-                                                                                body, EmbedUtil.BANNER_MAIN))
-                                                .useComponentsV2(true)
-                                                .build()).queue(null, e -> {
+                                MessageEditBuilder builder = new MessageEditBuilder();
+                                builder.setEmbeds(
+                                        new net.dv8tion.jda.api.EmbedBuilder()
+                                                .setTitle("CRAFTING")
+                                                .setDescription("ماذا نصنع؟\n" + timerFormat + "\n\n" + body)
+                                                .setColor(EmbedUtil.SUCCESS)
+                                                .setImage("attachment://crafting_grid.png")
+                                                .build()
+                                );
+                                
+                                
+                                hook.editOriginal(builder.build()).queue(null, e -> {
+
                                                         if (e.getMessage() != null && (e.getMessage()
                                                                         .contains("Unknown Interaction")
                                                                         || e.getMessage().contains("expired"))) {
@@ -401,7 +427,44 @@ public class CraftManager extends ListenerAdapter {
                                 "اكتب الإجابة مباشرة في الشات!";
         }
 
-        public void stopTimer(String sessionId) {
+        
+    private byte[] generateCraftImage(Recipe recipe) throws Exception {
+        BufferedImage background = ImageIO.read(new File("src/main/resources/images/craft.png"));
+        Graphics2D g = background.createGraphics();
+        
+        int[][] coords = {
+            {679, 239, 796, 357}, {878, 243, 1044, 365}, {1128, 243, 1253, 364},
+            {670, 481, 803, 588}, {891, 479, 1027, 584}, {1110, 480, 1260, 579},
+            {681, 694, 799, 791}, {886, 702, 1025, 806}, {1132, 713, 1235, 806}
+        };
+        
+        int idx = 0;
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) {
+                String itemKey = recipe.grid[r][c];
+                if (itemKey != null && !itemKey.equals("E")) {
+                    File itemFile = new File("src/main/resources/images/CraftItems/" + itemKey + ".png");
+                    if (itemFile.exists()) {
+                        BufferedImage itemImg = ImageIO.read(itemFile);
+                        int x1 = coords[idx][0];
+                        int y1 = coords[idx][1];
+                        int x2 = coords[idx][2];
+                        int y2 = coords[idx][3];
+                        int w = x2 - x1;
+                        int h = y2 - y1;
+                        g.drawImage(itemImg, x1, y1, w, h, null);
+                    }
+                }
+                idx++;
+            }
+        }
+        g.dispose();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(background, "png", baos);
+        return baos.toByteArray();
+    }
+
+    public void stopTimer(String sessionId) {
                 if (sessionTimers.containsKey(sessionId)) {
                         sessionTimers.get(sessionId).cancel(true);
                         sessionTimers.remove(sessionId);
@@ -449,12 +512,11 @@ public class CraftManager extends ListenerAdapter {
                                                 s -> s.setCraftWins(s.getCraftWins() + 1));
 
                                 String successMsg = String.format(
-                                                "**احسنت!** إجابة صحيحة يا %s!\nتم صنع: **%s** بنجاح.\nحصلت على **%d opex**",
+                                                "**كفوو!** إجابة صحيحة يا %s!\nتم صنع: **%s** بنجاح.\nحصلت على **%d opex**",
                                                 event.getAuthor().getAsMention(), itemName, reward);
 
                                 if (hook != null) {
-                                        hook.editOriginal(new net.dv8tion.jda.api.utils.messages.MessageEditBuilder()
-                                                        .setComponents(EmbedUtil.success("CRAFTING SUCCESS",
+                                        hook.editOriginal(EmbedUtil.createBrandedEditMessage(EmbedUtil.success("CRAFTING SUCCESS",
                                                                         successMsg))
                                                         .useComponentsV2(true)
                                                         .build())
@@ -463,8 +525,7 @@ public class CraftManager extends ListenerAdapter {
                                         event.getMessage().delete().queue(null, e -> {
                                         });
                                 } else {
-                                        event.getChannel().sendMessage(new MessageCreateBuilder()
-                                                        .setComponents(EmbedUtil.success("CRAFTING MASTER", successMsg))
+                                        event.getChannel().sendMessage(EmbedUtil.createBrandedMessage(EmbedUtil.success("CRAFTING MASTER", successMsg))
                                                         .useComponentsV2(true)
                                                         .build())
                                                         .useComponentsV2(true)
@@ -479,6 +540,7 @@ public class CraftManager extends ListenerAdapter {
                                                 EmbedUtil.createOldLogEmbed("craft_win", logWin, event.getMember(),
                                                                 null, null,
                                                                 EmbedUtil.SUCCESS));
+
 
                                 break;
                         }
