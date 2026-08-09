@@ -85,10 +85,7 @@ public class WelcomeCardService {
         int avatarW = 403;
         int avatarH = 401;
 
-        // Cover the yellow placeholder in the template with a solid background so it doesn't show through
-        // We use a dark color (matching the theme) instead of AlphaComposite.Clear so we don't create a transparent hole
-        g.setColor(new Color(7, 9, 14)); // Dark background matching the overall theme
-        g.fillRect(avatarX, avatarY, avatarW, avatarH);
+        // Removed the dark background fill so transparent avatars show the template's background pattern
 
         // Apply pixelated mask to avatar
         try {
