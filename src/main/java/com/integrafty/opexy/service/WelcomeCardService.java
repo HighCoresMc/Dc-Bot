@@ -92,6 +92,12 @@ public class WelcomeCardService {
             BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
+            
+            // Fill with dark blue first to cover any transparent parts of the avatar
+            // This prevents the template's yellow placeholder from showing through.
+            sg.setColor(new Color(5, 9, 24));
+            sg.fillRect(0, 0, avatarW, avatarH);
+            
             sg.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
             sg.dispose();
