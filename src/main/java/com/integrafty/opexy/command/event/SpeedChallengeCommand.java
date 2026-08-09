@@ -76,7 +76,7 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
         try {
             pixelFont = Font.createFont(Font.TRUETYPE_FONT, SpeedChallengeCommand.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont(60f);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Failed to load minecraft_arabic.ttf");
             pixelFont = new Font("Arial", Font.BOLD, 60);
         }
         g.setFont(pixelFont);

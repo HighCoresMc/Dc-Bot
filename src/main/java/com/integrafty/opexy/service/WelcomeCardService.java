@@ -85,7 +85,9 @@ public class WelcomeCardService {
         int avatarW = 403;
         int avatarH = 401;
 
-        // Removed the dark background fill so transparent avatars show the template's background pattern
+        // Cover the placeholder in the template with a dark blue background so it doesn't show through transparent avatars
+        g.setColor(new Color(5, 9, 24)); // Dark blue matching the template's background pattern
+        g.fillRect(avatarX - 2, avatarY - 2, avatarW + 4, avatarH + 4);
 
         // Apply pixelated mask to avatar
         try {
@@ -119,7 +121,7 @@ public class WelcomeCardService {
         try {
             pixelFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont((float)fontSize);
         } catch (Exception e) {
-            log.warn("Failed to load minecraft_arabic.ttf", e);
+            log.warn("Failed to load minecraft_arabic.ttf");
         }
         g.setFont(pixelFont);
 
