@@ -125,21 +125,19 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
             e.printStackTrace();
         }
 
-        MessageCreateBuilder builder = new MessageCreateBuilder();
-        builder.setEmbeds(
-            new EmbedBuilder().setImage("attachment://speed_7_sec.png").build(),
-            new EmbedBuilder()
-                .setTitle("SPEED")
-                .setDescription("تحدي الـ 7 ثواني!\n\n" + body)
-                .setColor(EmbedUtil.INFO)
-                .setImage("attachment://type.png")
-                .build()
-        );
+        java.util.List<net.dv8tion.jda.api.components.container.ContainerChildComponent> layout = new java.util.ArrayList<>();
+        layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl("attachment://speed_7_sec.png")));
+        layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of("### ► SPEED ・ تحدي الـ 7 ثواني!"));
+        layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
+        layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of(body));
+        layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
+        layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl("attachment://type.png")));
+        
+        net.dv8tion.jda.api.components.container.Container container = net.dv8tion.jda.api.components.container.Container.of(layout);
+        MessageCreateBuilder builder = EmbedUtil.createBrandedMessage(container);
+        
         if (imgBytes != null) {
-            builder.setFiles(
-                FileUpload.fromData(SpeedChallengeCommand.class.getResourceAsStream("/images/speed_7_sec.png"), "speed_7_sec.png"),
-                FileUpload.fromData(imgBytes, "type.png")
-            );
+            builder.addFiles(FileUpload.fromData(imgBytes, "type.png"));
         }
 
         event.reply(builder.build()).queue(hook -> {
