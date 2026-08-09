@@ -41,9 +41,21 @@ public class LogManager {
         if (guild == null || embeds == null || embeds.length == 0 || channelId == null) return;
         TextChannel ch = resolve(guild, channelId);
         if (ch != null) {
-            ch.sendMessageEmbeds(java.util.Arrays.asList(embeds))
-              .setAllowedMentions(java.util.Collections.emptyList())
-              .queue(null, err -> log.warn("[LogManager] Failed to send embed to {}: {}", channelId, err.getMessage()));
+            net.dv8tion.jda.api.requests.restaction.MessageCreateAction action = ch.sendMessageEmbeds(java.util.Arrays.asList(embeds))
+              .setAllowedMentions(java.util.Collections.emptyList());
+              
+            java.util.Set<String> attached = new java.util.HashSet<>();
+            for (MessageEmbed embed : embeds) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("attachment://([^\"]+)").matcher(embed.toData().toString());
+                while (m.find()) {
+                    String name = m.group(1);
+                    if (attached.add(name)) {
+                        net.dv8tion.jda.api.utils.FileUpload att = com.integrafty.opexy.utils.EmbedUtil.getAttachment(name);
+                        if (att != null) action.addFiles(att);
+                    }
+                }
+            }
+            action.queue(null, err -> log.warn("[LogManager] Failed to send embed to {}: {}", channelId, err.getMessage()));
         }
     }
 
