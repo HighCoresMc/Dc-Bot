@@ -86,6 +86,21 @@ public class WelcomeCardService {
         int avatarH = 401;
 
         // The template is now clean, so we just draw the masked avatar directly on it!
+        // Dynamically erase the yellow placeholder from the template behind the avatar by cloning the texture from the right.
+        for (int y = avatarY - 5; y < avatarY + avatarH + 5; y++) {
+            for (int x = avatarX - 5; x < avatarX + avatarW + 5; x++) {
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    int rgb = combined.getRGB(x, y);
+                    int r = (rgb >> 16) & 0xFF;
+                    int gCol = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    if (r > 150 && gCol > 150 && b < 100) {
+                        int texX = Math.min(x + 350, width - 1);
+                        combined.setRGB(x, y, combined.getRGB(texX, y));
+                    }
+                }
+            }
+        }
 
         // Apply pixelated mask to avatar
         try {
@@ -93,10 +108,7 @@ public class WelcomeCardService {
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
             
-            // Fill with dark blue first to cover any transparent parts of the avatar
-            // This prevents the template's yellow placeholder from showing through.
-            sg.setColor(new Color(5, 18, 59)); // Match the text box dark blue
-            sg.fillRect(0, 0, avatarW, avatarH);
+            // No background fill needed because we cloned the original texture on the template itself!
 
             sg.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
