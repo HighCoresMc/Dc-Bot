@@ -21,7 +21,7 @@ public class WelcomeCardService {
         BufferedImage background = null;
         try {
             log.info("Loading background from classpath resources...");
-            java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcom.png");
+            java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcome.png");
             
             if (is != null) {
                 background = ImageIO.read(is);
@@ -123,7 +123,7 @@ public class WelcomeCardService {
         try {
             pixelFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont((float)fontSize);
         } catch (Exception e) {
-            // Silently fall back to default font if custom font is missing or corrupted
+            log.warn("Failed to load minecraft_arabic.ttf");
         }
         g.setFont(pixelFont);
 
