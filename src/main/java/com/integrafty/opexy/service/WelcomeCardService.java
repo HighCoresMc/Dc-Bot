@@ -85,28 +85,13 @@ public class WelcomeCardService {
         int avatarW = 403;
         int avatarH = 401;
 
-        // Apply pixelated mask to avatar
-        try {
-            BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
-            BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D sg = scaledAvatar.createGraphics();
-            sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-            sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
-            sg.dispose();
-
-            for (int y = 0; y < avatarH; y++) {
-                for (int x = 0; x < avatarW; x++) {
-                    int maskPixel = mask.getRGB(x, y);
-                    if ((maskPixel & 0xFFFFFF) == 0) { // If mask is black (not yellow originally)
-                        scaledAvatar.setRGB(x, y, 0x00000000); // Make transparent
-                    }
-                }
-            }
-            g.drawImage(scaledAvatar, avatarX, avatarY, null);
-        } catch (Exception e) {
-            log.warn("Failed to apply avatar mask", e);
-            g.drawImage(avatar, avatarX, avatarY, avatarW, avatarH, null);
-        }
+        // Erase the yellow background in the avatar area to prevent it from showing through transparent avatars
+        g.setComposite(java.awt.AlphaComposite.Clear);
+        g.fillRect(avatarX, avatarY, avatarW, avatarH);
+        g.setComposite(java.awt.AlphaComposite.SrcOver);
+        
+        // Draw the raw avatar
+        g.drawImage(avatar, avatarX, avatarY, avatarW, avatarH, null);
 
         // 2. Member Identity Engine
         String name = member.getEffectiveName();
@@ -117,7 +102,7 @@ public class WelcomeCardService {
         try {
             pixelFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont((float)fontSize);
         } catch (Exception e) {
-            log.warn("Failed to load minecraft_arabic.ttf");
+            log.warn("Failed to load minecraft_arabic.ttf", e);
         }
         g.setFont(pixelFont);
 

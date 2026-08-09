@@ -408,7 +408,7 @@ public class TicketListener extends ListenerAdapter {
                     channel.sendMessage(ping).queue();
 
                     channel.sendMessage(
-                            new MessageCreateBuilder().setComponents(welcomeContainer).useComponentsV2(true).build())
+                            EmbedUtil.createBrandedMessage(welcomeContainer).build())
                             .useComponentsV2(true)
                             .queue();
 
@@ -443,14 +443,14 @@ public class TicketListener extends ListenerAdapter {
 
                     Container successCont = EmbedUtil.success("الإنـشـاء",
                             "تـم إنـشـاء تـذكـرتـك بـنـجـاح: " + channel.getAsMention());
-                    event.reply(new MessageCreateBuilder().setComponents(successCont).useComponentsV2(true).build())
+                    event.reply(EmbedUtil.createBrandedMessage(successCont).build())
                             .setEphemeral(true)
                             .useComponentsV2(true)
                             .queue();
                 }, error -> {
                     Container errorCont = EmbedUtil.error("ERROR",
                             "حدث خطأ أثناء إنشاء الغرفة، يرجى التأكد من صلاحيات البوت.");
-                    event.reply(new MessageCreateBuilder().setComponents(errorCont).useComponentsV2(true).build())
+                    event.reply(EmbedUtil.createBrandedMessage(errorCont).build())
                             .setEphemeral(true).useComponentsV2(true).queue();
                     log.error("Error creating ticket channel", error);
                 });
@@ -610,7 +610,7 @@ public class TicketListener extends ListenerAdapter {
                 String ping = "<@&1487152917763981574> " + membersMentionList;
                 channel.sendMessage(ping).queue();
 
-                channel.sendMessage(new MessageCreateBuilder().setComponents(welcomeContainer).useComponentsV2(true).build())
+                channel.sendMessage(EmbedUtil.createBrandedMessage(welcomeContainer).build())
                     .useComponentsV2(true)
                     .queue();
 
@@ -620,7 +620,7 @@ public class TicketListener extends ListenerAdapter {
                     "📡 You Have Been Added To The Team **" + finalTeamName + "** Ticket " + membersMentionList,
                     null
                 );
-                channel.sendMessage(new MessageCreateBuilder().setComponents(teamNotice).useComponentsV2(true).build())
+                channel.sendMessage(EmbedUtil.createBrandedMessage(teamNotice).build())
                     .useComponentsV2(true)
                     .queue();
 
@@ -633,7 +633,7 @@ public class TicketListener extends ListenerAdapter {
                         "📡 Please Sent Your Logo Here Until Staff Team Review Your Order",
                         null
                     );
-                    channel.sendMessage(new MessageCreateBuilder().setComponents(logoNotice).useComponentsV2(true).build())
+                    channel.sendMessage(EmbedUtil.createBrandedMessage(logoNotice).build())
                         .useComponentsV2(true)
                         .queue();
                 }
@@ -646,13 +646,13 @@ public class TicketListener extends ListenerAdapter {
                         EmbedUtil.createOldLogEmbed("ticket-create", logDetails, creator, null, null, EmbedUtil.SUCCESS));
 
                 Container successCont = EmbedUtil.success("الإنـشـاء", "تـم إنـشـاء تـذكـرة الـتـيـم بـنـجـاح: " + channel.getAsMention());
-                event.getHook().sendMessage(new MessageCreateBuilder().setComponents(successCont).useComponentsV2(true).build())
+                event.getHook().sendMessage(EmbedUtil.createBrandedMessage(successCont).build())
                     .setEphemeral(true)
                     .useComponentsV2(true)
                     .queue();
             }, error -> {
                 Container errorCont = EmbedUtil.error("ERROR", "حدث خطأ أثناء إنشاء الغرفة، يرجى التأكد من صلاحيات البوت.");
-                event.getHook().sendMessage(new MessageCreateBuilder().setComponents(errorCont).useComponentsV2(true).build())
+                event.getHook().sendMessage(EmbedUtil.createBrandedMessage(errorCont).build())
                     .setEphemeral(true).useComponentsV2(true).queue();
                 log.error("Error creating team ticket channel", error);
             });
@@ -667,7 +667,7 @@ public class TicketListener extends ListenerAdapter {
                 ActionRow.of(
                         Button.secondary("ticket_close_final", "تـأكـيـد الإغـلاق"),
                         Button.secondary("ticket_close_cancel", "تـراجـع")));
-        event.reply(new MessageCreateBuilder().setComponents(confirm).useComponentsV2(true).build())
+        event.reply(EmbedUtil.createBrandedMessage(confirm).build())
                 .setEphemeral(true).queue();
     }
 
@@ -722,7 +722,7 @@ public class TicketListener extends ListenerAdapter {
                                     Button.secondary("ticket_transcript", "تـــران ســـــكـــربـــت"),
                                     Button.secondary("ticket_delete_init", "حـذف الـتـذكـرة")));
 
-                    channel.sendMessage(new MessageCreateBuilder().setComponents(panel).useComponentsV2(true).build())
+                    channel.sendMessage(EmbedUtil.createBrandedMessage(panel).build())
                             .useComponentsV2(true).queue(
                                     v -> log.info("Archive panel sent successfully"),
                                     e -> log.error("Failed to send archive panel", e));
@@ -889,7 +889,7 @@ public class TicketListener extends ListenerAdapter {
                     EmbedUtil.createOldLogEmbed("ticket-claim", logDetails, event.getMember(), null, null,
                             EmbedUtil.WARNING));
 
-            channel.sendMessage(new MessageCreateBuilder().setComponents(notice).useComponentsV2(true).build())
+            channel.sendMessage(EmbedUtil.createBrandedMessage(notice).build())
                     .useComponentsV2(true).queue();
         }
     }
@@ -944,7 +944,7 @@ public class TicketListener extends ListenerAdapter {
                     "Unclaimed",
                     "⤵️ Ticket Unclaimed By: " + event.getMember().getAsMention(),
                     null);
-            channel.sendMessage(new MessageCreateBuilder().setComponents(notice).useComponentsV2(true).build())
+            channel.sendMessage(EmbedUtil.createBrandedMessage(notice).build())
                     .useComponentsV2(true).queue();
 
             // LOGGING
@@ -1119,7 +1119,7 @@ public class TicketListener extends ListenerAdapter {
                         null);
 
                 logCh.sendMessage(
-                        new MessageCreateBuilder().setComponents(transcriptPanel).useComponentsV2(true).build())
+                        EmbedUtil.createBrandedMessage(transcriptPanel).build())
                         .useComponentsV2(true).queue();
             }
         }, () -> {
@@ -1136,7 +1136,7 @@ public class TicketListener extends ListenerAdapter {
                 ActionRow.of(
                         Button.secondary("ticket_delete_final", "تـأكـيـد الـحـذف"),
                         Button.secondary("ticket_delete_cancel", "تـراجـع")));
-        event.reply(new MessageCreateBuilder().setComponents(confirm).useComponentsV2(true).build())
+        event.reply(EmbedUtil.createBrandedMessage(confirm).build())
                 .setEphemeral(true).useComponentsV2(true).queue();
     }
 }

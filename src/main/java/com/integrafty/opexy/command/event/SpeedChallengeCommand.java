@@ -76,10 +76,11 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
         try {
             pixelFont = Font.createFont(Font.TRUETYPE_FONT, SpeedChallengeCommand.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont(60f);
         } catch (Exception e) {
+            e.printStackTrace();
             pixelFont = new Font("Arial", Font.BOLD, 60);
         }
         g.setFont(pixelFont);
-        g.setColor(new Color(5, 18, 59)); // Deep dark blue as requested in welcome card, or default black/white depending on image. Let's use #05123B
+        g.setColor(Color.WHITE);
         
         java.awt.FontMetrics fm = g.getFontMetrics();
         int textWidth = fm.stringWidth(text);
