@@ -44,16 +44,32 @@ public class CraftCommand implements MultiSlashCommand {
         long userId = event.getUser().getIdLong();
         
         String sessionId = event.getId();
-        String grid = craftManager.startCraft(sessionId, userId, difficulty, event.getGuild(), event.getMember());
+        byte[] imgData;
+        try {
+            imgData = craftManager.startCraft(sessionId, userId, difficulty, event.getGuild(), event.getMember());
+        } catch (Exception e) {
+            event.reply("❌ حدث خطأ أثناء تجهيز الصورة.").setEphemeral(true).queue();
+            return;
+        }
 
         String timerFormat = String.format("`=----------------%02d:%02d----------------=`", 0, difficulty.seconds);
         String description = timerFormat + "\n\n" +
                 String.format("أمامك طاولة كرافتنق خاصة بك يا %s... خمن ما هو الشيء الذي يتم صنعه؟\n\n", event.getUser().getAsMention()) +
-                grid + "\n" +
                 "💰 الجائزة: **" + difficulty.reward + " opex**\n" +
                 "📊 الصعوبة: **" + difficulty.displayName + "**\n\n" +
                 "💡 اكتب الإجابة مباشرة في الشات!";
 
-        event.reply(EmbedUtil.createBrandedMessage(EmbedUtil.containerBranded("CRAFTING", "🛠️ ماذا نصنع؟", description, EmbedUtil.BANNER_MAIN)).build()).queue(hook -> craftManager.initTimer(sessionId, difficulty, event));
+        net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded("CRAFTING", "🛠️ ماذا نصنع؟", description, EmbedUtil.BANNER_MAIN);
+        // Add the image to the message directly
+        net.dv8tion.jda.api.utils.messages.MessageCreateBuilder builder = EmbedUtil.createBrandedMessage(container);
+        builder.setFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(imgData, "crafting_grid.png"));
+        // Modify the embed to use the attached image instead of the banner!
+        if (!builder.getEmbeds().isEmpty()) {
+            net.dv8tion.jda.api.EmbedBuilder embedBuilder = new net.dv8tion.jda.api.EmbedBuilder(builder.getEmbeds().get(0));
+            embedBuilder.setImage("attachment://crafting_grid.png");
+            builder.setEmbeds(embedBuilder.build());
+        }
+
+        event.reply(builder.build()).queue(hook -> craftManager.initTimer(sessionId, difficulty, event));
     }
 }

@@ -40,7 +40,7 @@ public class CraftManager extends ListenerAdapter {
         private final Map<String, Difficulty> sessionDifficulty = new HashMap<>();
         private final Map<String, String> sessionMentions = new HashMap<>();
         private final Map<String, Long> sessionGuilds = new HashMap<>();
-        private final Map<String, String> sessionGrids = new HashMap<>();
+        private final Map<String, byte[]> sessionGrids = new HashMap<>();
         private final Map<String, Long> sessionUserIds = new HashMap<>();
         private final Map<String, net.dv8tion.jda.api.interactions.InteractionHook> sessionHooks = new HashMap<>();
         private final Map<String, java.util.concurrent.ScheduledFuture<?>> sessionTimers = new HashMap<>();
@@ -305,7 +305,7 @@ public class CraftManager extends ListenerAdapter {
                                                         "بلوكة ايمرلد", "بلوكه زمرد"),
                                         "بلوك زمرد", Difficulty.HARD));
 
-        public String startCraft(String sessionId, long userId, Difficulty difficulty, Guild guild, Member organizer) {
+        public byte[] startCraft(String sessionId, long userId, Difficulty difficulty, Guild guild, Member organizer) throws Exception {
                 List<Recipe> possible = RECIPES.stream().filter(r -> r.difficulty == difficulty).toList();
                 Recipe recipe = possible.get(new Random().nextInt(possible.size()));
 
@@ -316,22 +316,8 @@ public class CraftManager extends ListenerAdapter {
                 sessionGuilds.put(sessionId, guild.getIdLong());
                 sessionUserIds.put(sessionId, userId);
 
-                StringBuilder sb = new StringBuilder();
-                sb.append("      **1**            **2**            **3**\n");
-                sb.append("▬▬▬▬▬▬▬▬▬▬▬▬\n");
-                for (int i = 0; i < 3; i++) {
-                        sb.append("**").append(i + 1).append("**  ");
-                        for (int j = 0; j < 3; j++) {
-                                String item = ITEMS.get(recipe.grid[i][j]);
-
-
-                                sb.append("   ").append(item).append("   ");
-                        }
-                        sb.append("\n\n");
-                }
-                sb.append("▬▬▬▬▬▬▬▬▬▬▬▬");
-
-                sessionGrids.put(sessionId, sb.toString());
+                byte[] imgData = generateCraftImage(recipe);
+                sessionGrids.put(sessionId, imgData);
 
                 String logDetails = String.format(
                                 "### فعالية الصناعة: بدء (فردية)\n▫️ **اللاعب:** %s\n▫️ **الصعوبة:** %s\n▫️ **الجائزة:** %d opex\n▫️ **ID الجلسة:** `%s`",
@@ -340,7 +326,7 @@ public class CraftManager extends ListenerAdapter {
                                 EmbedUtil.createOldLogEmbed("craft", logDetails, organizer, null, null,
                                                 EmbedUtil.INFO));
 
-                return sb.toString();
+                return imgData;
         }
 
         public void initTimer(String sessionId, Difficulty difficulty,
@@ -348,7 +334,7 @@ public class CraftManager extends ListenerAdapter {
                 final int[] timeLeft = { difficulty.seconds };
                 sessionHooks.put(sessionId, event.getHook());
                 long userId = sessionUserIds.getOrDefault(sessionId, 0L);
-                String grid = sessionGrids.get(sessionId);
+                byte[] gridData = sessionGrids.get(sessionId);
 
                 log.info("[CraftTimer] Initializing timer for session: {} (User: {})", sessionId, userId);
                 java.util.concurrent.ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(() -> {
@@ -394,6 +380,10 @@ new MessageEditBuilder().setEmbeds(
                                                 .setImage("attachment://crafting_grid.png")
                                                 .build()
                                 );
+                                byte[] imgData = sessionGrids.get(sessionId);
+                                if (imgData != null) {
+                                    builder.setFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(imgData, "crafting_grid.png"));
+                                }
                                 
                                 
                                 hook.editOriginal(builder.build()).queue(null, e -> {
