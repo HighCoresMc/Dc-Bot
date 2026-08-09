@@ -21,7 +21,7 @@ public class WelcomeCardService {
         BufferedImage background = null;
         try {
             log.info("Loading background from classpath resources...");
-            java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcome.png");
+            java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcom.png");
             
             if (is != null) {
                 background = ImageIO.read(is);
@@ -93,8 +93,10 @@ public class WelcomeCardService {
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
             
-            // We no longer need to fill with dark blue because we cleaned the template image itself.
-            // Just draw the avatar.
+            // Fill with dark blue first to cover any transparent parts of the avatar
+            // This prevents the template's yellow placeholder from showing through.
+            sg.setColor(new Color(5, 18, 59)); // Match the text box dark blue
+            sg.fillRect(0, 0, avatarW, avatarH);
 
             sg.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
@@ -103,9 +105,18 @@ public class WelcomeCardService {
             for (int y = 0; y < avatarH; y++) {
                 for (int x = 0; x < avatarW; x++) {
                     int maskPixel = mask.getRGB(x, y);
-                    if ((maskPixel & 0xFFFFFF) == 0) { // If mask is black
-                        scaledAvatar.setRGB(x, y, 0x00000000); // Make transparent
-                    }
+                    int maskR = (maskPixel >> 16) & 0xFF;
+                    int maskG = (maskPixel >> 8) & 0xFF;
+                    int maskB = maskPixel & 0xFF;
+                    int brightness = (maskR + maskG + maskB) / 3;
+
+                    int avatarPixel = scaledAvatar.getRGB(x, y);
+                    int avatarR = (avatarPixel >> 16) & 0xFF;
+                    int avatarG = (avatarPixel >> 8) & 0xFF;
+                    int avatarB = avatarPixel & 0xFF;
+                    
+                    // Apply the mask brightness as the alpha channel
+                    scaledAvatar.setRGB(x, y, (brightness << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
                 }
             }
             g.drawImage(scaledAvatar, avatarX, avatarY, null);
