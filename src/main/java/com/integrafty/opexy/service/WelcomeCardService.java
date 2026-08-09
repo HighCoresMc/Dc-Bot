@@ -85,9 +85,7 @@ public class WelcomeCardService {
         int avatarW = 403;
         int avatarH = 401;
 
-        // Cover the placeholder in the template with a dark blue background so it doesn't show through transparent avatars
-        g.setColor(new Color(5, 9, 24)); // Dark blue matching the template's background pattern
-        g.fillRect(avatarX - 2, avatarY - 2, avatarW + 4, avatarH + 4);
+        // The template is now clean, so we just draw the masked avatar directly on it!
 
         // Apply pixelated mask to avatar
         try {
