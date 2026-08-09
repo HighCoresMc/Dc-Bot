@@ -125,7 +125,7 @@ public class WelcomeCardService {
         try {
             pixelFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont((float)fontSize);
         } catch (Exception e) {
-            log.warn("Failed to load minecraft_arabic.ttf");
+            // Silently fall back to default font if custom font is missing or corrupted
         }
         g.setFont(pixelFont);
 
