@@ -40,6 +40,11 @@ public class CommandManager extends ListenerAdapter {
         
         jda.addEventListener(discordEventListener);
         jda.addEventListener(this); // Register self to listen for ReadyEvent
+        
+        if (jda.getStatus() == JDA.Status.CONNECTED) {
+            log.info("JDA is already connected! Registering commands manually to avoid missing the ReadyEvent.");
+            registerCommands();
+        }
     }
 
     @Override
