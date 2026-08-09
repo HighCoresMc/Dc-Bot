@@ -350,17 +350,8 @@ public class CraftManager extends ListenerAdapter {
                                                 String failMsg = String.format(
                                                                 "**انتهى الوقت!** لم تنجح في تخمين الشيء المطلوب.\nالشيء الصحيح هو: **%s**\nحظاً أوفر في المرة القادمة.",
                                                                 activeRecipe.displayName);
-                                                event.getHook().editOriginal(
-                                                                
-new MessageEditBuilder().setEmbeds(
-                                        new net.dv8tion.jda.api.EmbedBuilder()
-                                                .setTitle("CRAFTING TIMEOUT")
-                                                .setDescription("`=---------------- 00:00 ----------------=`\n\n" + failMsg)
-                                                .setColor(EmbedUtil.DANGER)
-                                                .setImage("attachment://failure.png")
-                                                .build()
-                                ).setFiles(FileUpload.fromData(CraftManager.class.getResourceAsStream("/images/failure.png"), "failure.png")).build())
-                                                                .queue();
+                                                net.dv8tion.jda.api.components.container.Container container = EmbedUtil.gameFailure("CRAFTING TIMEOUT", "`=---------------- 00:00 ----------------=`\n\n" + failMsg);
+                                                event.getHook().editOriginal(EmbedUtil.createBrandedEditMessage(container).build()).queue();
                                         }
                                         stopTimer(sessionId);
                                         return;
@@ -371,19 +362,16 @@ new MessageEditBuilder().setEmbeds(
                                 String timerFormat = String.format("`=----------------%02d:%02d----------------=`", 0, timeLeft[0]);
                                 net.dv8tion.jda.api.interactions.InteractionHook hook = event.getHook();
 
-                                MessageEditBuilder builder = new MessageEditBuilder();
-                                builder.setEmbeds(
-                                        new net.dv8tion.jda.api.EmbedBuilder()
-                                                .setTitle("CRAFTING")
-                                                .setDescription("ماذا نصنع؟\n" + timerFormat + "\n\n" + body)
-                                                .setColor(EmbedUtil.SUCCESS)
-                                                .setImage("attachment://crafting_grid.png")
-                                                .build()
-                                );
-                                byte[] imgData = sessionGrids.get(sessionId);
-                                if (imgData != null) {
-                                    builder.setFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(imgData, "crafting_grid.png"));
-                                }
+                                java.util.List<net.dv8tion.jda.api.components.container.ContainerChildComponent> layout = new java.util.ArrayList<>();
+                                layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl(EmbedUtil.BANNER_MAIN)));
+                                layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of("### ► CRAFTING ・ 🛠️ ماذا نصنع؟"));
+                                layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
+                                layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of(timerFormat + "\n\n" + body));
+                                layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
+                                layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl("attachment://crafting_grid.png")));
+                                
+                                net.dv8tion.jda.api.components.container.Container container = net.dv8tion.jda.api.components.container.Container.of(layout);
+                                MessageEditBuilder builder = new MessageEditBuilder().setComponents(container).useComponentsV2(true);
                                 
                                 
                                 hook.editOriginal(builder.build()).queue(null, e -> {

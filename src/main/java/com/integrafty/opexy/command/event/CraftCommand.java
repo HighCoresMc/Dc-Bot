@@ -59,16 +59,17 @@ public class CraftCommand implements MultiSlashCommand {
                 "📊 الصعوبة: **" + difficulty.displayName + "**\n\n" +
                 "💡 اكتب الإجابة مباشرة في الشات!";
 
-        net.dv8tion.jda.api.components.container.Container container = EmbedUtil.containerBranded("CRAFTING", "🛠️ ماذا نصنع؟", description, EmbedUtil.BANNER_MAIN);
-        // Add the image to the message directly
+        java.util.List<net.dv8tion.jda.api.components.container.ContainerChildComponent> layout = new java.util.ArrayList<>();
+        layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl(EmbedUtil.BANNER_MAIN)));
+        layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of("### ► CRAFTING ・ 🛠️ ماذا نصنع؟"));
+        layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
+        layout.add(net.dv8tion.jda.api.components.textdisplay.TextDisplay.of(description));
+        layout.add(net.dv8tion.jda.api.components.separator.Separator.createDivider(net.dv8tion.jda.api.components.separator.Separator.Spacing.SMALL));
+        layout.add(net.dv8tion.jda.api.components.mediagallery.MediaGallery.of(net.dv8tion.jda.api.components.mediagallery.MediaGalleryItem.fromUrl("attachment://crafting_grid.png")));
+        
+        net.dv8tion.jda.api.components.container.Container container = net.dv8tion.jda.api.components.container.Container.of(layout);
         net.dv8tion.jda.api.utils.messages.MessageCreateBuilder builder = EmbedUtil.createBrandedMessage(container);
         builder.addFiles(net.dv8tion.jda.api.utils.FileUpload.fromData(imgData, "crafting_grid.png"));
-        // Modify the embed to use the attached image instead of the banner!
-        if (!builder.getEmbeds().isEmpty()) {
-            net.dv8tion.jda.api.EmbedBuilder embedBuilder = new net.dv8tion.jda.api.EmbedBuilder(builder.getEmbeds().get(0));
-            embedBuilder.setImage("attachment://crafting_grid.png");
-            builder.setEmbeds(embedBuilder.build());
-        }
 
         event.reply(builder.build()).queue(hook -> craftManager.initTimer(sessionId, difficulty, event));
     }
