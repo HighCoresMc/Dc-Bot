@@ -67,14 +67,14 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
     }
 
     private byte[] generateSpeedImage(String text) throws Exception {
-        BufferedImage bg = ImageIO.read(new File("src/main/resources/type.png"));
+        BufferedImage bg = ImageIO.read(SpeedChallengeCommand.class.getResourceAsStream("/type.png"));
         Graphics2D g = bg.createGraphics();
         
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         
         Font pixelFont;
         try {
-            pixelFont = Font.createFont(Font.TRUETYPE_FONT, new File("src/main/resources/minecraft_arabic.ttf")).deriveFont(60f);
+            pixelFont = Font.createFont(Font.TRUETYPE_FONT, SpeedChallengeCommand.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont(60f);
         } catch (Exception e) {
             pixelFont = new Font("Arial", Font.BOLD, 60);
         }
@@ -136,7 +136,7 @@ public class SpeedChallengeCommand implements MultiSlashCommand {
         );
         if (imgBytes != null) {
             builder.setFiles(
-                FileUpload.fromData(new File("src/main/resources/images/speed_7_sec.png"), "speed_7_sec.png"),
+                FileUpload.fromData(SpeedChallengeCommand.class.getResourceAsStream("/images/speed_7_sec.png"), "speed_7_sec.png"),
                 FileUpload.fromData(imgBytes, "type.png")
             );
         }

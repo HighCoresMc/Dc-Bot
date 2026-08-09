@@ -373,7 +373,7 @@ new MessageEditBuilder().setEmbeds(
                                                 .setColor(EmbedUtil.DANGER)
                                                 .setImage("attachment://failure.png")
                                                 .build()
-                                ).setFiles(FileUpload.fromData(new File("src/main/resources/images/failure.png"), "failure.png")).build())
+                                ).setFiles(FileUpload.fromData(CraftManager.class.getResourceAsStream("/images/failure.png"), "failure.png")).build())
                                                                 .queue();
                                         }
                                         stopTimer(sessionId);
@@ -429,7 +429,7 @@ new MessageEditBuilder().setEmbeds(
 
         
     private byte[] generateCraftImage(Recipe recipe) throws Exception {
-        BufferedImage background = ImageIO.read(new File("src/main/resources/images/craft.png"));
+        BufferedImage background = ImageIO.read(CraftManager.class.getResourceAsStream("/images/craft.png"));
         Graphics2D g = background.createGraphics();
         
         int[][] coords = {
@@ -443,9 +443,9 @@ new MessageEditBuilder().setEmbeds(
             for (int c = 0; c < 3; c++) {
                 String itemKey = recipe.grid[r][c];
                 if (itemKey != null && !itemKey.equals("E")) {
-                    File itemFile = new File("src/main/resources/images/CraftItems/" + itemKey + ".png");
-                    if (itemFile.exists()) {
-                        BufferedImage itemImg = ImageIO.read(itemFile);
+                    java.io.InputStream itemStream = CraftManager.class.getResourceAsStream("/images/CraftItems/" + itemKey + ".png");
+                    if (itemStream != null) {
+                        BufferedImage itemImg = ImageIO.read(itemStream);
                         int x1 = coords[idx][0];
                         int y1 = coords[idx][1];
                         int x2 = coords[idx][2];
