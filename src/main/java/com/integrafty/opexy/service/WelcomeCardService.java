@@ -94,7 +94,7 @@ public class WelcomeCardService {
                     int r = (rgb >> 16) & 0xFF;
                     int gCol = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
-                    if (r > 150 && gCol > 150 && b < 100) {
+                    if (r > b && gCol > b) {
                         int texX = Math.min(x + 350, width - 1);
                         combined.setRGB(x, y, combined.getRGB(texX, y));
                     }
