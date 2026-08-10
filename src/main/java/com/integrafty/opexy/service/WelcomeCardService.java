@@ -86,7 +86,7 @@ public class WelcomeCardService {
         int avatarH = 405;
 
         // The template is now clean, so we just draw the masked avatar directly on it!
-        // Dynamically erase the yellow placeholder from the template behind the avatar using a solid dark blue color.
+        // Dynamically erase the yellow placeholder and its grey shadows using a solid dark blue color.
         int bgColor = new Color(5, 18, 59).getRGB();
         for (int y = avatarY - 25; y < avatarY + avatarH + 25; y++) {
             for (int x = avatarX - 25; x < avatarX + avatarW + 25; x++) {
@@ -95,8 +95,10 @@ public class WelcomeCardService {
                     int r = (rgb >> 16) & 0xFF;
                     int gCol = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
-                    // Target the yellow placeholder more aggressively to catch blended edges
-                    if (r > 35 || gCol > 35) {
+                    // The valid background is deep blue (e.g. 5, 18, 59) where Blue is much higher than Red and Green.
+                    // Grey shadows have R ≈ G ≈ B. Yellows have R,G > B.
+                    // This condition erases anything that isn't distinctly deep blue.
+                    if ((b - r) < 25 || (b - gCol) < 15 || r > 25 || gCol > 35) {
                         combined.setRGB(x, y, bgColor);
                     }
                 }
