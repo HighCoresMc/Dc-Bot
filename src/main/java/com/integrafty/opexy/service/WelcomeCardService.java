@@ -82,10 +82,12 @@ public class WelcomeCardService {
         }
 
         // --- THE DESIGNER'S BLUEPRINT ---
-        int avatarX = 755; 
-        int avatarY = 59;
-        int avatarW = 403;
-        int avatarH = 401;
+        // Increase size slightly to perfectly swallow the yellow placeholder! 
+        // The HARD mask threshold will ensure no yellow bleeds through the edges.
+        int avatarX = 750; 
+        int avatarY = 54;
+        int avatarW = 415;
+        int avatarH = 415;
 
         // The template is now clean, so we just draw the masked avatar directly on it!
         try {
