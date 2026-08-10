@@ -141,21 +141,31 @@ public class WelcomeCardService {
         String name = member.getEffectiveName();
         if (name.length() > 25) name = name.substring(0, 23) + "..";
 
+        int boxW = 1797 - 1348;
         int fontSize = 47; 
-        Font pixelFont = new Font("SansSerif", Font.BOLD, fontSize);
+        Font baseFont = new Font("SansSerif", Font.BOLD, fontSize);
         try {
-            pixelFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf")).deriveFont((float)fontSize);
+            baseFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf"));
         } catch (Exception e) {
             log.warn("Failed to load minecraft_arabic.ttf");
         }
-        g.setFont(pixelFont);
 
-        FontMetrics metrics = g.getFontMetrics();
+        Font pixelFont;
+        FontMetrics metrics;
+        while (true) {
+            pixelFont = baseFont.deriveFont((float) fontSize);
+            g.setFont(pixelFont);
+            metrics = g.getFontMetrics();
+            if (metrics.stringWidth(name) < boxW - 30 || fontSize <= 18) {
+                break;
+            }
+            fontSize -= 2;
+        }
+
         int nameWidth = metrics.stringWidth(name);
-        int boxW = 1797 - 1348;
         int boxH = 47;
         int nameX = 1348 + (boxW - nameWidth) / 2; 
-        int nameY = 234 + (boxH - metrics.getHeight()) / 2 + metrics.getAscent();
+        int nameY = 234 + (boxH - metrics.getHeight()) / 2 + metrics.getAscent() + 15; // +15 offset to move the name down a bit
 
         g.setColor(new Color(5, 18, 59));
         g.drawString(name, nameX, nameY);
