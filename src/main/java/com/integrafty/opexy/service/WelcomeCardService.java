@@ -87,15 +87,16 @@ public class WelcomeCardService {
 
         // The template is now clean, so we just draw the masked avatar directly on it!
         // Dynamically erase the yellow placeholder from the template behind the avatar by cloning the texture from the left.
-        for (int y = avatarY - 15; y < avatarY + avatarH + 15; y++) {
-            for (int x = avatarX - 15; x < avatarX + avatarW + 15; x++) {
+        for (int y = avatarY - 25; y < avatarY + avatarH + 25; y++) {
+            for (int x = avatarX - 25; x < avatarX + avatarW + 25; x++) {
                 if (x >= 0 && x < width && y >= 0 && y < height) {
                     int rgb = combined.getRGB(x, y);
                     int r = (rgb >> 16) & 0xFF;
                     int gCol = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
-                    // Target the yellow placeholder more accurately
-                    if (r > 100 && gCol > 100 && b < 80) {
+                    // Target the yellow placeholder more aggressively to catch blended edges
+                    // The background is very dark blue (low R and G), so anything with significant R or G is the placeholder
+                    if (r > 35 || gCol > 35) {
                         int texX = Math.max(x - 450, 0); // clone from the dark blue left side
                         combined.setRGB(x, y, combined.getRGB(texX, y));
                     }
