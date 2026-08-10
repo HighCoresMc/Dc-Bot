@@ -22,21 +22,22 @@ public class WelcomeCardService {
         try {
             log.info("Loading background from classpath resources...");
             java.io.InputStream is = WelcomeCardService.class.getResourceAsStream("/welcom.png");
-            
+
             if (is != null) {
                 background = ImageIO.read(is);
             }
-            
+
             if (background == null) {
                 // Fallback URL from Highcore if local resource fails
                 String urlStr = "https://i.imgur.com/Lzun3rb.png";
                 log.warn("Resource missing. Attempting emergency remote fetch: [{}]", urlStr);
-                
+
                 java.net.URL url = new java.net.URL(urlStr);
                 java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
                 connection.setConnectTimeout(8000);
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36");
-                
+                connection.setRequestProperty("User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36");
+
                 background = ImageIO.read(connection.getInputStream());
             }
         } catch (Exception e) {
@@ -53,7 +54,7 @@ public class WelcomeCardService {
 
         BufferedImage combined = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = combined.createGraphics();
-        
+
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
@@ -68,7 +69,8 @@ public class WelcomeCardService {
         try {
             java.net.URL url = new java.net.URL(avatarUrl);
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+            conn.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
             avatar = ImageIO.read(conn.getInputStream());
         } catch (Exception e) {
             log.warn("Failed to load user avatar: {}. Using generic fallback.", e.getMessage());
@@ -80,13 +82,14 @@ public class WelcomeCardService {
         }
 
         // --- THE DESIGNER'S BLUEPRINT ---
-        int avatarX = 755; 
+        int avatarX = 755;
         int avatarY = 59;
         int avatarW = 405;
         int avatarH = 405;
 
         // The template is now clean, so we just draw the masked avatar directly on it!
-        // Dynamically erase the yellow placeholder and its grey shadows using a solid dark blue color.
+        // Dynamically erase the yellow placeholder and its grey shadows using a solid
+        // dark blue color.
         int bgColor = new Color(5, 18, 59).getRGB();
         for (int y = avatarY - 25; y < avatarY + avatarH + 25; y++) {
             for (int x = avatarX - 25; x < avatarX + avatarW + 25; x++) {
@@ -95,7 +98,8 @@ public class WelcomeCardService {
                     int r = (rgb >> 16) & 0xFF;
                     int gCol = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
-                    // The valid background is deep blue (e.g. 5, 18, 59) where Blue is much higher than Red and Green.
+                    // The valid background is deep blue (e.g. 5, 18, 59) where Blue is much higher
+                    // than Red and Green.
                     // Grey shadows have R ≈ G ≈ B. Yellows have R,G > B.
                     // This condition erases anything that isn't distinctly deep blue.
                     if ((b - r) < 25 || (b - gCol) < 15 || r > 25 || gCol > 35) {
@@ -108,7 +112,7 @@ public class WelcomeCardService {
         // Apply pixelated mask to avatar
         try {
             BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
-            
+
             // Scale mask to ensure it matches avatar dimensions
             BufferedImage scaledMask = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D maskG2d = scaledMask.createGraphics();
@@ -118,7 +122,7 @@ public class WelcomeCardService {
 
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
-            
+
             sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
             sg.dispose();
@@ -129,7 +133,7 @@ public class WelcomeCardService {
                     int maskR = (maskPixel >> 16) & 0xFF;
                     int maskG = (maskPixel >> 8) & 0xFF;
                     int maskB = maskPixel & 0xFF;
-                    
+
                     // The mask is a white shape on a black background.
                     // We threshold it to remove any JPEG compression noise inside the white area.
                     int brightness = (maskR + maskG + maskB) / 3;
@@ -139,7 +143,7 @@ public class WelcomeCardService {
                     int avatarR = (avatarPixel >> 16) & 0xFF;
                     int avatarG = (avatarPixel >> 8) & 0xFF;
                     int avatarB = avatarPixel & 0xFF;
-                    
+
                     scaledAvatar.setRGB(x, y, (finalAlpha << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
                 }
             }
@@ -151,13 +155,15 @@ public class WelcomeCardService {
 
         // 2. Member Identity Engine
         String name = member.getEffectiveName();
-        if (name.length() > 25) name = name.substring(0, 23) + "..";
+        if (name.length() > 25)
+            name = name.substring(0, 23) + "..";
 
         int boxW = 1797 - 1348;
-        int fontSize = 47; 
+        int fontSize = 47;
         Font baseFont = new Font("SansSerif", Font.BOLD, fontSize);
         try {
-            baseFont = Font.createFont(Font.TRUETYPE_FONT, WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf"));
+            baseFont = Font.createFont(Font.TRUETYPE_FONT,
+                    WelcomeCardService.class.getResourceAsStream("/minecraft_arabic.ttf"));
         } catch (Exception e) {
             log.warn("Failed to load minecraft_arabic.ttf");
         }
@@ -176,13 +182,12 @@ public class WelcomeCardService {
 
         int nameWidth = metrics.stringWidth(name);
         int boxH = 47;
-        int nameX = 1348 + (boxW - nameWidth) / 2; 
-        int nameY = 234 + (boxH - metrics.getHeight()) / 2 + metrics.getAscent() + 15; // +15 offset to move the name down a bit
+        int nameX = 1348 + (boxW - nameWidth) / 2;
+        int nameY = 234 + (boxH - metrics.getHeight()) / 2 + metrics.getAscent() + 15; // +15 offset to move the name
+                                                                                       // down a bit
 
         g.setColor(new Color(5, 18, 59));
         g.drawString(name, nameX, nameY);
-
-        
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(combined, "png", baos);
