@@ -113,40 +113,7 @@ public class WelcomeCardService {
         int avatarW = 403;
         int avatarH = 401;
 
-        // Erase ONLY the yellow placeholder pixels using a tiled background patch.
-        // We leave the grey shadow and the dark blue background completely untouched!
-        int safeX = avatarX + 50; 
-        int safeY = 15;
-        for (int y = avatarY - 20; y < avatarY + avatarH + 20; y++) {
-            for (int x = avatarX - 20; x < avatarX + avatarW + 20; x++) {
-                if (x >= 0 && x < width && y >= 0 && y < height) {
-                    int rgb = combined.getRGB(x, y);
-                    int r = (rgb >> 16) & 0xFF;
-                    int gCol = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
-                    
-                    // The background is deep blue (B > R, G). The shadow is neutral (R ≈ G ≈ B).
-                    // The placeholder is yellow/gold (R and G > B).
-                    if (r > b + 5 && gCol > b + 5) {
-                        int srcX = safeX + (x % 30);
-                        int srcY = safeY + (y % 30);
-                        combined.setRGB(x, y, combined.getRGB(srcX, srcY));
-                    }
-                }
-            }
-        }
-
-        // The template is now clean, so we just draw the masked avatar directly on it!
         try {
-            BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
-
-            // Scale mask to ensure it matches avatar dimensions
-            BufferedImage scaledMask = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D maskG2d = scaledMask.createGraphics();
-            maskG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            maskG2d.drawImage(mask, 0, 0, avatarW, avatarH, null);
-            maskG2d.dispose();
-
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
             // Use BILINEAR instead of BICUBIC to prevent ringing artifacts (black dots) on high-contrast manga images!
@@ -154,44 +121,42 @@ public class WelcomeCardService {
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
             sg.dispose();
 
+            // Extract mask dynamically from the Gold Placeholder in the original background!
             for (int y = 0; y < avatarH; y++) {
                 for (int x = 0; x < avatarW; x++) {
-                    int maskPixel = scaledMask.getRGB(x, y);
-                    int maskR = (maskPixel >> 16) & 0xFF;
-                    int maskG = (maskPixel >> 8) & 0xFF;
-                    int maskB = maskPixel & 0xFF;
-
-                    // The mask is a white shape on a black background.
-                    int brightness = (maskR + maskG + maskB) / 3;
-
-                    int avatarPixel = scaledAvatar.getRGB(x, y);
-                    int avatarA = (avatarPixel >> 24) & 0xFF;
-                    int avatarR = (avatarPixel >> 16) & 0xFF;
-                    int avatarG = (avatarPixel >> 8) & 0xFF;
-                    int avatarB = avatarPixel & 0xFF;
-
-                    // Threshold the mask to keep pixelated edges.
-                    // We use a low threshold (> 20) because the mask might have dark JPEG artifacts
-                    // inside the white area, which would otherwise punch transparent holes in the avatar!
-                    int maskAlpha = (brightness > 20) ? 255 : 0;
+                    int bgX = avatarX + x;
+                    int bgY = avatarY + y;
                     
-                    if (maskAlpha == 255) {
-                        // Make near-black background pixels transparent
-                        if (avatarR < 18 && avatarG < 18 && avatarB < 18) {
-                            scaledAvatar.setRGB(x, y, 0);
-                        } else {
-                            // Keep the original avatar alpha.
-                            scaledAvatar.setRGB(x, y, avatarPixel);
+                    if (bgX >= 0 && bgX < width && bgY >= 0 && bgY < height) {
+                        int bgPixel = combined.getRGB(bgX, bgY);
+                        int bR = (bgPixel >> 16) & 0xFF;
+                        int bG = (bgPixel >> 8) & 0xFF;
+                        int bB = bgPixel & 0xFF;
+                        
+                        // Detect Gold Placeholder: Red and Green are significantly higher than Blue.
+                        // This robustly catches the yellow and its anti-aliased edges, but ignores the grey shadow and blue background.
+                        if (bR > bB + 15 && bG > bB + 15) {
+                            int avatarPixel = scaledAvatar.getRGB(x, y);
+                            int aA = (avatarPixel >> 24) & 0xFF;
+                            
+                            if (aA > 0) { // If the avatar has opacity here
+                                int aR = (avatarPixel >> 16) & 0xFF;
+                                int aG = (avatarPixel >> 8) & 0xFF;
+                                int aB = avatarPixel & 0xFF;
+                                
+                                // Alpha composite the avatar pixel over the background pixel
+                                int outR = (aR * aA + bR * (255 - aA)) / 255;
+                                int outG = (aG * aA + bG * (255 - aA)) / 255;
+                                int outB = (aB * aA + bB * (255 - aA)) / 255;
+                                
+                                combined.setRGB(bgX, bgY, (255 << 24) | (outR << 16) | (outG << 8) | outB);
+                            }
                         }
-                    } else {
-                        // Transparent outside the mask.
-                        scaledAvatar.setRGB(x, y, 0);
                     }
                 }
             }
-            g.drawImage(scaledAvatar, avatarX, avatarY, null);
         } catch (Exception e) {
-            log.warn("Failed to apply avatar mask", e);
+            log.warn("Failed to apply dynamic gold mask", e);
             g.drawImage(avatar, avatarX, avatarY, avatarW, avatarH, null);
         }
 
