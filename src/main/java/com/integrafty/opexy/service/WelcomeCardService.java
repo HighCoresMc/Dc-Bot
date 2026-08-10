@@ -81,6 +81,32 @@ public class WelcomeCardService {
             gAv.dispose();
         }
 
+        if (avatar != null) {
+            int transparent = 0;
+            int black = 0;
+            int total = avatar.getWidth() * avatar.getHeight();
+        
+            for (int y = 0; y < avatar.getHeight(); y++) {
+                for (int x = 0; x < avatar.getWidth(); x++) {
+                    int pixel = avatar.getRGB(x, y);
+                    int a = (pixel >> 24) & 0xFF;
+                    int r = (pixel >> 16) & 0xFF;
+                    int gr = (pixel >> 8) & 0xFF;
+                    int b = pixel & 0xFF;
+        
+                    if (a < 10) {
+                        transparent++;
+                    }
+                    if (r < 10 && gr < 10 && b < 10) {
+                        black++;
+                    }
+                }
+            }
+        
+            log.info("AVATAR DEBUG -> Transparent: {} / {} ({}%)", transparent, total, (transparent * 100.0 / total));
+            log.info("AVATAR DEBUG -> Black: {} / {} ({}%)", black, total, (black * 100.0 / total));
+        }
+
         // --- THE DESIGNER'S BLUEPRINT ---
         int avatarX = 755; 
         int avatarY = 59;
@@ -150,8 +176,13 @@ public class WelcomeCardService {
                     int maskAlpha = (brightness > 20) ? 255 : 0;
                     
                     if (maskAlpha == 255) {
-                        // Keep the original avatar alpha.
-                        scaledAvatar.setRGB(x, y, avatarPixel);
+                        // Make near-black background pixels transparent
+                        if (avatarR < 18 && avatarG < 18 && avatarB < 18) {
+                            scaledAvatar.setRGB(x, y, 0);
+                        } else {
+                            // Keep the original avatar alpha.
+                            scaledAvatar.setRGB(x, y, avatarPixel);
+                        }
                     } else {
                         // Transparent outside the mask.
                         scaledAvatar.setRGB(x, y, 0);
