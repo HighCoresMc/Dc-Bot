@@ -82,20 +82,21 @@ public class WelcomeCardService {
         // --- THE DESIGNER'S BLUEPRINT ---
         int avatarX = 755; 
         int avatarY = 59;
-        int avatarW = 403;
-        int avatarH = 401;
+        int avatarW = 405;
+        int avatarH = 405;
 
         // The template is now clean, so we just draw the masked avatar directly on it!
-        // Dynamically erase the yellow placeholder from the template behind the avatar by cloning the texture from the right.
-        for (int y = avatarY - 5; y < avatarY + avatarH + 5; y++) {
-            for (int x = avatarX - 5; x < avatarX + avatarW + 5; x++) {
+        // Dynamically erase the yellow placeholder from the template behind the avatar by cloning the texture from the left.
+        for (int y = avatarY - 15; y < avatarY + avatarH + 15; y++) {
+            for (int x = avatarX - 15; x < avatarX + avatarW + 15; x++) {
                 if (x >= 0 && x < width && y >= 0 && y < height) {
                     int rgb = combined.getRGB(x, y);
                     int r = (rgb >> 16) & 0xFF;
                     int gCol = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
-                    if (r > b && gCol > b) {
-                        int texX = Math.min(x + 350, width - 1);
+                    // Target the yellow placeholder more accurately
+                    if (r > 100 && gCol > 100 && b < 80) {
+                        int texX = Math.max(x - 450, 0); // clone from the dark blue left side
                         combined.setRGB(x, y, combined.getRGB(texX, y));
                     }
                 }
@@ -105,30 +106,43 @@ public class WelcomeCardService {
         // Apply pixelated mask to avatar
         try {
             BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
+            
+            // Scale mask to ensure it matches avatar dimensions
+            BufferedImage scaledMask = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D maskG2d = scaledMask.createGraphics();
+            maskG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            maskG2d.drawImage(mask, 0, 0, avatarW, avatarH, null);
+            maskG2d.dispose();
+
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
             
-            // No background fill needed because we cloned the original texture on the template itself!
-
-            sg.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
             sg.dispose();
 
             for (int y = 0; y < avatarH; y++) {
                 for (int x = 0; x < avatarW; x++) {
-                    int maskPixel = mask.getRGB(x, y);
+                    int maskPixel = scaledMask.getRGB(x, y);
+                    int maskAlpha = (maskPixel >> 24) & 0xFF;
                     int maskR = (maskPixel >> 16) & 0xFF;
                     int maskG = (maskPixel >> 8) & 0xFF;
                     int maskB = maskPixel & 0xFF;
-                    int brightness = (maskR + maskG + maskB) / 3;
+                    
+                    // If mask uses alpha, use it. Otherwise use brightness (white = opaque, black = transparent)
+                    int finalAlpha = maskAlpha;
+                    if (maskAlpha == 255) {
+                        finalAlpha = (maskR + maskG + maskB) / 3;
+                    } else if (finalAlpha > 0) {
+                        // If it's a transparent mask but also has brightness, let alpha dictate
+                    }
 
                     int avatarPixel = scaledAvatar.getRGB(x, y);
                     int avatarR = (avatarPixel >> 16) & 0xFF;
                     int avatarG = (avatarPixel >> 8) & 0xFF;
                     int avatarB = avatarPixel & 0xFF;
                     
-                    // Apply the mask brightness as the alpha channel
-                    scaledAvatar.setRGB(x, y, (brightness << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
+                    scaledAvatar.setRGB(x, y, (finalAlpha << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
                 }
             }
             g.drawImage(scaledAvatar, avatarX, avatarY, null);
