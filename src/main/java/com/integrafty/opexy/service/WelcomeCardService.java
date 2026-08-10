@@ -128,12 +128,15 @@ public class WelcomeCardService {
                     // The mask is a white shape on a black background.
                     // We threshold it to remove any JPEG compression noise inside the white area.
                     int brightness = (maskR + maskG + maskB) / 3;
-                    int finalAlpha = (brightness > 128) ? 255 : 0;
 
                     int avatarPixel = scaledAvatar.getRGB(x, y);
+                    int avatarA = (avatarPixel >> 24) & 0xFF;
                     int avatarR = (avatarPixel >> 16) & 0xFF;
                     int avatarG = (avatarPixel >> 8) & 0xFF;
                     int avatarB = avatarPixel & 0xFF;
+
+                    // If mask is opaque, preserve the avatar's original alpha. Otherwise, make it transparent.
+                    int finalAlpha = (brightness > 128) ? avatarA : 0;
 
                     scaledAvatar.setRGB(x, y, (finalAlpha << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
                 }
