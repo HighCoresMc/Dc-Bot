@@ -109,9 +109,9 @@ public class WelcomeCardService {
 
         // --- THE DESIGNER'S BLUEPRINT ---
         int avatarX = 755; 
-        int avatarY = 59;
+        int avatarY = 57;
         int avatarW = 403;
-        int avatarH = 401;
+        int avatarH = 405;
 
         try {
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
