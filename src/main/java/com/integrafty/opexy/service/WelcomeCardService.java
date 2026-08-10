@@ -82,39 +82,26 @@ public class WelcomeCardService {
         }
 
         // --- THE DESIGNER'S BLUEPRINT ---
-        int avatarX = 755;
+        int avatarX = 755; 
         int avatarY = 59;
         int avatarW = 403;
         int avatarH = 401;
 
-        // Unconditionally wipe the placeholder and its shadow by tiling a clean 30x30 patch of the background from the top margin.
-        int safeX = avatarX + 50; // Safe horizontal spot
-        int safeY = 15;           // Safe vertical spot above the placeholder
-        for (int y = avatarY - 20; y < avatarY + avatarH + 20; y++) {
-            for (int x = avatarX - 20; x < avatarX + avatarW + 20; x++) {
-                if (x >= 0 && x < width && y >= 0 && y < height) {
-                    int srcX = safeX + (x % 30);
-                    int srcY = safeY + (y % 30);
-                    combined.setRGB(x, y, combined.getRGB(srcX, srcY));
-                }
-            }
-        }
-
-        // Apply pixelated mask to avatar
+        // The template is now clean, so we just draw the masked avatar directly on it!
         try {
             BufferedImage mask = ImageIO.read(WelcomeCardService.class.getResourceAsStream("/images/avatar_mask.png"));
 
             // Scale mask to ensure it matches avatar dimensions
             BufferedImage scaledMask = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D maskG2d = scaledMask.createGraphics();
-            maskG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            maskG2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             maskG2d.drawImage(mask, 0, 0, avatarW, avatarH, null);
             maskG2d.dispose();
 
             BufferedImage scaledAvatar = new BufferedImage(avatarW, avatarH, BufferedImage.TYPE_INT_ARGB);
             Graphics2D sg = scaledAvatar.createGraphics();
-
-            sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            // Use BILINEAR instead of BICUBIC to prevent ringing artifacts (black dots) on high-contrast manga images!
+            sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             sg.drawImage(avatar, 0, 0, avatarW, avatarH, null);
             sg.dispose();
 
@@ -126,7 +113,6 @@ public class WelcomeCardService {
                     int maskB = maskPixel & 0xFF;
 
                     // The mask is a white shape on a black background.
-                    // We threshold it to remove any JPEG compression noise inside the white area.
                     int brightness = (maskR + maskG + maskB) / 3;
 
                     int avatarPixel = scaledAvatar.getRGB(x, y);
@@ -135,10 +121,11 @@ public class WelcomeCardService {
                     int avatarG = (avatarPixel >> 8) & 0xFF;
                     int avatarB = avatarPixel & 0xFF;
 
-                    // If mask is opaque, preserve the avatar's original alpha. Otherwise, make it transparent.
-                    int finalAlpha = (brightness > 128) ? avatarA : 0;
+                    // Threshold the mask to keep pixelated edges, and combine with the avatar's alpha safely.
+                    int maskAlpha = (brightness > 128) ? 255 : 0;
+                    int combinedAlpha = (maskAlpha * avatarA) / 255;
 
-                    scaledAvatar.setRGB(x, y, (finalAlpha << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
+                    scaledAvatar.setRGB(x, y, (combinedAlpha << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
                 }
             }
             g.drawImage(scaledAvatar, avatarX, avatarY, null);
