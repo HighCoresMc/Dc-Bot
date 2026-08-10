@@ -82,12 +82,33 @@ public class WelcomeCardService {
         }
 
         // --- THE DESIGNER'S BLUEPRINT ---
-        // Increase size slightly to perfectly swallow the yellow placeholder! 
-        // The HARD mask threshold will ensure no yellow bleeds through the edges.
-        int avatarX = 750; 
-        int avatarY = 54;
-        int avatarW = 415;
-        int avatarH = 415;
+        int avatarX = 755; 
+        int avatarY = 59;
+        int avatarW = 403;
+        int avatarH = 401;
+
+        // Erase ONLY the yellow placeholder pixels using a tiled background patch.
+        // We leave the grey shadow and the dark blue background completely untouched!
+        int safeX = avatarX + 50; 
+        int safeY = 15;
+        for (int y = avatarY - 20; y < avatarY + avatarH + 20; y++) {
+            for (int x = avatarX - 20; x < avatarX + avatarW + 20; x++) {
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    int rgb = combined.getRGB(x, y);
+                    int r = (rgb >> 16) & 0xFF;
+                    int gCol = (rgb >> 8) & 0xFF;
+                    int b = rgb & 0xFF;
+                    
+                    // The background is deep blue (B > R, G). The shadow is neutral (R ≈ G ≈ B).
+                    // The placeholder is yellow/gold (R and G > B).
+                    if (r > b + 5 && gCol > b + 5) {
+                        int srcX = safeX + (x % 30);
+                        int srcY = safeY + (y % 30);
+                        combined.setRGB(x, y, combined.getRGB(srcX, srcY));
+                    }
+                }
+            }
+        }
 
         // The template is now clean, so we just draw the masked avatar directly on it!
         try {
