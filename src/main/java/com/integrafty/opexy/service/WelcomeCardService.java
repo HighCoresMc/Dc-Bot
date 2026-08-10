@@ -144,8 +144,10 @@ public class WelcomeCardService {
                     int avatarG = (avatarPixel >> 8) & 0xFF;
                     int avatarB = avatarPixel & 0xFF;
 
-                    // Threshold the mask to keep pixelated edges, and combine with the avatar's alpha safely.
-                    int maskAlpha = (brightness > 128) ? 255 : 0;
+                    // Threshold the mask to keep pixelated edges.
+                    // We use a low threshold (> 20) because the mask might have dark JPEG artifacts
+                    // inside the white area, which would otherwise punch transparent holes in the avatar!
+                    int maskAlpha = (brightness > 20) ? 255 : 0;
                     int combinedAlpha = (maskAlpha * avatarA) / 255;
 
                     scaledAvatar.setRGB(x, y, (combinedAlpha << 24) | (avatarR << 16) | (avatarG << 8) | avatarB);
