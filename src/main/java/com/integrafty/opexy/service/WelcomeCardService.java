@@ -86,7 +86,8 @@ public class WelcomeCardService {
         int avatarH = 405;
 
         // The template is now clean, so we just draw the masked avatar directly on it!
-        // Dynamically erase the yellow placeholder from the template behind the avatar by cloning the texture from the left.
+        // Dynamically erase the yellow placeholder from the template behind the avatar using a solid dark blue color.
+        int bgColor = new Color(5, 18, 59).getRGB();
         for (int y = avatarY - 25; y < avatarY + avatarH + 25; y++) {
             for (int x = avatarX - 25; x < avatarX + avatarW + 25; x++) {
                 if (x >= 0 && x < width && y >= 0 && y < height) {
@@ -95,10 +96,8 @@ public class WelcomeCardService {
                     int gCol = (rgb >> 8) & 0xFF;
                     int b = rgb & 0xFF;
                     // Target the yellow placeholder more aggressively to catch blended edges
-                    // The background is very dark blue (low R and G), so anything with significant R or G is the placeholder
                     if (r > 35 || gCol > 35) {
-                        int texX = Math.max(x - 450, 0); // clone from the dark blue left side
-                        combined.setRGB(x, y, combined.getRGB(texX, y));
+                        combined.setRGB(x, y, bgColor);
                     }
                 }
             }
@@ -125,18 +124,14 @@ public class WelcomeCardService {
             for (int y = 0; y < avatarH; y++) {
                 for (int x = 0; x < avatarW; x++) {
                     int maskPixel = scaledMask.getRGB(x, y);
-                    int maskAlpha = (maskPixel >> 24) & 0xFF;
                     int maskR = (maskPixel >> 16) & 0xFF;
                     int maskG = (maskPixel >> 8) & 0xFF;
                     int maskB = maskPixel & 0xFF;
                     
-                    // If mask uses alpha, use it. Otherwise use brightness (white = opaque, black = transparent)
-                    int finalAlpha = maskAlpha;
-                    if (maskAlpha == 255) {
-                        finalAlpha = (maskR + maskG + maskB) / 3;
-                    } else if (finalAlpha > 0) {
-                        // If it's a transparent mask but also has brightness, let alpha dictate
-                    }
+                    // The mask is a white shape on a black background.
+                    // We threshold it to remove any JPEG compression noise inside the white area.
+                    int brightness = (maskR + maskG + maskB) / 3;
+                    int finalAlpha = (brightness > 128) ? 255 : 0;
 
                     int avatarPixel = scaledAvatar.getRGB(x, y);
                     int avatarR = (avatarPixel >> 16) & 0xFF;
