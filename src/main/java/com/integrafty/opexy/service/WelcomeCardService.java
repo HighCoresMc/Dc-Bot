@@ -84,27 +84,18 @@ public class WelcomeCardService {
         // --- THE DESIGNER'S BLUEPRINT ---
         int avatarX = 755;
         int avatarY = 59;
-        int avatarW = 405;
-        int avatarH = 405;
+        int avatarW = 403;
+        int avatarH = 401;
 
-        // The template is now clean, so we just draw the masked avatar directly on it!
-        // Dynamically erase the yellow placeholder and its grey shadows using a solid
-        // dark blue color.
-        int bgColor = new Color(5, 18, 59).getRGB();
-        for (int y = avatarY - 25; y < avatarY + avatarH + 25; y++) {
-            for (int x = avatarX - 25; x < avatarX + avatarW + 25; x++) {
+        // Unconditionally wipe the placeholder and its shadow by tiling a clean 30x30 patch of the background from the top margin.
+        int safeX = avatarX + 50; // Safe horizontal spot
+        int safeY = 15;           // Safe vertical spot above the placeholder
+        for (int y = avatarY - 20; y < avatarY + avatarH + 20; y++) {
+            for (int x = avatarX - 20; x < avatarX + avatarW + 20; x++) {
                 if (x >= 0 && x < width && y >= 0 && y < height) {
-                    int rgb = combined.getRGB(x, y);
-                    int r = (rgb >> 16) & 0xFF;
-                    int gCol = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
-                    // The valid background is deep blue (e.g. 5, 18, 59) where Blue is much higher
-                    // than Red and Green.
-                    // Grey shadows have R ≈ G ≈ B. Yellows have R,G > B.
-                    // This condition erases anything that isn't distinctly deep blue.
-                    if ((b - r) < 25 || (b - gCol) < 15 || r > 25 || gCol > 35) {
-                        combined.setRGB(x, y, bgColor);
-                    }
+                    int srcX = safeX + (x % 30);
+                    int srcY = safeY + (y % 30);
+                    combined.setRGB(x, y, combined.getRGB(srcX, srcY));
                 }
             }
         }
