@@ -150,18 +150,11 @@ public class WelcomeCardService {
                     int maskAlpha = (brightness > 20) ? 255 : 0;
                     
                     if (maskAlpha == 255) {
-                        // Blend the avatar pixel over a solid dark background!
-                        // This fixes the issue where transparent avatars (like the Java logo) 
-                        // would let the noisy background show through, creating "cracks" or "spots".
-                        int bgR = 15, bgG = 15, bgB = 15; 
-                        
-                        int outR = (avatarR * avatarA + bgR * (255 - avatarA)) / 255;
-                        int outG = (avatarG * avatarA + bgG * (255 - avatarA)) / 255;
-                        int outB = (avatarB * avatarA + bgB * (255 - avatarA)) / 255;
-                        
-                        scaledAvatar.setRGB(x, y, (255 << 24) | (outR << 16) | (outG << 8) | outB);
+                        // Keep the original avatar alpha.
+                        scaledAvatar.setRGB(x, y, avatarPixel);
                     } else {
-                        scaledAvatar.setRGB(x, y, 0); // Completely transparent outside the mask
+                        // Transparent outside the mask.
+                        scaledAvatar.setRGB(x, y, 0);
                     }
                 }
             }
