@@ -106,10 +106,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 )
             );
             
-            event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                    .setComponents(container)
-                    .useComponentsV2(true)
-                    .build())
+            event.reply(EmbedUtil.createBrandedMessage(container).build())
                 .useComponentsV2(true)
                 .queue();
         }
@@ -265,10 +262,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                 )
             );
 
-            event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                            .setComponents(container)
-                            .useComponentsV2(true)
-                            .build())
+            event.reply(EmbedUtil.createBrandedMessage(container).build())
                     .setEphemeral(false)
                     .useComponentsV2(true)
                     .queue();
@@ -388,10 +382,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                     "✅ Recording session **" + name + "** has been started.\nIt will automatically split every 10 minutes for stability.",
                     EmbedUtil.BANNER_MAIN
                 );
-                event.reply(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                        .setComponents(container)
-                        .useComponentsV2(true)
-                        .build())
+                event.reply(EmbedUtil.createBrandedMessage(container).build())
                     .useComponentsV2(true)
                     .queue();
             } else {
