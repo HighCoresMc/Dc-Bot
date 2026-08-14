@@ -176,10 +176,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                         )
                     );
                     
-                    msgChannel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                            .setComponents(container)
-                                .useComponentsV2(true)
-                                .build())
+                    msgChannel.sendMessage(EmbedUtil.createBrandedMessage(container).build())
                             .useComponentsV2(true)
                             .queue();
                 }
@@ -208,10 +205,7 @@ public class VoiceRecordingListener extends ListenerAdapter implements SlashComm
                                 )
                             );
                             
-                            msgChannel.sendMessage(new net.dv8tion.jda.api.utils.messages.MessageCreateBuilder()
-                                    .setComponents(container)
-                                        .useComponentsV2(true)
-                                        .build())
+                            msgChannel.sendMessage(EmbedUtil.createBrandedMessage(container).build())
                                     .useComponentsV2(true)
                                     .queue();
                         }
