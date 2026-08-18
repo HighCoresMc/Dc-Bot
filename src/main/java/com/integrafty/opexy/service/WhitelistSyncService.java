@@ -1,13 +1,9 @@
 package com.integrafty.opexy.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -16,20 +12,10 @@ import java.util.List;
 @Slf4j
 public class WhitelistSyncService {
 
-    @Value("${SUPABASE_URL:NOT_SET}")
-    private String supabaseUrl;
-
-    @Value("${SUPABASE_KEY:NOT_SET}")
-    private String supabaseKey;
-
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public void syncToSupabase(String discord, String mc, String version, String type) {
-        if (supabaseUrl.equals("NOT_SET") || supabaseKey.equals("NOT_SET")) {
-            log.warn("Supabase credentials not set. Skipping sync.");
-            return;
-        }
-
         // Map type values (Original vs Crack)
         String mappedType = type.toLowerCase();
 
@@ -80,49 +66,17 @@ public class WhitelistSyncService {
             mappedVersion = version;
         }
 
-        String now = Instant.now().toString();
-
-        // Build JSON body
-        String json = String.format(
-            "{\"discord\":\"%s\",\"mc\":\"%s\",\"version\":\"%s\",\"type\":\"%s\"," +
-            "\"team\":\"EMPTY\",\"tag\":\"مقبول\",\"admin\":\"HighCoreMc Bot\"," +
-            "\"created_at\":\"%s\",\"modified_at\":\"%s\"}",
-            escapeJson(discord),
-            escapeJson(mc),
-            escapeJson(mappedVersion),
-            escapeJson(mappedType),
-            now,
-            now
-        );
-
-        String endpoint = supabaseUrl + "/rest/v1/whitelist";
+        String sql = "INSERT INTO whitelist (discord, mc, version, type, team, tag, admin) " +
+                     "VALUES (?, ?, ?, ?, 'EMPTY', 'مقبول', 'HighCoreMc Bot') " +
+                     "ON CONFLICT DO NOTHING";
 
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint))
-                .header("Content-Type", "application/json")
-                .header("apikey", supabaseKey)
-                .header("Authorization", "Bearer " + supabaseKey)
-                // ignore-duplicates = ON CONFLICT DO NOTHING
-                .header("Prefer", "resolution=ignore-duplicates")
-                .POST(HttpRequest.BodyPublishers.ofString(json))
-                .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 201 || response.statusCode() == 200) {
-                log.info("Successfully synced whitelist entry to Supabase for user: {}", mc);
-            } else {
-                log.error("Supabase returned error {} : {}", response.statusCode(), response.body());
-            }
-
+            jdbcTemplate.update(sql, discord, mc, mappedVersion, mappedType);
+            log.info("Successfully synced whitelist entry to Database for user: {}", mc);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            log.info("Whitelist entry already exists in Database for user: {}", mc);
         } catch (Exception e) {
-            log.error("Failed to sync to Supabase: {}", e.getMessage());
+            log.error("Failed to sync to Database: {}", e.getMessage());
         }
-    }
-
-    private String escapeJson(String value) {
-        if (value == null) return "";
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
