@@ -13,6 +13,7 @@ import java.util.List;
 public class WhitelistSyncService {
 
     @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("dashboardJdbcTemplate")
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public void syncToSupabase(String discord, String mc, String version, String type) {
