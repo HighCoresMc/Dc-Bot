@@ -66,15 +66,26 @@ public class WhitelistSyncService {
             mappedVersion = version;
         }
 
-        String sql = "INSERT INTO whitelist (discord, mc, version, type, team, tag, admin) " +
-                     "VALUES (?, ?, ?, ?, 'EMPTY', 'مقبول', 'HighCoreMc Bot') " +
-                     "ON CONFLICT DO NOTHING";
+        String checkSql = "SELECT count(*) FROM whitelist WHERE mc = ?";
+        Integer count = 0;
+        try {
+            count = jdbcTemplate.queryForObject(checkSql, Integer.class, mc);
+        } catch (Exception e) {
+            log.error("Failed to check if whitelist entry exists: {}", e.getMessage());
+            return;
+        }
+
+        if (count != null && count > 0) {
+            log.info("Whitelist entry already exists in Database for user: {}", mc);
+            return;
+        }
+
+        String insertSql = "INSERT INTO whitelist (discord, mc, version, type, team, tag, admin) " +
+                     "VALUES (?, ?, ?, ?, 'EMPTY', 'مقبول', 'HighCoreMc Bot')";
 
         try {
-            jdbcTemplate.update(sql, discord, mc, mappedVersion, mappedType);
+            jdbcTemplate.update(insertSql, discord, mc, mappedVersion, mappedType);
             log.info("Successfully synced whitelist entry to Database for user: {}", mc);
-        } catch (org.springframework.dao.DuplicateKeyException e) {
-            log.info("Whitelist entry already exists in Database for user: {}", mc);
         } catch (Exception e) {
             log.error("Failed to sync to Database: {}", e.getMessage());
         }
