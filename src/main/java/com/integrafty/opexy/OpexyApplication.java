@@ -32,11 +32,11 @@ public class OpexyApplication {
 
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.configure()
-            .directory("./")
-            .ignoreIfMalformed()
-            .ignoreIfMissing()
-            .load();
-        
+                .directory("./")
+                .ignoreIfMalformed()
+                .ignoreIfMissing()
+                .load();
+
         dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
 
         // Railway DATABASE_URL support (Enhanced Parsing)
@@ -51,24 +51,26 @@ public class OpexyApplication {
                 String host = uri.getHost();
                 int port = uri.getPort();
                 String path = uri.getPath();
-                
+
                 String jdbcUrl = String.format("jdbc:postgresql://%s:%d%s", host, port, path);
-                
+
                 System.setProperty("spring.datasource.url", jdbcUrl);
                 System.setProperty("spring.datasource.username", username);
                 System.setProperty("spring.datasource.password", password);
-                
+
                 log.info("Database configuration updated successfully from DATABASE_URL.");
             } catch (Exception e) {
                 log.error("Failed to parse DATABASE_URL: {}", e.getMessage());
             }
         }
-        
-        // FORCE connection to the central HighCore PostgreSQL database, bypassing any misconfigured env variables
+
+        // FORCE connection to the central HighCore PostgreSQL database, bypassing any
+        // misconfigured env variables
         System.setProperty("spring.datasource.url", "jdbc:postgresql://198.186.130.131:5432/postgres?schema=public");
         System.setProperty("spring.datasource.username", "postgres");
-        System.setProperty("spring.datasource.password", "fIQrOSfvhAB6FLcJycpr50Sqqk1YWySMwTZE1MktPv9oKBAoGSrlSoW82s0QmTvw");
-        
+        System.setProperty("spring.datasource.password",
+                "fIQrOSfvhAB6FLcJycpr50Sqqk1YWySMwTZE1MktPv9oKBAoGSrlSoW82s0QmTvw");
+
         context = SpringApplication.run(OpexyApplication.class, args);
     }
 
@@ -80,22 +82,21 @@ public class OpexyApplication {
     public JDA jda(@Value("${discord.bot.token}") String token) {
         try {
             log.info("Configuring JDA with JDAVE support...");
-            
+
             return JDABuilder.createDefault(token)
-                .setActivity(net.dv8tion.jda.api.entities.Activity.watching("HighCoreMC | Server Control"))
-                .setStatus(net.dv8tion.jda.api.OnlineStatus.IDLE)
-                .setAudioModuleConfig(new AudioModuleConfig()
-                    .withDaveSessionFactory(new LDJDADaveSessionFactory(new NativeDaveFactory())))
-                .enableIntents(
-                    GatewayIntent.GUILD_MEMBERS,
-                    GatewayIntent.GUILD_MESSAGES,
-                    GatewayIntent.MESSAGE_CONTENT,
-                    GatewayIntent.GUILD_VOICE_STATES
-                )
-                .setMemberCachePolicy(MemberCachePolicy.ALL)
-                .setChunkingFilter(ChunkingFilter.ALL)
-                .enableCache(CacheFlag.VOICE_STATE)
-                .build();
+                    .setActivity(net.dv8tion.jda.api.entities.Activity.watching("HighCoreMC | Server Control"))
+                    .setStatus(net.dv8tion.jda.api.OnlineStatus.IDLE)
+                    .setAudioModuleConfig(new AudioModuleConfig()
+                            .withDaveSessionFactory(new LDJDADaveSessionFactory(new NativeDaveFactory())))
+                    .enableIntents(
+                            GatewayIntent.GUILD_MEMBERS,
+                            GatewayIntent.GUILD_MESSAGES,
+                            GatewayIntent.MESSAGE_CONTENT,
+                            GatewayIntent.GUILD_VOICE_STATES)
+                    .setMemberCachePolicy(MemberCachePolicy.ALL)
+                    .setChunkingFilter(ChunkingFilter.ALL)
+                    .enableCache(CacheFlag.VOICE_STATE)
+                    .build();
         } catch (Exception e) {
             log.error("Failed to start Discord Bot", e);
             throw new RuntimeException("Failed to connect to Discord", e);
