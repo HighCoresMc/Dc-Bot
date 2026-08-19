@@ -67,9 +67,9 @@ public class WhitelistSyncService {
         }
 
         String checkSql = "SELECT count(*) FROM public.whitelist WHERE mc = ?";
-        Integer count = 0;
+        Long count = 0L;
         try {
-            count = jdbcTemplate.queryForObject(checkSql, Integer.class, mc);
+            count = jdbcTemplate.queryForObject(checkSql, Long.class, mc);
         } catch (Exception e) {
             log.error("Failed to check if whitelist entry exists: {}", e.getMessage());
             return;
