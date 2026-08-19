@@ -66,7 +66,7 @@ public class WhitelistSyncService {
             mappedVersion = version;
         }
 
-        String checkSql = "SELECT count(*) FROM whitelist WHERE mc = ?";
+        String checkSql = "SELECT count(*) FROM public.whitelist WHERE mc = ?";
         Integer count = 0;
         try {
             count = jdbcTemplate.queryForObject(checkSql, Integer.class, mc);
@@ -80,7 +80,7 @@ public class WhitelistSyncService {
             return;
         }
 
-        String insertSql = "INSERT INTO whitelist (discord, mc, version, type, team, tag, admin) " +
+        String insertSql = "INSERT INTO public.whitelist (discord, mc, version, type, team, tag, admin) " +
                      "VALUES (?, ?, ?, ?, 'EMPTY', 'مقبول', 'HighCoreMc Bot')";
 
         try {
