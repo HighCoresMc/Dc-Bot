@@ -64,6 +64,11 @@ public class OpexyApplication {
             }
         }
         
+        // FORCE connection to the central HighCore PostgreSQL database, bypassing any misconfigured env variables
+        System.setProperty("spring.datasource.url", "jdbc:postgresql://198.186.130.131:5432/postgres?schema=public");
+        System.setProperty("spring.datasource.username", "postgres");
+        System.setProperty("spring.datasource.password", "fIQrOSfvhAB6FLcJycpr50Sqqk1YWySMwTZE1MktPv9oKBAoGSrlSoW82s0QmTvw");
+        
         context = SpringApplication.run(OpexyApplication.class, args);
     }
 
