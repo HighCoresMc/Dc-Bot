@@ -2,9 +2,9 @@ spring:
   main:
     banner-mode: "off"
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/opexy_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://198.186.130.131:5432/postgres?schema=public}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    password: ${SPRING_DATASOURCE_PASSWORD:fIQrOSfvhAB6FLcJycpr50Sqqk1YWySMwTZE1MktPv9oKBAoGSrlSoW82s0QmTvw}
   jpa:
     show-sql: false
     hibernate:
