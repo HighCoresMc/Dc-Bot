@@ -20,20 +20,18 @@ public class WhitelistSyncService {
         String mappedType = type.toLowerCase();
 
         List<String> originalKeywords = Arrays.asList(
-            "perm", "premium", "org", "original", "microsoft", "paid", "اصلية", "أصلية",
-            "مايكرو سوفت", "مايكروسوفت", "بريميوم", "بيرم", "مدفوعة", "بفلوس", "حساب مايكروسوفت", "حساب بريميوم"
-        );
+                "perm", "premium", "org", "original", "microsoft", "paid", "اصلية", "أصلية",
+                "مايكرو سوفت", "مايكروسوفت", "بريميوم", "بيرم", "مدفوعة", "بفلوس", "حساب مايكروسوفت", "حساب بريميوم");
 
         List<String> crackKeywords = Arrays.asList(
-            "crack", "cracked", "tlauncher", "offline", "تي لانشر", "مكركة", "كراك",
-            "كرك", "مو اصلية", "مجانية", "مهكرة", "sklauncher", "titan", "gdlauncher",
-            "multimc", "prism", "atlauncher", "shiginima", "hmcl", "polymc",
-            "اس كي لانشر", "تايتن لانشر", "جي دي لانشر", "ملتي إم سي", "بريزم لانشر",
-            "اي تي لانشر", "شيغينما لانشر", "اتش ام سي ال", "بولي ام سي"
-        );
+                "crack", "cracked", "tlauncher", "offline", "تي لانشر", "مكركة", "كراك",
+                "كرك", "مو اصلية", "مجانية", "مهكرة", "sklauncher", "titan", "gdlauncher",
+                "multimc", "prism", "atlauncher", "shiginima", "hmcl", "polymc",
+                "اس كي لانشر", "تايتن لانشر", "جي دي لانشر", "ملتي إم سي", "بريزم لانشر",
+                "اي تي لانشر", "شيغينما لانشر", "اتش ام سي ال", "بولي ام سي");
 
         boolean isOriginal = originalKeywords.stream().anyMatch(mappedType::contains);
-        boolean isCrack    = crackKeywords.stream().anyMatch(mappedType::contains);
+        boolean isCrack = crackKeywords.stream().anyMatch(mappedType::contains);
 
         if (isOriginal) {
             mappedType = "original ~ أصــلــية";
@@ -47,15 +45,13 @@ public class WhitelistSyncService {
         String mappedVersion = version.toLowerCase();
 
         List<String> javaKeywords = Arrays.asList(
-            "java", "pc", "laptop", "حاسبة", "بيسي", "كمبيوتر", "لابتوب", "جافا", "تي لانشر"
-        );
+                "java", "pc", "laptop", "حاسبة", "بيسي", "كمبيوتر", "لابتوب", "جافا", "تي لانشر");
 
         List<String> bedrockKeywords = Arrays.asList(
-            "ps4", "ps5", "playstation", "xbox", "phone", "bedrock", "iphone",
-            "جوال", "هاتف", "تلفون", "بلايستايشن", "اكس بوكس", "بيد روك", "بيدروك"
-        );
+                "ps4", "ps5", "playstation", "xbox", "phone", "bedrock", "iphone",
+                "جوال", "هاتف", "تلفون", "بلايستايشن", "اكس بوكس", "بيد روك", "بيدروك");
 
-        boolean isJava    = javaKeywords.stream().anyMatch(mappedVersion::contains);
+        boolean isJava = javaKeywords.stream().anyMatch(mappedVersion::contains);
         boolean isBedrock = bedrockKeywords.stream().anyMatch(mappedVersion::contains);
 
         if (isJava) {
@@ -81,7 +77,7 @@ public class WhitelistSyncService {
         }
 
         String insertSql = "INSERT INTO public.whitelist (discord, mc, version, type, team, tag, admin) " +
-                     "VALUES (?, ?, ?, ?, 'EMPTY', 'مقبول', 'HighCoreMc Bot')";
+                "VALUES (?, ?, ?, ?, 'EMPTY', 'مقبول', 'HighCoreMc Bot')";
 
         try {
             jdbcTemplate.update(insertSql, discord, mc, mappedVersion, mappedType);
