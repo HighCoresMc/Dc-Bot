@@ -2,7 +2,7 @@ spring:
   main:
     banner-mode: "off"
   datasource:
-    jdbc-url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/opexy_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/opexy_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
@@ -10,7 +10,7 @@ spring:
 app:
   datasource:
     dashboard:
-      jdbc-url: ${DASHBOARD_DATASOURCE_URL:jdbc:postgresql://198.186.130.131:5432/postgres?schema=public}
+      url: ${DASHBOARD_DATASOURCE_URL:jdbc:postgresql://198.186.130.131:5432/postgres?schema=public}
       username: ${DASHBOARD_DATASOURCE_USERNAME:postgres}
       password: ${DASHBOARD_DATASOURCE_PASSWORD:fIQrOSfvhAB6FLcJycpr50Sqqk1YWySMwTZE1MktPv9oKBAoGSrlSoW82s0QmTvw}
       driver-class-name: org.postgresql.Driver

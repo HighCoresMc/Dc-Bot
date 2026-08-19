@@ -1,8 +1,8 @@
 package com.integrafty.opexy.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -14,10 +14,16 @@ import javax.sql.DataSource;
 public class DataSourceConfig {
 
     @Primary
+    @Bean
+    @ConfigurationProperties("spring.datasource")
+    public DataSourceProperties primaryDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
+    @Primary
     @Bean(name = "primaryDataSource")
-    @ConfigurationProperties(prefix = "spring.datasource")
     public DataSource primaryDataSource() {
-        return DataSourceBuilder.create().build();
+        return primaryDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
     @Primary
@@ -26,10 +32,15 @@ public class DataSourceConfig {
         return new JdbcTemplate(dataSource);
     }
 
+    @Bean
+    @ConfigurationProperties("app.datasource.dashboard")
+    public DataSourceProperties dashboardDataSourceProperties() {
+        return new DataSourceProperties();
+    }
+
     @Bean(name = "dashboardDataSource")
-    @ConfigurationProperties(prefix = "app.datasource.dashboard")
     public DataSource dashboardDataSource() {
-        return DataSourceBuilder.create().build();
+        return dashboardDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
     @Bean(name = "dashboardJdbcTemplate")
