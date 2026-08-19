@@ -64,12 +64,33 @@ public class OpexyApplication {
             }
         }
 
-        // FORCE connection to the central HighCore PostgreSQL database, bypassing any
-        // misconfigured env variables
-        System.setProperty("spring.datasource.url", "jdbc:postgresql://198.186.130.131:5432/postgres?schema=public");
-        System.setProperty("spring.datasource.username", "postgres");
-        System.setProperty("spring.datasource.password",
-                "fIQrOSfvhAB6FLcJycpr50Sqqk1YWySMwTZE1MktPv9oKBAoGSrlSoW82s0QmTvw");
+        // Parse DASHBOARD_DATASOURCE_URL if it's provided in postgres:// format
+        String dashboardUrl = System.getenv("DASHBOARD_DATASOURCE_URL");
+        if (dashboardUrl != null && dashboardUrl.startsWith("postgres")) {
+            try {
+                // Handle both postgres:// and postgresql://
+                String cleanUrl = dashboardUrl.replaceFirst("postgres(ql)?://", "postgresql://");
+                log.info("Parsing DASHBOARD_DATASOURCE_URL...");
+                URI uri = new URI(cleanUrl);
+                if (uri.getUserInfo() != null) {
+                    String[] userInfo = uri.getUserInfo().split(":");
+                    System.setProperty("app.datasource.dashboard.username", userInfo[0]);
+                    if (userInfo.length > 1) {
+                        System.setProperty("app.datasource.dashboard.password", userInfo[1]);
+                    }
+                }
+                String host = uri.getHost();
+                int port = uri.getPort() != -1 ? uri.getPort() : 5432;
+                String path = uri.getPath();
+
+                String jdbcUrl = String.format("jdbc:postgresql://%s:%d%s?schema=public", host, port, path);
+                System.setProperty("app.datasource.dashboard.url", jdbcUrl);
+
+                log.info("Dashboard database configuration updated successfully from DASHBOARD_DATASOURCE_URL.");
+            } catch (Exception e) {
+                log.error("Failed to parse DASHBOARD_DATASOURCE_URL: {}", e.getMessage());
+            }
+        }
 
         context = SpringApplication.run(OpexyApplication.class, args);
     }
