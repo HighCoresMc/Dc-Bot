@@ -316,25 +316,26 @@ public class TicketListener extends ListenerAdapter {
         EnumSet<Permission> memberPerms = isWhitelist ? EnumSet.of(Permission.VIEW_CHANNEL)
                 : EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND);
 
-        guild.createTextChannel(channelName)
+        var channelAction = guild.createTextChannel(channelName)
                 .setParent(guild.getCategoryById(TICKET_CATEGORY_ID))
                 .addPermissionOverride(guild.getPublicRole(), null, EnumSet.of(Permission.VIEW_CHANNEL))
-                .addPermissionOverride(member, memberPerms, isWhitelist ? EnumSet.of(Permission.MESSAGE_SEND) : null)
-                .addPermissionOverride(guild.getRoleById(STAFF_ROLE),
-                        EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null)
-                .queue(channel -> {
-                    // Set overrides for privileged roles to ensure they always see and can write
-                    for (String roleId : PRIVILEGED_ROLES) {
-                        net.dv8tion.jda.api.entities.Role role = guild.getRoleById(roleId);
-                        if (role != null) {
-                            channel.getManager().putRolePermissionOverride(role.getIdLong(),
-                                    EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null).queue();
-                        }
-                    }
+                .addPermissionOverride(member, memberPerms, isWhitelist ? EnumSet.of(Permission.MESSAGE_SEND) : null);
+                
+        net.dv8tion.jda.api.entities.Role staffRole = guild.getRoleById(STAFF_ROLE);
+        if (staffRole != null) {
+            channelAction = channelAction.addPermissionOverride(staffRole, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null);
+        }
+        for (String roleId : PRIVILEGED_ROLES) {
+            net.dv8tion.jda.api.entities.Role role = guild.getRoleById(roleId);
+            if (role != null) {
+                channelAction = channelAction.addPermissionOverride(role, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null);
+            }
+        }
 
-                    if (isWhitelist) {
-                        guild.addRoleToMember(member, guild.getRoleById("1499355941752012900")).queue();
-                    }
+        channelAction.queue(channel -> {
+            if (isWhitelist) {
+                guild.addRoleToMember(member, guild.getRoleById("1499355941752012900")).queue();
+            }
                     TicketEntity ticket = new TicketEntity();
                     ticket.setUserId(userId);
                     ticket.setChannelId(channel.getId());
@@ -560,24 +561,27 @@ public class TicketListener extends ListenerAdapter {
         final String finalHasLogo = hasLogoInput;
         final java.util.List<Member> finalTeamMembers = targetMembers;
 
-        guild.createTextChannel(channelName)
+        var channelAction = guild.createTextChannel(channelName)
             .setParent(guild.getCategoryById(TICKET_CATEGORY_ID))
             .addPermissionOverride(guild.getPublicRole(), null, EnumSet.of(Permission.VIEW_CHANNEL))
-            .addPermissionOverride(creator, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null)
-            .addPermissionOverride(guild.getRoleById(STAFF_ROLE), EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null)
-            .queue(channel -> {
-                for (String roleId : PRIVILEGED_ROLES) {
-                    net.dv8tion.jda.api.entities.Role role = guild.getRoleById(roleId);
-                    if (role != null) {
-                        channel.getManager().putRolePermissionOverride(role.getIdLong(), EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null).queue();
-                    }
-                }
+            .addPermissionOverride(creator, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null);
 
-                for (Member m : finalTeamMembers) {
-                    channel.getManager().putMemberPermissionOverride(m.getIdLong(), EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null).queue();
-                }
+        net.dv8tion.jda.api.entities.Role staffRole = guild.getRoleById(STAFF_ROLE);
+        if (staffRole != null) {
+            channelAction = channelAction.addPermissionOverride(staffRole, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null);
+        }
+        for (String roleId : PRIVILEGED_ROLES) {
+            net.dv8tion.jda.api.entities.Role role = guild.getRoleById(roleId);
+            if (role != null) {
+                channelAction = channelAction.addPermissionOverride(role, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null);
+            }
+        }
+        for (Member m : finalTeamMembers) {
+            channelAction = channelAction.addPermissionOverride(m, EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND), null);
+        }
 
-                TicketEntity ticket = new TicketEntity();
+        channelAction.queue(channel -> {
+            TicketEntity ticket = new TicketEntity();
                 ticket.setUserId(userId);
                 ticket.setChannelId(channel.getId());
                 ticket.setCategory("team");
