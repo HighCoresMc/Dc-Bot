@@ -271,12 +271,14 @@ public class TicketListener extends ListenerAdapter {
     }
 
     private void handleTicketCreationFromModal(ModalInteractionEvent event) {
+        event.deferReply(true).queue();
+
         String userId = event.getUser().getId();
 
         boolean isExempt = event.getMember().getRoles().stream().anyMatch(r -> r.getId().equals("1487152572207861870"));
 
         if (!isExempt && ticketRepository.existsByUserIdAndStatus(userId, "OPEN")) {
-            event.reply("❌ لـديـك تـذكـرة مـفـتـوحـة بـالـفـعـل! يـرجـى إغـلاقـهـا أولاً.").setEphemeral(true).queue();
+            event.getHook().sendMessage("❌ لـديـك تـذكـرة مـفـتـوحـة بـالـفـعـل! يـرجـى إغـلاقـهـا أولاً.").setEphemeral(true).queue();
             return;
         }
 
@@ -448,14 +450,14 @@ public class TicketListener extends ListenerAdapter {
 
                     Container successCont = EmbedUtil.success("الإنـشـاء",
                             "تـم إنـشـاء تـذكـرتـك بـنـجـاح: " + channel.getAsMention());
-                    event.reply(EmbedUtil.createBrandedMessage(successCont).build())
+                    event.getHook().sendMessage(EmbedUtil.createBrandedMessage(successCont).build())
                             .setEphemeral(true)
                             .useComponentsV2(true)
                             .queue();
                 }, error -> {
                     Container errorCont = EmbedUtil.error("ERROR",
                             "حدث خطأ أثناء إنشاء الغرفة، يرجى التأكد من صلاحيات البوت.");
-                    event.reply(EmbedUtil.createBrandedMessage(errorCont).build())
+                    event.getHook().sendMessage(EmbedUtil.createBrandedMessage(errorCont).build())
                             .setEphemeral(true).useComponentsV2(true).queue();
                     log.error("Error creating ticket channel", error);
                 });
@@ -664,6 +666,7 @@ public class TicketListener extends ListenerAdapter {
     }
 
     private void handleTicketClose(ButtonInteractionEvent event) {
+        event.deferReply(true).queue();
         Container confirm = EmbedUtil.containerBranded(
                 "تـأكـيـد الإغـلاق",
                 "هـل أنـت مـتـأكـد؟",
@@ -672,7 +675,7 @@ public class TicketListener extends ListenerAdapter {
                 ActionRow.of(
                         Button.secondary("ticket_close_final", "تـأكـيـد الإغـلاق"),
                         Button.secondary("ticket_close_cancel", "تـراجـع")));
-        event.reply(EmbedUtil.createBrandedMessage(confirm).build())
+        event.getHook().sendMessage(EmbedUtil.createBrandedMessage(confirm).build())
                 .setEphemeral(true).queue();
     }
 
@@ -1133,6 +1136,7 @@ public class TicketListener extends ListenerAdapter {
     }
 
     private void handleDeleteRequest(ButtonInteractionEvent event) {
+        event.deferReply(true).queue();
         Container confirm = EmbedUtil.containerBranded(
                 "تـحـذيـر",
                 "حـذف الـقـنـاة",
@@ -1141,7 +1145,7 @@ public class TicketListener extends ListenerAdapter {
                 ActionRow.of(
                         Button.secondary("ticket_delete_final", "تـأكـيـد الـحـذف"),
                         Button.secondary("ticket_delete_cancel", "تـراجـع")));
-        event.reply(EmbedUtil.createBrandedMessage(confirm).build())
+        event.getHook().sendMessage(EmbedUtil.createBrandedMessage(confirm).build())
                 .setEphemeral(true).useComponentsV2(true).queue();
     }
 }
